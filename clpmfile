@@ -1,0 +1,10 @@
+;;; -*- Mode: common-lisp; -*-
+(:api-version "0.4")
+
+(:source "quicklisp" :type :ql-clpi :url "https://quicklisp.common-lisp-project-index.org/")
+
+(:system "cl-yaml")
+(:system "drakma")
+
+(:asd "forager.asd")
+;;(:asd "forager-test.asd")

@@ -1,21 +1,21 @@
 (defsystem "cl-i"
   :version "0.1.0"
-  :author ""
-  :license ""
+  :author "Daniel Jay Haskin"
+  :license "MIT"
   :depends-on ("cl-yaml"
                "drakma"
                "alexandria"
                "trivial-package-local-nicknames"
                "arrows")
   :components ((:module "src"
-                :components
-                ((:file "main"))))
-  :description ""
+          :components
+          ((:file "main"))))
+  :description "CLI library for Common Lisp. Handles args, envvars, and conf"
   :in-order-to ((test-op (test-op "cl-i/tests"))))
 
 (defsystem "cl-i/tests"
-  :author ""
-  :license ""
+  :author "Daniel Jay Haskin"
+  :license "MIT"
   :depends-on ("cl-i"
                "rove")
   :components ((:module "tests"

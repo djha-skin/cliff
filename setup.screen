@@ -1,0 +1,3 @@
+at 0 stuff "./tools/repl.sh"
+at 0 title "repl"
+screen -t "editor" 1

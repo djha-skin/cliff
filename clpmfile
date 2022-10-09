@@ -3,8 +3,12 @@
 
 (:source "quicklisp" :type :ql-clpi :url "https://quicklisp.common-lisp-project-index.org/")
 
-(:system "cl-yaml")
-(:system "drakma")
+(:git "cl-yaml"
+ :url "https://github.com/djhaskin987/cl-yaml"
+ :branch "feature/add-emit-pretty")
 
-(:asd "forager.asd")
-;;(:asd "forager-test.asd")
+(:system "drakma")
+;;(:system "cl-yaml")
+
+(:asd "cl-i.asd")
+;;(:asd "cl-i-test.asd")

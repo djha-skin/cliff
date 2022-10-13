@@ -110,8 +110,8 @@
 
 ("cl-yaml" ((:system :name "cl-i") (:system :name "cl-yaml"))
  (t
-  (:project :name "cl-yaml" :branch "feature/add-emit-pretty" :source
-   :implicit-vcs)))
+  (:project :name "cl-yaml" :commit "9d0207b23eaeef99763ae1a9b422cb2ab1c0e431"
+   :source :implicit-vcs)))
 
 ("dissect" ((:system :name "rove") (:system :name "dissect")))
 

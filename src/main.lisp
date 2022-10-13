@@ -1,7 +1,6 @@
-(in-package :cl-user)
-(defpackage skin.djha.cl-i.v1.main
+(in-package #:cl-user)
+(defpackage #:cl-i
   (:use #:cl)
-  ;(:nicknames #:cl-i)
   (:documentation
     "
     Package that has a function, `start-cli`, which does the following:
@@ -16,31 +15,43 @@
   (:import-from #:drakma)
   (:import-from #:uiop/pathname)
   (:local-nicknames (#:yaml #:cl-yaml)
-                    (#:client #:drakma))
-  )
-(in-package :skin.djha.cl-i.v1.main)
+                    (#:client #:drakma)))
+(in-package #:cl-i)
+
+(defun repeatedly
+  (func arg
+    &optional
+    (check-p (lambda (arg) (equal arg nil)))
+    (repeats 256))
+  "
+  List consiting of calls to func on arg, then calling func on that result,
+  etc.
+  Doesn't stop until check-p returns t when given `arg`.
+  "
+  (declare (integer number))
+  (when (<= repeats 0)
+    (error "Ran REPEATS times without terminating. Arg: ~A" arg))
+  (if (funcall check-p arg)
+    (list arg)
+    (cons arg (repeatedly func (funcall func arg) (- repeats 1) check-p))))
 
 (defun repeatedly-eq
-  (func arg)
+  (func arg &optional (max-repeats 256) 
+        (eeq #'equal))
   "
   List consisting of calls to func using arg, then calling func using that
   result, etc.
   Stops when subsequent calls return equal.
   "
   (let ((next (funcall func arg)))
-    (if (equal next arg)
+    (if (funcall eeq next arg)
       (list arg)
+      nil)))
       (cons arg (repeatedly-eq func next)))))
 
-(defun repeatedly (func arg &optional (check-p (lambda (arg) (equal arg nil))))
-  "
-  List consiting of calls to func on arg, then calling func on that result,
-  etc.
-  Doesn't stop until check-p returns t when given `arg`.
-  "
-  (if (funcall check-p arg)
-    (list arg)
-    (cons arg (repeatedly func (funcall func arg) check-p))))
+(repeatedly-eq #'positive-dec 15 (lambda (a b) (print a) (print b) (= a b)))
+
+
 
 ; Get file
 (defun find-file
@@ -69,45 +80,109 @@
 (defun generate-string
   (thing)
   (yaml:with-emitter-to-string (emit)
-                               (yaml:emit-pretty-as-document emit "foo")))
-;(defun generate-string
-;  (thing)
-;    (yaml/generate-string thing
-;                          :dumper-options {:indent 2
-;                                           :indicator-indent 1
-;                                           :flow-style :block})
-;    (json/generate-string thing true)))
-;
-;(defun parse-string
-;  (thing)
-;  (yaml/parse-string
-;    thing
-;    :safe true
-;    :keywords true))
-;
+                               (yaml:emit-pretty-as-document emit thing)))
+
+(defun parse-string
+  (thing)
+  (yaml:parse thing))
+
+
 ;(generate/add-encoder
 ; java.lang.Object
 ; (fn (obj jsonGenerator)
 ;   (generate/write-string jsonGenerator (str obj))))
 ;
-;(defun exit-error
-;  (status msg)
-;  ;; I've decided to put resulting errors to stdout,
-;  ;; leaving the stderr clean for the caller
-;  ;; EXCEPT when printing help screens
-;  (println msg)
-;  status)
-;
-;;; UTF-8 by default :)
-;
-;(defun base-slurp
-;  (loc)
-;  (let ((input (if (= loc "-")
-;                *in*
-;                loc)))
-;    (clojure.core/slurp input :encoding "UTF-8")))
-;
+
+(defun exit-error
+  (status msg)
+  (format t "~A~%" msg)
+  status)
+
+(defun slurp-stream (f)
+  (with-output-to-string (out)
+    (loop do
+          (let ((char-in (read-char f nil)))
+            (if char-in
+              (write-char char-in out )
+              (return))))))
+
+(defun base-slurp
+  (loc)
+  (let ((input (if (equal loc "-")
+                *standard-input*
+                loc)))
+    (if (typep input 'stream)
+           (slurp-stream input)
+           (with-open-file (in-stream loc
+                            :direction :input
+                            :external-format :utf-8)
+             (slurp-stream in-stream)))))
+
+
+
+;;  Takes alist
+;; Handles http.
 ;(defun handle-http
+;  (options)
+;  (let ((resource (assoc :resource options))
+;        (base-args (remove :resource options :key #'car)))
+;
+;(drakma:http-request
+;  url
+;  :content-type 'application/json
+;  (cond
+;    ((cl-ppcre:register-groups-bind
+;       (_ protocol username password rest-of-it)
+;       ("^(https?://)([^@:]+):([^@:]+)@(.+)" resource)
+;       (drakma:http-request
+;         (concatenate
+;           'string
+;           protocol
+;           rest-of-it)
+;         :basic-authorization
+;         (list (url:decode username) (url:decode password)))))
+;    ((cl-ppcre:register-groups-bind
+;       (_ protocol header headerval rest-of-it)
+;       ("^(https?://)([^@=]+)=([^@=]+)@(.+)" resource)
+;       (drakma:http-request
+;         (concatenate
+;           'string
+;           protocol
+;           rest-of-it)
+;         :additional-headers
+;         (list (cons (url:decode header) (url:decode headerval))))))
+;    ((cl-ppcre:register-groups-bind
+;       (_ protocol header token rest-of-it)
+;       ("^(https?://)([^@]+)@(.+)" resource)
+;       (drakma:http-request
+;         (concatenate
+;           'string
+;           protocol
+;           rest-of-it)
+;         :additional-headers
+;         (list (cons "Authorization" (format nil "Bearer ~A" token))))))
+;    (t (apply #'drakma:http-request
+;
+;              (cons resource (alexandria:alist-plist base-args)))
+;              (cons 
+;
+;              (apply 
+;         resource
+;         (
+;
+;    ((cl-ppcre:register-groups-bind
+;       (_ protocol auth-stuff rest-of-it)
+;       ("^(https?://)([^@:]+):([^@:]+)@(.+)" resource)
+;       (
+;
+;
+;         (setf (gethash : 
+;
+;
+;
+;  kj
+;
+;(hash-table)(defun handle-http
 ;  (options)
 ;  (let ((resource (:resource options))
 ;        (base-args (into {} (:extra-args options))))

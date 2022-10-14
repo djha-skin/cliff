@@ -16,10 +16,12 @@
 (defsystem "cl-i/tests"
   :author "Daniel Jay Haskin"
   :license "MIT"
-  :depends-on ("cl-i"
-               "rove")
+  :depends-on (
+      "cl-i"
+      "fiveam")
   :components ((:module "tests"
                 :components
-                ((:file "main"))))
+                ((:file "root") (:file "main"))))
   :description "Test system for cl-i"
-  :perform (test-op (op c) (symbol-call :rove :run c)))
+  :perform (test-op (op c) (symbol-call :fiveam :run!
+                                (find-symbol* :cl-i :cl-i/tests))))

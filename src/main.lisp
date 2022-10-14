@@ -1,6 +1,6 @@
-(in-package #:cl-user)
-(defpackage #:cl-i
-  (:use #:cl)
+(in-package :cl-user)
+(defpackage :cl-i
+  (:use :cl)
   (:documentation
     "
     Package that has a function, `start-cli`, which does the following:
@@ -10,13 +10,13 @@
       rules constructs a hash table which is then passed to the subcommands.
     "
     )
-  (:import-from #:arrows)
-  (:import-from #:cl-yaml)
-  (:import-from #:drakma)
-  (:import-from #:uiop/pathname)
-  (:local-nicknames (#:yaml #:cl-yaml)
-                    (#:client #:drakma)))
-(in-package #:cl-i)
+  (:import-from :arrows)
+  (:import-from :cl-yaml)
+  (:import-from :drakma)
+  (:import-from :uiop/pathname)
+  (:local-nicknames (:yaml :cl-yaml)
+                    (:client :drakma)))
+(in-package :cl-i)
 
 (defun repeatedly
   (func arg
@@ -24,11 +24,11 @@
     (check-p (lambda (arg) (equal arg nil)))
     (repeats 256))
   "
-  List consiting of calls to func on arg, then calling func on that result,
+  List consisting of calls to func on arg, then calling func on that result,
   etc.
   Doesn't stop until check-p returns t when given `arg`.
   "
-  (declare (integer number))
+  (declare (integer repeats))
   (when (<= repeats 0)
     (error "Ran REPEATS times without terminating. Arg: ~A" arg))
   (if (funcall check-p arg)
@@ -36,22 +36,23 @@
     (cons arg (repeatedly func (funcall func arg) (- repeats 1) check-p))))
 
 (defun repeatedly-eq
-  (func arg &optional (max-repeats 256) 
-        (eeq #'equal))
+  (func
+    arg
+    &optional
+    (eeq #'equal)
+    (repeats 256))
   "
   List consisting of calls to func using arg, then calling func using that
   result, etc.
   Stops when subsequent calls return equal.
   "
+  (declare (integer repeats))
+  (when (<= repeats 0)
+    (error "Ran REPEATS times without terminating. Arg: ~A" arg))
   (let ((next (funcall func arg)))
     (if (funcall eeq next arg)
       (list arg)
-      nil)))
-      (cons arg (repeatedly-eq func next)))))
-
-(repeatedly-eq #'positive-dec 15 (lambda (a b) (print a) (print b) (= a b)))
-
-
+      (cons arg (repeatedly-eq func next eeq (- repeats 1))))))
 
 ; Get file
 (defun find-file
@@ -164,9 +165,9 @@
 ;    (t (apply #'drakma:http-request
 ;
 ;              (cons resource (alexandria:alist-plist base-args)))
-;              (cons 
+;              (cons
 ;
-;              (apply 
+;              (apply
 ;         resource
 ;         (
 ;
@@ -176,7 +177,7 @@
 ;       (
 ;
 ;
-;         (setf (gethash : 
+;         (setf (gethash :
 ;
 ;
 ;

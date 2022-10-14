@@ -34,6 +34,8 @@
 :releases
 ("alexandria" :version "2022-07-08" :source "quicklisp" :systems ("alexandria"))
 ("arrows" :version "2018-10-18" :source "quicklisp" :systems ("arrows"))
+("asdf-flv" :version "2016-04-21" :source "quicklisp" :systems
+ ("net.didierverna.asdf-flv"))
 ("babel" :version "2020-09-25" :source "quicklisp" :systems ("babel"))
 ("bordeaux-threads" :version "2022-07-08" :source "quicklisp" :systems
  ("bordeaux-threads"))
@@ -48,16 +50,17 @@
 ("cl-ppcre" :version "2022-02-20" :source "quicklisp" :systems ("cl-ppcre"))
 ("cl-yaml" :version (:commit "9d0207b23eaeef99763ae1a9b422cb2ab1c0e431")
  :source :implicit-vcs :systems ("cl-yaml"))
-("dissect" :version "2022-07-08" :source "quicklisp" :systems ("dissect"))
 ("drakma" :version "2022-07-08" :source "quicklisp" :systems ("drakma"))
+("fiveam" :version "2022-04-01" :source "quicklisp" :systems ("fiveam"))
 ("flexi-streams" :version "2022-02-20" :source "quicklisp" :systems
  ("flexi-streams"))
 ("parse-number" :version "2018-02-28" :source "quicklisp" :systems
  ("parse-number"))
 ("puri" :version "2020-10-16" :source "quicklisp" :systems ("puri"))
-("rove" :version "2022-04-01" :source "quicklisp" :systems ("rove"))
 ("split-sequence" :version "2021-05-31" :source "quicklisp" :systems
  ("split-sequence"))
+("trivial-backtrace" :version "2020-06-10" :source "quicklisp" :systems
+ ("trivial-backtrace"))
 ("trivial-features" :version "2021-12-09" :source "quicklisp" :systems
  ("trivial-features"))
 ("trivial-garbage" :version "2021-12-30" :source "quicklisp" :systems
@@ -74,7 +77,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 :reverse-dependencies
-("alexandria" ((:system :name "cl-yaml") (:system :name "alexandria"))
+("alexandria" ((:system :name "fiveam") (:system :name "alexandria"))
+ ((:system :name "cl-yaml") (:system :name "alexandria"))
  ((:system :name "cl-i") (:system :name "alexandria"))
  ((:system :name "cl+ssl") (:system :name "alexandria"))
  ((:system :name "cffi") (:system :name "alexandria"))
@@ -83,9 +87,12 @@
 
 ("arrows" ((:system :name "cl-i") (:system :name "arrows")))
 
+("asdf-flv"
+ ((:system :name "fiveam") (:system :name "net.didierverna.asdf-flv")))
+
 ("babel" ((:system :name "cffi") (:system :name "babel")))
 
-("bordeaux-threads" ((:system :name "rove") (:system :name "bordeaux-threads"))
+("bordeaux-threads"
  ((:system :name "cl+ssl") (:system :name "bordeaux-threads")))
 
 ("cffi" ((:system :name "cl-libyaml") (:system :name "cffi"))
@@ -104,8 +111,7 @@
 
 ("cl-libyaml" ((:system :name "cl-yaml") (:system :name "cl-libyaml")))
 
-("cl-ppcre" ((:system :name "rove") (:system :name "cl-ppcre"))
- ((:system :name "drakma") (:system :name "cl-ppcre"))
+("cl-ppcre" ((:system :name "drakma") (:system :name "cl-ppcre"))
  ((:system :name "cl-yaml") (:system :name "cl-ppcre")))
 
 ("cl-yaml" ((:system :name "cl-i") (:system :name "cl-yaml"))
@@ -113,10 +119,10 @@
   (:project :name "cl-yaml" :commit "9d0207b23eaeef99763ae1a9b422cb2ab1c0e431"
    :source :implicit-vcs)))
 
-("dissect" ((:system :name "rove") (:system :name "dissect")))
-
 ("drakma" ((:system :name "cl-i") (:system :name "drakma"))
  (t (:system :name "drakma")))
+
+("fiveam" ((:system :name "cl-i/tests") (:system :name "fiveam")))
 
 ("flexi-streams" ((:system :name "drakma") (:system :name "flexi-streams"))
  ((:system :name "cl+ssl") (:system :name "flexi-streams")))
@@ -125,9 +131,10 @@
 
 ("puri" ((:system :name "drakma") (:system :name "puri")))
 
-("rove" ((:system :name "cl-i/tests") (:system :name "rove")))
-
 ("split-sequence" ((:system :name "usocket") (:system :name "split-sequence")))
+
+("trivial-backtrace"
+ ((:system :name "fiveam") (:system :name "trivial-backtrace")))
 
 ("trivial-features"
  ((:system :name "cl+ssl") (:system :name "trivial-features"))
@@ -137,7 +144,6 @@
 ("trivial-garbage" ((:system :name "cl+ssl") (:system :name "trivial-garbage")))
 
 ("trivial-gray-streams"
- ((:system :name "rove") (:system :name "trivial-gray-streams"))
  ((:system :name "flexi-streams") (:system :name "trivial-gray-streams"))
  ((:system :name "cl+ssl") (:system :name "trivial-gray-streams"))
  ((:system :name "chunga") (:system :name "trivial-gray-streams")))

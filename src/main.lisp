@@ -14,26 +14,14 @@
   (:import-from :cl-yaml)
   (:import-from :drakma)
   (:import-from :uiop/pathname)
+  (:export
+    repeatedly
+    repeatedly-eq
+    find-file
+    dbg)
   (:local-nicknames (:yaml :cl-yaml)
                     (:client :drakma)))
 (in-package :cl-i)
-
-(defun repeatedly
-  (func arg
-    &optional
-    (check-p (lambda (arg) (equal arg nil)))
-    (repeats 256))
-  "
-  List consisting of calls to func on arg, then calling func on that result,
-  etc.
-  Doesn't stop until check-p returns t when given `arg`.
-  "
-  (declare (integer repeats))
-  (when (<= repeats 0)
-    (error "Ran REPEATS times without terminating. Arg: ~A" arg))
-  (if (funcall check-p arg)
-    (list arg)
-    (cons arg (repeatedly func (funcall func arg) (- repeats 1) check-p))))
 
 (defun repeatedly-eq
   (func
@@ -54,6 +42,33 @@
       (list arg)
       (cons arg (repeatedly-eq func next eeq (- repeats 1))))))
 
+(defun repeatedly
+  (func arg
+    &optional
+    (check-p (lambda (arg) (equal arg nil)))
+    (repeats 256))
+  "
+  List consisting of calls to func on arg, then calling func on that result,
+  etc.
+  Doesn't stop until check-p returns t when given `arg`.
+  "
+  (declare (integer repeats))
+  (labels ((helper (arg on)
+                (when (<= on 0)
+                  (error (concatenate
+                           'string
+                           "Ran ~A times without terminating.~%"
+                           "  Final iteration arg: ~A~%")
+                         repeats
+                         arg))
+                (if (funcall check-p arg)
+                  nil
+                  (cons arg (helper (funcall func arg)
+                                    (- on 1))))))
+    (helper arg repeats)))
+
+
+
 ; Get file
 (defun find-file
   (from cmd-name)
@@ -61,22 +76,28 @@
     Starting at the directory given,
     find the marking file.
     "
-    (arrows:as-> (uiop/os:getcwd) it
-               (repeatedly-eq #'uiop/pathname:pathname-parent-directory-pathname it)
-               (mapcar (lambda (path)
-                         (merge-pathnames
-                           path
-                           (pathname (format nil ".~A.yaml" cmd-name))))
-                       it)
-               (some #'uiop/filesystem:file-exists-p it)))
+    (arrows:as->
+      from it
+      (repeatedly-eq #'uiop/pathname:pathname-parent-directory-pathname it)
+      (mapcar (lambda (path)
+                (merge-pathnames
+                  path
+                  (pathname (format nil ".~A.yaml" cmd-name))))
+              it)
+      (some #'uiop/filesystem:file-exists-p it)))
 
 (defmacro dbg
-    (body)
-    (let ((mysym (gensym)))
-    `(let ((,mysym ,body))
-       (format t "Debug: ~A = `~A`~%" (quote ,body) ,mysym)
-       (finish-output)
-       ,mysym)))
+  (body
+    &optional
+    (destination *STANDARD-OUTPUT*))
+  (let ((rbody (gensym "cl-i-dbg"))
+        (rdest (gensym "cl-i-dbg")))
+    `(let ((,rbody ,body)
+           (,rdest ,destination))
+       (format ,rdest "Debug: Type of `~A` = `~A`~%" (quote ,body) (type-of ,rbody))
+       (format ,rdest "Debug: Eval of `~A` = `~A`~%" (quote ,body) ,rbody)
+       (finish-output ,rdest)
+       ,rbody)))
 
 (defun generate-string
   (thing)

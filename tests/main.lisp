@@ -8,6 +8,14 @@
     :cl-i/tests))
 (in-package :cl-i/tests/main)
 
+
+(defvar *tests-dir*
+  (merge-pathnames
+    #P"tests/"
+    (slot-value
+      (asdf:find-system "cl-i")
+      'asdf/component:absolute-pathname)))
+
 (def-suite cl-i-main
            :description "Main functions in test suite."
            :in cl-i/tests:cl-i)
@@ -39,18 +47,13 @@
                  (<= item 0)))
              '(3 2 1))))
 
-
 (test
   basic-find-file
   (is
     (equal
       #P"/home/djha-skin/Development/lisp/cl-i/tests/.cl-i.yaml"
       (cl-i:find-file
-        (merge-pathnames
-          #P"tests/"
-          (slot-value
-            (asdf:find-system "cl-i")
-            'asdf/component:absolute-pathname))
+        *tests-dir*
         "cl-i")))
   (is
     (equal
@@ -75,3 +78,20 @@
           'string
           "Debug: Type of `(+ 3 3)` = `(INTEGER 0 4611686018427387903)`~%"
           "Debug: Eval of `(+ 3 3)` = `6`~%")))))
+
+(test
+  slurp-stream
+  (is
+    (equal
+      (with-open-file
+        (f
+          (merge-pathnames
+            #P".cl-i.yaml"
+            *tests-dir*)
+          :direction :input
+          :external-format :utf-8)
+        (cl-i:slurp-stream f))
+      "hoo: haa")))
+
+
+

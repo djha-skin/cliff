@@ -18,7 +18,9 @@
     repeatedly
     repeatedly-eq
     find-file
-    dbg)
+    dbg
+    slurp-stream
+    )
   (:local-nicknames (:yaml :cl-yaml)
                     (:client :drakma)))
 (in-package :cl-i)
@@ -89,7 +91,7 @@
 (defmacro dbg
   (body
     &optional
-    (destination *STANDARD-OUTPUT*))
+    (destination *standard-output*))
   (let ((rbody (gensym "cl-i-dbg"))
         (rdest (gensym "cl-i-dbg")))
     `(let ((,rbody ,body)
@@ -109,15 +111,10 @@
   (yaml:parse thing))
 
 
-;(generate/add-encoder
-; java.lang.Object
-; (fn (obj jsonGenerator)
-;   (generate/write-string jsonGenerator (str obj))))
-;
 
 (defun exit-error
-  (status msg)
-  (format t "~A~%" msg)
+  (status msg &optional (destination *standard-output*))
+  (format destination "~A~%" msg)
   status)
 
 (defun slurp-stream (f)
@@ -125,23 +122,23 @@
     (loop do
           (let ((char-in (read-char f nil)))
             (if char-in
-              (write-char char-in out )
+              (write-char char-in out)
               (return))))))
 
-(defun base-slurp
-  (loc)
-  (let ((input (if (equal loc "-")
-                *standard-input*
-                loc)))
-    (if (typep input 'stream)
-           (slurp-stream input)
-           (with-open-file (in-stream loc
-                            :direction :input
-                            :external-format :utf-8)
-             (slurp-stream in-stream)))))
-
-
-
+;(defun base-slurp
+;  (loc)
+;  (let ((input (if (equal loc "-")
+;                *standard-input*
+;                loc)))
+;    (if (typep input 'stream)
+;           (slurp-stream input)
+;           (with-open-file (in-stream loc
+;                            :direction :input
+;                            :external-format :utf-8)
+;             (slurp-stream in-stream)))))
+;
+;
+;
 ;;  Takes alist
 ;; Handles http.
 ;(defun handle-http
@@ -886,12 +883,3 @@
 ;  (uiop:read-file-string "sample.yaml")))
 ;
 ;;; blah blah blah.
-
-(defpackage cl-i
-  (:use :cl))
-(in-package :cl-i)
-
-
-
-
-;; blah blah blah.

@@ -10,5 +10,5 @@
       :context clpmfile))
   (when (not (clpm-client:active-context))
     (clpm-client:activate-context clpmfile :activate-asdf-integration t))
-  (asdf:load-system name)
-  (asdf:load-system (format nil "~A/tests" name)))
+(asdf:load-system name)
+(asdf:load-system (format nil "~A/tests" name)))

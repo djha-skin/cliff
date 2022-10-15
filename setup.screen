@@ -1,3 +1,6 @@
-at 0 stuff "./tools/repl.sh"
+at 0 stuff "tools/repl.sh"
 at 0 title "repl"
-screen -t "editor" 1
+screen -t "lighttpd" 1
+at 1 stuff "./lighttpd-environment/lighttpd.exp"
+screen -t "editor" 2
+

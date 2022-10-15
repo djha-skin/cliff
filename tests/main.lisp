@@ -93,5 +93,14 @@
         (cl-i:slurp-stream f))
       "hoo: haa")))
 
+(test
+  base-slurp
+  (is
+    (equal
+    (cl-i::base-slurp
+      (merge-pathnames
+        #P".cl-i.yaml"
+        *tests-dir*))
+  "hoo: haa")))
 
 

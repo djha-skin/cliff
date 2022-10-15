@@ -14,6 +14,7 @@
   (:import-from :cl-yaml)
   (:import-from :drakma)
   (:import-from :uiop/pathname)
+  (:import-from :flexi-streams)
   (:export
     repeatedly
     repeatedly-eq
@@ -125,81 +126,88 @@
               (write-char char-in out)
               (return))))))
 
-;(defun base-slurp
-;  (loc)
-;  (let ((input (if (equal loc "-")
-;                *standard-input*
-;                loc)))
-;    (if (typep input 'stream)
-;           (slurp-stream input)
-;           (with-open-file (in-stream loc
-;                            :direction :input
-;                            :external-format :utf-8)
-;             (slurp-stream in-stream)))))
-;
-;
-;
+(defun base-slurp
+  (loc)
+  (let ((input (if (equal loc "-")
+                *standard-input*
+                loc)))
+    (if (typep input 'stream)
+           (slurp-stream input)
+           (with-open-file (in-stream loc
+                            :direction :input
+                            :external-format :utf-8)
+             (slurp-stream in-stream)))))
+
+
+
 ;;  Takes alist
 ;; Handles http.
-;(defun handle-http
-;  (options)
-;  (let ((resource (assoc :resource options))
-;        (base-args (remove :resource options :key #'car)))
-;
-;(drakma:http-request
-;  url
 ;  :content-type 'application/json
-;  (cond
-;    ((cl-ppcre:register-groups-bind
-;       (_ protocol username password rest-of-it)
-;       ("^(https?://)([^@:]+):([^@:]+)@(.+)" resource)
-;       (drakma:http-request
-;         (concatenate
-;           'string
-;           protocol
-;           rest-of-it)
-;         :basic-authorization
-;         (list (url:decode username) (url:decode password)))))
-;    ((cl-ppcre:register-groups-bind
-;       (_ protocol header headerval rest-of-it)
-;       ("^(https?://)([^@=]+)=([^@=]+)@(.+)" resource)
-;       (drakma:http-request
-;         (concatenate
-;           'string
-;           protocol
-;           rest-of-it)
-;         :additional-headers
-;         (list (cons (url:decode header) (url:decode headerval))))))
-;    ((cl-ppcre:register-groups-bind
-;       (_ protocol header token rest-of-it)
-;       ("^(https?://)([^@]+)@(.+)" resource)
-;       (drakma:http-request
-;         (concatenate
-;           'string
-;           protocol
-;           rest-of-it)
-;         :additional-headers
-;         (list (cons "Authorization" (format nil "Bearer ~A" token))))))
-;    (t (apply #'drakma:http-request
-;
-;              (cons resource (alexandria:alist-plist base-args)))
-;              (cons
-;
-;              (apply
-;         resource
-;         (
-;
-;    ((cl-ppcre:register-groups-bind
-;       (_ protocol auth-stuff rest-of-it)
-;       ("^(https?://)([^@:]+):([^@:]+)@(.+)" resource)
-;       (
-;
-;
-;         (setf (gethash :
-;
-;
-;
-;  kj
+(defun slurp-config
+  (options)
+  "
+  Slurp config, using specified options.
+
+  If `:resource` is a URL, download the contents according to the following
+  rules:
+  - If it is of the form `http(s)://user:pw@url`, it uses basic auth;
+  - If it is of the form `http(s)://header=val@url`, a header is set;
+  - If it is of the form `http(s)://tok@url`, a bearer token is used;
+  - If it is of the form `file://loc`, it is loaded as a normal file;
+  - If it is of the form `-`, the data is loaded from standard input;
+  - Otherwise, the data is loaded from the string or pathname as if it named
+  a file.
+  "
+  (let ((resource (cdr (assoc :resource options)))
+        (base-args (remove :resource options :key #'car)))
+    (cond
+      ((cl-ppcre:register-groups-bind
+         (_ protocol username password rest-of-it)
+         ("^(https?://)([^@:]+):([^@:]+)@(.+)$" resource)
+         (flexi-streams:octets-to-string
+           (drakma:http-request
+             (concatenate
+               'string
+               protocol
+               rest-of-it)
+             :basic-authorization
+             (list (url:decode username) (url:decode password))))))
+      ((cl-ppcre:register-groups-bind
+         (_ protocol header headerval rest-of-it)
+         ("^(https?://)([^@=]+)=([^@=]+)@(.+)$" resource)
+         (flexi-streams:octets-to-string
+           (drakma:http-request
+             (concatenate
+               'string
+               protocol
+               rest-of-it)
+             :additional-headers
+             (list (cons (url:decode header) (url:decode headerval)))))))
+      ((cl-ppcre:register-groups-bind
+         (_ protocol header token rest-of-it)
+         ("^(https?://)([^@]+)@(.+)" resource)
+         (flexi-streams:octets-to-string
+           (drakma:http-request
+             (concatenate
+               'string
+               protocol
+               rest-of-it)
+             :additional-headers
+             (list
+               (cons
+                 "Authorization"
+                 (format nil "Bearer ~A" (url:decode token))))))))
+      ((cl-ppcre:register-groups-bind
+         (url)
+         ("^https?://.*$" resource)
+         (flexi-streams:octets-to-string
+           (drakma:http-request url))))
+      ((cl-ppcre:register-groups-bind
+         (url loc)
+         ("^file://(.*)$" resource)
+         (base-slurp (url:decode resource))))
+      (:else (base-slurp  resource)))))
+
 ;
 ;(hash-table)(defun handle-http
 ;  (options)

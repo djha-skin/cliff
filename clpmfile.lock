@@ -11,7 +11,9 @@
 :sources
 (:implicit-file :type :file-system :system-files ("cl-i.asd"))
 (:implicit-vcs :type :vcs :projects
- (("cl-yaml" :git :url "https://github.com/djhaskin987/cl-yaml")))
+ (("url" :git :url "https://github.com/massung/url")))
+(:implicit-vcs :type :vcs :projects
+ (("cl-yaml" :git :url "https://github.com/eudoxia0/cl-yaml")))
 ("quicklisp" :url "https://quicklisp.common-lisp-project-index.org/" :type
  :ql-clpi)
 
@@ -23,8 +25,8 @@
 :requirements
 (:asd-file :name "cl-i.asd")
 (:system :name "drakma")
-(:project :name "cl-yaml" :branch "feature/add-emit-pretty" :source
- :implicit-vcs)
+(:project :name "url" :branch "master" :source :implicit-vcs)
+(:project :name "cl-yaml" :branch "master" :source :implicit-vcs)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46,6 +48,7 @@
 ("cl-base64" :version "2020-10-16" :source "quicklisp" :systems ("cl-base64"))
 ("cl-i.asd" :version :newest :source :implicit-file :systems
  ("cl-i" "cl-i/tests"))
+("cl-lexer" :version "2016-04-21" :source "quicklisp" :systems ("lexer"))
 ("cl-libyaml" :version "2020-12-20" :source "quicklisp" :systems ("cl-libyaml"))
 ("cl-ppcre" :version "2022-02-20" :source "quicklisp" :systems ("cl-ppcre"))
 ("cl-yaml" :version (:commit "9d0207b23eaeef99763ae1a9b422cb2ab1c0e431")
@@ -54,9 +57,11 @@
 ("fiveam" :version "2022-04-01" :source "quicklisp" :systems ("fiveam"))
 ("flexi-streams" :version "2022-02-20" :source "quicklisp" :systems
  ("flexi-streams"))
+("parse" :version "2020-09-25" :source "quicklisp" :systems ("parse"))
 ("parse-number" :version "2018-02-28" :source "quicklisp" :systems
  ("parse-number"))
 ("puri" :version "2020-10-16" :source "quicklisp" :systems ("puri"))
+("regex" :version "2012-09-09" :source "quicklisp" :systems ("regex"))
 ("split-sequence" :version "2021-05-31" :source "quicklisp" :systems
  ("split-sequence"))
 ("trivial-backtrace" :version "2020-06-10" :source "quicklisp" :systems
@@ -69,6 +74,8 @@
  ("trivial-gray-streams"))
 ("trivial-package-local-nicknames" :version "2022-02-20" :source "quicklisp"
  :systems ("trivial-package-local-nicknames"))
+("url" :version (:commit "677fa34de84ea8a727759bfb3294dd9237fe2aca") :source
+ :implicit-vcs :systems ("url"))
 ("usocket" :version "2022-04-01" :source "quicklisp" :systems ("usocket"))
 
 
@@ -109,6 +116,8 @@
 ("cl-i.asd" ((:system :name "cl-i/tests") (:system :name "cl-i"))
  (t (:asd-file :name "cl-i.asd")))
 
+("cl-lexer" ((:system :name "url") (:system :name "lexer")))
+
 ("cl-libyaml" ((:system :name "cl-yaml") (:system :name "cl-libyaml")))
 
 ("cl-ppcre" ((:system :name "drakma") (:system :name "cl-ppcre"))
@@ -116,8 +125,8 @@
 
 ("cl-yaml" ((:system :name "cl-i") (:system :name "cl-yaml"))
  (t
-  (:project :name "cl-yaml" :branch "feature/add-emit-pretty" :source
-   :implicit-vcs)))
+  (:project :name "cl-yaml" :commit "9d0207b23eaeef99763ae1a9b422cb2ab1c0e431"
+   :source :implicit-vcs)))
 
 ("drakma" ((:system :name "cl-i") (:system :name "drakma"))
  (t (:system :name "drakma")))
@@ -127,9 +136,13 @@
 ("flexi-streams" ((:system :name "drakma") (:system :name "flexi-streams"))
  ((:system :name "cl+ssl") (:system :name "flexi-streams")))
 
+("parse" ((:system :name "url") (:system :name "parse")))
+
 ("parse-number" ((:system :name "cl-yaml") (:system :name "parse-number")))
 
 ("puri" ((:system :name "drakma") (:system :name "puri")))
+
+("regex" ((:system :name "lexer") (:system :name "regex")))
 
 ("split-sequence" ((:system :name "usocket") (:system :name "split-sequence")))
 
@@ -150,6 +163,8 @@
 
 ("trivial-package-local-nicknames"
  ((:system :name "cl-i") (:system :name "trivial-package-local-nicknames")))
+
+("url" (t (:project :name "url" :branch "master" :source :implicit-vcs)))
 
 ("usocket" ((:system :name "drakma") (:system :name "usocket"))
  ((:system :name "cl+ssl") (:system :name "usocket")))

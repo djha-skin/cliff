@@ -4,8 +4,12 @@
 (:source "quicklisp" :type :ql-clpi :url "https://quicklisp.common-lisp-project-index.org/")
 
 (:git "cl-yaml"
- :url "https://github.com/djhaskin987/cl-yaml"
- :branch "feature/add-emit-pretty")
+ :url "https://github.com/eudoxia0/cl-yaml"
+ :branch "master")
+
+ (:git "url"
+ :url "https://github.com/massung/url"
+ :branch "master")
 
 (:system "drakma")
 ;;(:system "cl-yaml")

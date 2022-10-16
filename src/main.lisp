@@ -10,21 +10,22 @@
       rules constructs a hash table which is then passed to the subcommands.
     "
     )
+  (:import-from :alexandria)
   (:import-from :arrows)
   (:import-from :cl-yaml)
-  (:import-from :drakma)
-  (:import-from :uiop/pathname)
+  (:import-from :dexador)
   (:import-from :flexi-streams)
+  (:import-from :uiop/pathname)
+  (:import-from :quri)
   (:export
     repeatedly
     repeatedly-eq
     find-file
     dbg
     slurp-stream
-    )
-  (:local-nicknames (:yaml :cl-yaml)
-                    (:client :drakma)))
+    ))
 (in-package :cl-i)
+
 
 (defun repeatedly-eq
   (func
@@ -70,8 +71,6 @@
                                     (- on 1))))))
     (helper arg repeats)))
 
-
-
 ; Get file
 (defun find-file
   (from cmd-name)
@@ -111,8 +110,6 @@
   (thing)
   (yaml:parse thing))
 
-
-
 (defun exit-error
   (status msg &optional (destination *standard-output*))
   (format destination "~A~%" msg)
@@ -138,12 +135,10 @@
                             :external-format :utf-8)
              (slurp-stream in-stream)))))
 
-
-
 ;;  Takes alist
 ;; Handles http.
 ;  :content-type 'application/json
-(defun slurp-config
+(defun slurp
   (options)
   "
   Slurp config, using specified options.
@@ -165,29 +160,29 @@
          (_ protocol username password rest-of-it)
          ("^(https?://)([^@:]+):([^@:]+)@(.+)$" resource)
          (flexi-streams:octets-to-string
-           (drakma:http-request
+           (dex:get
              (concatenate
                'string
                protocol
                rest-of-it)
              :basic-authorization
-             (list (url:decode username) (url:decode password))))))
+             (list (quri:url-decode username) (quri:url-decode password))))))
       ((cl-ppcre:register-groups-bind
          (_ protocol header headerval rest-of-it)
          ("^(https?://)([^@=]+)=([^@=]+)@(.+)$" resource)
          (flexi-streams:octets-to-string
-           (drakma:http-request
+           (dex:get
              (concatenate
                'string
                protocol
                rest-of-it)
              :additional-headers
-             (list (cons (url:decode header) (url:decode headerval)))))))
+             (list (cons (quri:url-decode header) (quri:url-decode headerval)))))))
       ((cl-ppcre:register-groups-bind
          (_ protocol header token rest-of-it)
          ("^(https?://)([^@]+)@(.+)" resource)
          (flexi-streams:octets-to-string
-           (drakma:http-request
+           (dex:get
              (concatenate
                'string
                protocol
@@ -196,68 +191,34 @@
              (list
                (cons
                  "Authorization"
-                 (format nil "Bearer ~A" (url:decode token))))))))
+                 (format nil "Bearer ~A" (quri:url-decode token))))))))
       ((cl-ppcre:register-groups-bind
          (url)
          ("^https?://.*$" resource)
          (flexi-streams:octets-to-string
-           (drakma:http-request url))))
+           (dex:get url))))
       ((cl-ppcre:register-groups-bind
-         (url loc)
-         ("^file://(.*)$" resource)
-         (base-slurp (url:decode resource))))
+         (_ device-name path)
+         ("^file://(([^/]+):)?/(.*)$" resource)
+         (let ((path-components
+                 (cons :absolute (cl-ppcre:split "/+" path))))
+         (arrows:as->
+           path-components *
+           (cons :absolute *)
+         (if device-name
+           (list
+             :device device-name
+             :directory *)
+           (list :directory *))
+         (apply make-pathname *)
+         (base-slurp *)))))
       (:else (base-slurp  resource)))))
 
-;
-;(hash-table)(defun handle-http
-;  (options)
-;  (let ((resource (:resource options))
-;        (base-args (into {} (:extra-args options))))
-;    (:body
-;     (if-let ((_ protocol auth-stuff rest-of-it)
-;              (re-matches #"(https?://)((^@)+)@(.+)" resource))
-;       (if-let ((_ username password)
-;                (re-matches #"((^:)+):((^:)+)" auth-stuff))
-;         (client/get
-;          (str
-;           protocol
-;           rest-of-it)
-;          (assoc base-args
-;                 :basic-auth
-;                 ((java.net.URLDecoder/decode username)
-;                  (java.net.URLDecoder/decode password))))
-;         (if-let ((_ headerkey headerval)
-;                  (re-matches #"((^=)+)=((^=)+)" auth-stuff))
-;           (client/get (str
-;                        protocol
-;                        rest-of-it)
-;                       (assoc base-args
-;                              :headers
-;                              {(keyword (java.net.URLDecoder/decode headerkey))
-;                               (java.net.URLDecoder/decode headerval)}))
-;           (client/get (str
-;                        protocol
-;                        rest-of-it)
-;                       (assoc base-args
-;                              :oauth-token
-;                              (java.net.URLDecoder/decode auth-stuff)))))
-;       (client/get resource base-args)))))
-;
-;(defun default-slurp
-;  (resource)
-;  (if (re-matches #"https?://.*" (str resource))
-;    (handle-http {:resource resource})
-;    (base-slurp resource)))
-;
-;(defun url-to-path
-;  (path)
-;  ;; https://stackoverflow.com/q/18520972
-;  (println "url-to-path")
-;  (-> path
-;      (URL.)
-;      (.toURI)
-;      (Paths/get)))
-;
+;(defun locked-down-download
+;  (resource
+;    (let 
+;    (dex:get url
+
 ;(defun locked-down-download
 ;  (resource dest)
 ;  (with-open

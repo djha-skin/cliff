@@ -3,4 +3,4 @@ at 0 title "repl"
 screen -t "lighttpd" 1
 at 1 stuff "./lighttpd-environment/lighttpd.exp"
 screen -t "editor" 2
-
+bindkey ^K at 0 stuff "(rove:run-test *)"

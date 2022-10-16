@@ -3,9 +3,9 @@
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on ("cl-yaml"
-               "drakma"
+               "dexador"
                "alexandria"
-               "url"
+               "quri"
                "trivial-package-local-nicknames"
                "arrows")
   :components ((:module "src"
@@ -15,14 +15,14 @@
   :in-order-to ((test-op (test-op "cl-i/tests"))))
 
 (defsystem "cl-i/tests"
+  :version "0.1.0"
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (
       "cl-i"
-      "fiveam")
+      "rove")
   :components ((:module "tests"
                 :components
-                ((:file "root") (:file "main"))))
+                ((:file "main"))))
   :description "Test system for cl-i"
-  :perform (test-op (op c) (symbol-call :fiveam :run!
-                                (find-symbol* :cl-i :cl-i/tests))))
+  :perform (test-op (op c) (symbol-call :rove :run c)))

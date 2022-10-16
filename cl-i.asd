@@ -5,6 +5,7 @@
   :depends-on ("cl-yaml"
                "drakma"
                "alexandria"
+               "url"
                "trivial-package-local-nicknames"
                "arrows")
   :components ((:module "src"

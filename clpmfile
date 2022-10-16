@@ -4,11 +4,19 @@
 (:source "quicklisp" :type :ql-clpi :url "https://quicklisp.common-lisp-project-index.org/")
 
 (:git "cl-yaml"
- :url "https://github.com/eudoxia0/cl-yaml"
+ :url "ssh://git@github.com/eudoxia0/cl-yaml.git"
  :branch "master")
 
- (:git "url"
- :url "https://github.com/massung/url"
+(:git "lexer"
+ :url "ssh://git@github.com/massung/lexer"
+ :branch "master")
+
+(:git "parser"
+ :url "ssh://git@github.com/massung/parser"
+ :branch "master")
+
+(:git "url"
+ :url "ssh://git@github.com/massung/url"
  :branch "master")
 
 (:system "drakma")

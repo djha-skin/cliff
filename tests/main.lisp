@@ -106,3 +106,55 @@
         *tests-dir*))
   "hoo: haa"))))
 
+(deftest
+  slurp
+  (testing
+    "paths"
+    (ok
+      (equal
+        (cl-i:slurp
+          #P"tests/.cl-i.yaml")
+        "hoo: haa")))
+  (testing
+    "file"
+    (ok
+      (equal
+        (cl-i:slurp
+          "file:///home/djha-skin/Development/lisp/cl-i/tests/.cl-i.yaml")
+        "hoo: haa")))
+  (testing
+    "noauth"
+    (ok
+      (equal
+        (cl-i:slurp
+          "https://djha-skin.me:8443/noauth/complete.txt"
+          :insecure t)
+        (format nil "noauth complete~%"))))
+
+  (testing
+    "basic"
+    (ok
+      (equal
+        (cl-i:slurp
+          "https://mode:code@djha-skin.me:8443/basic/complete.txt"
+          :insecure t)
+        (format nil "basic complete~%"))))
+  (testing
+    "header"
+    (ok
+      (equal
+        (cl-i:slurp
+          "https://Authorization=Bearer%20600dc0de6077a10ada600ddea10fda7a@djha-skin.me:8443/token/complete.txt"
+          :insecure t)
+        (format nil "token complete~%"))))
+  (testing
+    "token"
+    (ok
+      (equal
+        (cl-i:slurp
+          "https://600dc0de6077a10ada600ddea10fda7a@djha-skin.me:8443/token/complete.txt"
+          :insecure t)
+        (format nil "token complete~%")))))
+
+
+

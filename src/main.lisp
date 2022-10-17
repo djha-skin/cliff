@@ -23,6 +23,7 @@
     find-file
     dbg
     slurp-stream
+    slurp
     ))
 (in-package :cl-i)
 
@@ -139,7 +140,7 @@
 ;; Handles http.
 ;  :content-type 'application/json
 (defun slurp
-  (options)
+  (resource &rest more-args)
   "
   Slurp config, using specified options.
 
@@ -153,55 +154,59 @@
   - Otherwise, the data is loaded from the string or pathname as if it named
   a file.
   "
-  (let ((resource (cdr (assoc :resource options)))
-        (base-args (remove :resource options :key #'car)))
-    (cond
-      ((cl-ppcre:register-groups-bind
-         (_ protocol username password rest-of-it)
+  (flet ((http-call
+           (&rest args)
+           (apply
+             #'dex:get
+              (concatenate
+                'list
+                args
+                more-args
+                '(:force-string t)))))
+    (or
+      (when (equal 'pathname (type-of resource))
+        (base-slurp resource))
+      (cl-ppcre:register-groups-bind
+         (protocol username password rest-of-it)
          ("^(https?://)([^@:]+):([^@:]+)@(.+)$" resource)
-         (flexi-streams:octets-to-string
-           (dex:get
-             (concatenate
-               'string
-               protocol
-               rest-of-it)
-             :basic-authorization
-             (list (quri:url-decode username) (quri:url-decode password))))))
-      ((cl-ppcre:register-groups-bind
-         (_ protocol header headerval rest-of-it)
+         (http-call 
+           (concatenate
+             'string
+             protocol
+             rest-of-it)
+           :basic-auth
+           (cons (quri:url-decode username) (quri:url-decode password))))
+      (cl-ppcre:register-groups-bind
+         (protocol header headerval rest-of-it)
          ("^(https?://)([^@=]+)=([^@=]+)@(.+)$" resource)
-         (flexi-streams:octets-to-string
-           (dex:get
-             (concatenate
-               'string
-               protocol
-               rest-of-it)
-             :additional-headers
-             (list (cons (quri:url-decode header) (quri:url-decode headerval)))))))
-      ((cl-ppcre:register-groups-bind
-         (_ protocol header token rest-of-it)
+         (http-call
+           (concatenate
+             'string
+             protocol
+             rest-of-it)
+           :headers
+           (list (cons (quri:url-decode header) (quri:url-decode headerval)))))
+      (cl-ppcre:register-groups-bind
+         (protocol token rest-of-it)
          ("^(https?://)([^@]+)@(.+)" resource)
-         (flexi-streams:octets-to-string
-           (dex:get
+         (http-call
              (concatenate
                'string
                protocol
                rest-of-it)
-             :additional-headers
+             :headers
              (list
                (cons
                  "Authorization"
-                 (format nil "Bearer ~A" (quri:url-decode token))))))))
-      ((cl-ppcre:register-groups-bind
-         (url)
+                 (format nil "Bearer ~A" (quri:url-decode token))))))
+      (cl-ppcre:register-groups-bind
+         ()
          ("^https?://.*$" resource)
-         (flexi-streams:octets-to-string
-           (dex:get url))))
-      ((cl-ppcre:register-groups-bind
+         (http-call resource))
+      (cl-ppcre:register-groups-bind
          (_ device-name path)
          ("^file://(([^/]+):)?/(.*)$" resource)
-         (let ((path-components
-                 (cons :absolute (cl-ppcre:split "/+" path))))
+         (let ((path-components (cl-ppcre:split "/+" path)))
          (arrows:as->
            path-components *
            (cons :absolute *)
@@ -210,9 +215,9 @@
              :device device-name
              :directory *)
            (list :directory *))
-         (apply make-pathname *)
-         (base-slurp *)))))
-      (:else (base-slurp  resource)))))
+         (apply #'make-pathname *)
+         (base-slurp *))))
+      (base-slurp  resource))))
 
 ;(defun locked-down-download
 ;  (resource
@@ -235,27 +240,6 @@
 ;                  :extra-args {:as :stream}})
 ;    out (io/output-stream dest))
 ;    (io/copy in out)))
-;
-;(defun grab
-;  (resource dest)
-;  (cond
-;    (= resource "-")
-;    (with-open (out (io/output-stream dest))
-;      (io/copy *in* out))
-;    (re-matches #"https?://.*" (str resource))
-;    (download resource dest)
-;    :else
-;    (with-open
-;     (in
-;      (if (re-matches #"file://.*" (str resource))
-;        (Files/newInputStream
-;         (url-to-path (str resource))
-;         (to-array (StandardOpenOption/READ)))
-;        (Files/newInputStream
-;         (Paths/get "" (into-array (resource)))
-;         (into-array (StandardOpenOption/READ))))
-;      out (io/output-stream dest))
-;      (io/copy in out))))
 ;
 ;(defun parse-args
 ;  ({:keys
@@ -817,38 +801,3 @@
 ;         :problem :unknown-command
 ;         :given-options effective-options}
 ;        output-style)))))
-;
-;(defun default-spit
-;  (loc stuff)
-;  (clojure.core/spit loc (pr-str stuff) :encoding "UTF-8"))
-;
-;(defun pretty-spit
-;  (loc stuff)
-;  (with-open
-;   (ow (io/writer loc :encoding "UTF-8"))
-;    (pprint/pprint stuff ow)))
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;
-;(setf mayfly (cl-yaml:parse
-;  (uiop:read-file-string "sample.yaml")))
-;
-;;; blah blah blah.

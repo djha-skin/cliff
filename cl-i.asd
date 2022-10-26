@@ -2,12 +2,15 @@
   :version "0.1.0"
   :author "Daniel Jay Haskin"
   :license "MIT"
-  :depends-on ("cl-yaml"
-               "dexador"
+  :depends-on (
                "alexandria"
+               "arrows"
+               "cl-yaml"
+               "dexador"
+               "fset"
                "quri"
                "trivial-package-local-nicknames"
-               "arrows")
+               )
   :components ((:module "src"
           :components
           ((:file "main"))))

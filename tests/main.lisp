@@ -6,6 +6,20 @@
     #:cl-i))
 (in-package :cl-i/tests)
 
+
+(defun join
+  (strs &key (fmt "~%"))
+  (format nil
+          (apply
+            #'concatenate
+            (cons 'string
+          (mapcar (lambda (str) (concatenate 'string str fmt))
+          strs)))))
+
+(defun join-lines
+  (&rest lines)
+  (funcall #'join lines))
+
 (defvar *tests-dir*
   (merge-pathnames
     #P"tests/"
@@ -155,6 +169,24 @@
           "https://600dc0de6077a10ada600ddea10fda7a@djha-skin.me:8443/token/complete.txt"
           :insecure t)
         (format nil "token complete~%")))))
+
+(deftest
+  consume-arguments
+  (testing
+    "basic"
+    (ok
+      (equal (cl-i:generate-string
+               (cl-i:consume-arguments
+                 '("--enable-foo" "--disable-bar" "baz" "--set-quux" "farquad")))
+             (join-lines
+               "---"
+               "FOO: true"
+               "BAR: false"
+               "QUUX: farquad"
+               "..."
+               )))))
+
+
 
 
 

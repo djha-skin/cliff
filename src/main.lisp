@@ -1,8 +1,8 @@
-(in-package :cl-user)
-(defpackage :cl-i
-  (:use :cl)
+(in-package #:cl-user)
+(defpackage #:cl-i
+  (:use #:cl)
   (:documentation
-    "
+   "
     Package that has a function, `start-cli`, which does the following:
     - Registers functions mapped to specific subcommands
     - Reads configuration files in standard locations
@@ -10,23 +10,26 @@
       rules constructs a hash table which is then passed to the subcommands.
     "
     )
-  (:import-from :alexandria)
-  (:import-from :arrows)
-  (:import-from :cl-yaml)
-  (:import-from :dexador)
-  (:import-from :flexi-streams)
-  (:import-from :uiop/pathname)
-  (:import-from :quri)
+  (:import-from #:alexandria)
+  (:import-from #:fset)
+  (:import-from #:arrows)
+  (:import-from #:cl-yaml)
+  (:import-from #:dexador)
+  (:import-from #:flexi-streams)
+  (:import-from #:uiop/pathname)
+  (:import-from #:quri)
   (:export
+    consume-arguments
+    data-slurp
+    dbg
+    find-file
+    generate-string
+    parse-string
     repeatedly
     repeatedly-eq
-    find-file
-    dbg
     slurp-stream
-    slurp
     ))
-(in-package :cl-i)
-
+(in-package #:cl-i)
 
 (defun repeatedly-eq
   (func
@@ -139,7 +142,7 @@
 ;;  Takes alist
 ;; Handles http.
 ;  :content-type 'application/json
-(defun slurp
+(defun data-slurp
   (resource &rest more-args)
   "
   Slurp config, using specified options.
@@ -169,7 +172,7 @@
       (cl-ppcre:register-groups-bind
          (protocol username password rest-of-it)
          ("^(https?://)([^@:]+):([^@:]+)@(.+)$" resource)
-         (http-call 
+         (http-call
            (concatenate
              'string
              protocol
@@ -203,6 +206,7 @@
          ()
          ("^https?://.*$" resource)
          (http-call resource))
+
       (cl-ppcre:register-groups-bind
          (_ device-name path)
          ("^file://(([^/]+):)?/(.*)$" resource)
@@ -219,120 +223,109 @@
          (base-slurp *))))
       (base-slurp  resource))))
 
-;(defun locked-down-download
-;  (resource
-;    (let 
-;    (dex:get url
+(defun string-keyword (str)
+  (intern (string-upcase str) "KEYWORD"))
 
-;(defun locked-down-download
-;  (resource dest)
-;  (with-open
-;   (in
-;    (client/get resource {:as :stream})
-;    out (io/output-stream dest))
-;    (io/copy in out)))
-;
-;(defun download
-;  (resource dest)
-;  (with-open
-;   (in
-;    (handle-http {:resource resource
-;                  :extra-args {:as :stream}})
-;    out (io/output-stream dest))
-;    (io/copy in out)))
-;
-;(defun parse-args
-;  ({:keys
-;    (args
-;     aliases
-;     map-sep)
-;    :or
-;    {aliases
-;     {}
-;     map-sep
-;     "="}})
-;  (let (map-sep-pat
-;        (re-pattern
-;         (str
-;          "^((^\\Q"
-;          map-sep
-;          "\\E)+)\\Q"
-;          map-sep
-;          "\\E(.*)$"))
-;        expanded-args
-;        (map (fn (arg)
-;               (if-let (other (get aliases arg))
-;                 other
-;                 arg))
-;             args))
-;    (loop (m {}
-;           arguments expanded-args)
-;      (if (empty? arguments)
-;        m
-;        (let (arg (first arguments)
-;              rargs (rest arguments))
-;
-;          (if-let ((_ action clean-opt)
-;                   (re-matches
-;                    #"--(disable|enable|reset|assoc|add|set|json|yaml|file)-(.+)" arg))
-;            (let (kopt (keyword (string/lower-case clean-opt))
-;                  kact (keyword action))
-;              (cond
-;                (= kact :disable)
-;                (recur (conj m (kopt false)) rargs)
-;                (= kact :enable)
-;                (recur (conj m (kopt true)) rargs)
-;                (= kact :reset)
-;                (recur (conj m (kopt nil)) rargs)
-;                (or
-;                 (= kact :json)
-;                 (= kact :yaml)
-;                 (= kact :file)
-;                 (= kact :set)
-;                 (= kact :add)
-;                 (= kact :assoc))
-;                (if (empty? rargs)
-;                  (throw (ex-info "not enough arguments supplied"
-;                                  {:problem :onecli/not-enough-args
-;                                   :option kopt
-;                                   :exit-code 1
-;                                   :action kact
-;                                   :argument arg}))
-;                  (let (i (first rargs)
-;                        rrargs (rest rargs))
-;                    (recur
-;                     (if (= kact :assoc)
-;                       (if-let ((_ k v) (re-matches map-sep-pat i))
-;                         (assoc-in m
-;                                   (kopt k)
-;                                   v)
-;                         (ex-info "argument not recognized as a key/value pair"
-;                                  {:exit-code 1
-;                                   :problem :onecli/bad-kv-pair
-;                                   :option kopt
-;                                   :action kact
-;                                   :argument arg}))
-;                       (let (groomed-val
-;                             (cond
-;                               (or (= kact :json) (= kact :yaml))
-;                               (parse-string i)
-;                               (= kact :file)
-;                               (parse-string (default-slurp i))
-;                               :else
-;                               i))
-;                         (if (= kact :add)
-;                           (update-in m (kopt) #(if
-;                                                 (empty? %)
-;                                                  (groomed-val)
-;                                                  (conj % groomed-val)))
-;                           (assoc m kopt groomed-val))))
-;                     rrargs)))))
-;            (recur
-;             (update-in m (:commands) #(if (empty? %)
-;                                         (arg)
-;                                         (conj % arg)))
-;             rargs)))))))
-;
+(defparameter
+  +find-tag+
+  (cl-ppcre:create-scanner
+    "^--([^-]+)-(.+)$"))
+
+(defparameter
+  +multiple-arg-actions+
+  '(
+    :set
+    :add
+    :join
+    :yaml
+    :file
+    )
+  "Actions that consume additional argument."
+  )
+
+(defparameter
+  +single-arg-actions+
+  '(
+    :enable
+    :disable
+    :reset
+    )
+  "Actions that consume no additional arguments."
+  )
+
+(defun consume-arguments
+  (args &optional &key hash-init-args (map-sep "="))
+  (let ((map-sep-pat (cl-ppcre:create-scanner map-sep))
+        (consumable (copy-list args))
+        (opts (apply #'make-hash-table hash-init-args))
+        (other-args nil))
+    (loop
+      while consumable do
+      (let
+        ((arg (first consumable))
+         (rargs (rest consumable)))
+        (or
+          (cl-ppcre:register-groups-bind
+            ((#'string-keyword kact)
+             (#'string-keyword kopt))
+            (+find-tag+ arg)
+            (cond
+              ((some (lambda (x) (eql kact x)) +single-arg-actions+)
+               (if (eql kact :reset)
+                 (remhash kopt opts)
+                 (setf (gethash kopt opts) (eql kact :enable)))
+               (setf consumable rargs))
+              ((some (lambda (x) (eql kact x)) +multiple-arg-actions+)
+               (when (not rargs)
+                 (error
+                   "Not enough arguments for action ~A on option ~A"
+                   kact kopt))
+               (let ((value (first rargs))
+                     (rrargs (rest rargs)))
+                 (cond
+                   ((eql kact :set)
+                    (setf (gethash kopt opts) value))
+                   ((eql kact :add)
+                    (setf (gethash kopt opts)
+                          (cons arg (gethash kopt opts))))
+                   ((eql kact :join)
+                    (let ((sresults (cl-ppcre:split map-sep-pat value)))
+                      (if (eql (length sresults) 2)
+                        (destructuring-bind
+                          (k v)
+                          (when (not (gethash kopt opts))
+                            (setf
+                              (gethash kopt opts)
+                              (apply #'make-hash-table hash-init-args)))
+                          (setf (gethash
+                                  k
+                                  (gethash kopt opts))
+                                v))
+                        (error "Not a k/v pair, check map sep pattern: ~A"
+                               arg))))
+                   ((eql kact :yaml)
+                    (setf (gethash kopt opts)
+                          (parse-string arg)))
+                   ((eql kact :file)
+                    (setf (gethash kopt opts)
+                          (parse-string (data-slurp value))))
+                   (:else
+                     (error "Uknown action ~A" kact)))
+                 (setf consumable rrargs))))
+            t)
+          (progn
+            (push arg other-args)
+            (setf consumable rargs)))))
+    (values opts other-args)))
+
+(defun expand-aliases
+  (aliases args)
+  (mapcar
+    (lambda (arg)
+      (or (gethash arg aliases)
+          arg))
+    args))
+
 ;(defun parse-env-vars
 ;  ({:keys
 ;    (aliases
@@ -728,7 +721,7 @@
 ;                       (expand-option-packs
 ;                        available-option-packs
 ;                        (parse-string
-;                         (default-slurp file))))
+;                         (data-slurp file))))
 ;                     config-files))
 ;        effective-options
 ;        (as-> (given-defaults

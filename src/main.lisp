@@ -287,12 +287,13 @@
                     (setf (gethash kopt opts) value))
                    ((eql kact :add)
                     (setf (gethash kopt opts)
-                          (cons arg (gethash kopt opts))))
+                          (cons value (gethash kopt opts))))
                    ((eql kact :join)
                     (let ((sresults (cl-ppcre:split map-sep-pat value)))
                       (if (eql (length sresults) 2)
                         (destructuring-bind
                           (k v)
+                          sresults
                           (when (not (gethash kopt opts))
                             (setf
                               (gethash kopt opts)
@@ -302,10 +303,10 @@
                                   (gethash kopt opts))
                                 v))
                         (error "Not a k/v pair, check map sep pattern: ~A"
-                               arg))))
+                               value))))
                    ((eql kact :yaml)
                     (setf (gethash kopt opts)
-                          (parse-string arg)))
+                          (parse-string value)))
                    ((eql kact :file)
                     (setf (gethash kopt opts)
                           (parse-string (data-slurp value))))

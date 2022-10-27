@@ -1,11 +1,11 @@
 (in-package #:cl-user)
+
 (defpackage #:cl-i/tests
   (:use #:cl
         #:rove)
   (:import-from
     #:cl-i))
 (in-package :cl-i/tests)
-
 
 (defun join
   (strs &key (fmt "~%"))
@@ -126,21 +126,21 @@
     "paths"
     (ok
       (equal
-        (cl-i:slurp
+        (cl-i:data-slurp
           #P"tests/.cl-i.yaml")
         "hoo: haa")))
   (testing
     "file"
     (ok
       (equal
-        (cl-i:slurp
+        (cl-i:data-slurp
           "file:///home/djha-skin/Development/lisp/cl-i/tests/.cl-i.yaml")
         "hoo: haa")))
   (testing
     "noauth"
     (ok
       (equal
-        (cl-i:slurp
+        (cl-i:data-slurp
           "https://djha-skin.me:8443/noauth/complete.txt"
           :insecure t)
         (format nil "noauth complete~%"))))
@@ -149,7 +149,7 @@
     "basic"
     (ok
       (equal
-        (cl-i:slurp
+        (cl-i:data-slurp
           "https://mode:code@djha-skin.me:8443/basic/complete.txt"
           :insecure t)
         (format nil "basic complete~%"))))
@@ -157,7 +157,7 @@
     "header"
     (ok
       (equal
-        (cl-i:slurp
+        (cl-i:data-slurp
           "https://Authorization=Bearer%20600dc0de6077a10ada600ddea10fda7a@djha-skin.me:8443/token/complete.txt"
           :insecure t)
         (format nil "token complete~%"))))
@@ -165,13 +165,63 @@
     "token"
     (ok
       (equal
-        (cl-i:slurp
+        (cl-i:data-slurp
           "https://600dc0de6077a10ada600ddea10fda7a@djha-skin.me:8443/token/complete.txt"
           :insecure t)
         (format nil "token complete~%")))))
 
 (deftest
   consume-arguments
+  (testing
+    "other-args"
+    (multiple-value-bind (opts other-args)
+     (cl-i:generate-string
+       (cl-i:consume-arguments
+        '("--enable-dark-mode"
+          "--reset-dark-mode"
+          "--add-dark-mode"
+          "crying"
+          "--add-dark-mode"
+          "firm"
+          "well-done"
+          "medium-well"
+          "--join-my"
+          "pride=hurt"
+          "--join-my"
+          "start=great"
+          "--yaml-fight"
+          "15.0"
+          "--file-stride"
+          "tests/.cl-i.yaml"
+          ))
+       )
+      (ok (equal
+            (join-lines
+              "---"
+              "DARK-MODE:"
+              "- firm"
+              "- crying"
+              "MY:"
+              "  pride: hurt"
+              "  start: false"
+              "FIGHT: 15.0"
+              "SRIDE:"
+              "  hoo: haa"
+              "...")
+            (cl-i:generate-string
+              opts)))
+      (ok (equal
+            '("medium-well" "well-done")
+            other-args))))
+  (testing
+    "empty"
+    (ok
+      (equal (cl-i:generate-string
+               (cl-i:consume-arguments
+                 '()))
+             (join-lines
+               "--- {}"
+               "..."))))
   (testing
     "basic"
     (ok
@@ -183,10 +233,4 @@
                "FOO: true"
                "BAR: false"
                "QUUX: farquad"
-               "..."
-               )))))
-
-
-
-
-
+               "...")))))

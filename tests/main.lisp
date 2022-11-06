@@ -48,7 +48,7 @@
 
 (deftest
   repeatedly
-  (testing "repeatedly-eq"
+  (testing "repeatedly"
   (signals (cl-i:repeatedly
                           #'positive-dec
                           3
@@ -65,7 +65,7 @@
   (testing "basic-find-file"
            (ok
              (equal
-               #P"/home/djha-skin/Development/lisp/cl-i/tests/.cl-i.yaml"
+               #P"/home/djha-skin/Code/lisp/cl-i/tests/.cl-i.yaml"
                (cl-i:find-file
                  *tests-dir*
                  "cl-i")))
@@ -134,7 +134,7 @@
     (ok
       (equal
         (cl-i:data-slurp
-          "file:///home/djha-skin/Development/lisp/cl-i/tests/.cl-i.yaml")
+          "file:///home/djha-skin/Code/lisp/cl-i/tests/.cl-i.yaml")
         "hoo: haa")))
   (testing
     "noauth"
@@ -175,7 +175,6 @@
   (testing
     "other-args"
     (multiple-value-bind (opts other-args)
-     (cl-i:generate-string
        (cl-i:consume-arguments
         '("--enable-dark-mode"
           "--reset-dark-mode"
@@ -193,7 +192,7 @@
           "15.0"
           "--file-stride"
           "tests/.cl-i.yaml"
-          ))
+          )
        )
       (ok (equal
             (join-lines
@@ -203,9 +202,9 @@
               "- crying"
               "MY:"
               "  pride: hurt"
-              "  start: false"
+              "  start: great"
               "FIGHT: 15.0"
-              "SRIDE:"
+              "STRIDE:"
               "  hoo: haa"
               "...")
             (cl-i:generate-string

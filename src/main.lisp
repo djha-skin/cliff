@@ -1,5 +1,4 @@
-(in-package
- #:cl-user)
+(in-package #:cl-user)
 (defpackage
     #:cl-i (:use #:cl)
     (:documentation
@@ -24,6 +23,7 @@
     (:import-from #:quri)
     (:export
      consume-arguments
+     consume-environment
      data-slurp dbg
      find-file
      generate-string
@@ -302,14 +302,14 @@
           device-name path)
         ("^file://(([^/]+):)?/(.*)$"
          resource)
+        (declare (ignore _))
         (let
             ((path-components
                (cl-ppcre:split
                  "/+" path)))
           (arrows:as->
             path-components *
-            (cons
-              :absolute *)
+            (cons :absolute *)
             (if
                 device-name
                 (list
@@ -342,7 +342,6 @@
     :add
     :join
     :yaml
-    :file
     )
   "actions that consume additional argument."
   )
@@ -358,21 +357,7 @@
   )
 
 
-(defun
-    consume-environment
-    (environment
-     slug
-     &optional
-     &key
-       (list-sep
-	",")
-       (map-sep
-	"=")
-       (hash-init-args
-	'())))
-
-(defun
-    ingest-option
+(defun ingest-option
     (opts
       map-sep-pat hash-init-args kact kopt &optional value)
   (cond
@@ -406,9 +391,6 @@
     ((eql kact :yaml)
      (setf (gethash kopt opts)
            (parse-string value)))
-    ((eql kact :file)
-     (setf (gethash kopt opts)
-           (parse-string (data-slurp value))))
     (:else
      (error "uknown action ~a" kact))))
 
@@ -468,12 +450,11 @@
   (cond
     ((eql ktag :flag)
      (if (some
-           (mapcar
-             (lambda (v)
-               (eql value v))
-             '("0" "false" "False" "FALSE" "no" "NO" "No")))
-     (ingest-option opts map-sep-pat hash-init-args :disable kopt)
-     (ingest-option opts map-sep-pat hash-init-args :enable kopt)))
+           (lambda (v)
+             (eql value v))
+           '("0" "false" "False" "FALSE" "no" "NO" "No"))
+         (ingest-option opts map-sep-pat hash-init-args :disable kopt)
+         (ingest-option opts map-sep-pat hash-init-args :enable kopt)))
     ((eql ktag :item)
      (ingest-option opts map-sep-pat hash-init-args :set kopt value))
     ((eql ktag :list)
@@ -482,26 +463,18 @@
     ((eql ktag :table)
      (loop for piece in (cl-ppcre:split list-sep-pat value) do
            (ingest-option opts map-sep-pat hash-init-args :join kopt piece)))
-    ((or (eql ktag :yaml)
-         (eql ktag :file)
-         (ingest-option opts map-sep-pat hash-init-args ktag piece)))
-    (t
-     (error "Unknown tag while parsing env vars for program `~A`: `~A`"
-            program-name
-            ktag))))
+    ((eql ktag :yaml)
+     (ingest-option opts map-sep-pat hash-init-args ktag value)))
+  (t
+    (error "Unknown tag while parsing env vars for program `~A`: `~A`"
+           program-name
+           ktag)))
 
-
-
-     (ingest-option
 
 ;; TODO: Test this
-(defun
-    expand-arg-aliases
-    (aliases
-     args)
+(defun expand-arg-aliases (aliases args)
   (mapcar
-   (lambda
-       (arg)
+    (lambda (arg)
      (or
       (gethash
        arg aliases)
@@ -510,10 +483,7 @@
 
 
 ;; TODO: TEST THIS
-(defun
-    expand-env-aliases
-    (aliases
-      env)
+(defun expand-env-aliases (aliases env)
   "
   Replace the names of environment variables according to the map
   found in `aliases`.
@@ -522,38 +492,48 @@
     for key being the hash-key of env
     using (hash-value value)
     collect (cons (or (gethash key aliases) key) value)))
+; 
 
 (defun
-    consume-env-vars
+    consume-environment
     (program-name
       env
-      &optional &key hash-init-args (list-sep
-                                      ",")
-                                      (map-sep
-                                      "="))
+      &optional
+      &key
+      hash-init-args
+      (list-sep ",")
+      (map-sep "="))
   "
   Consume OS Environment variables as part of the options map.
   "
-  (let
+  (let*
     ((result
        (apply
          #'make-hash-table hash-init-args))
      (clean-name
        (string-upcase
          (cl-ppcre:regex-replace-all
-           "\\W" "_" program-name)))
+           "\\W" program-name "_")))
      (var-pattern
-       (cl-ppcre:create-scanner
-         (concatenate
-           'string
-           "^"
-           "\\Q"
-           clean-name
-           "\\E"
-           "_"
-           "(LIST|TABLE|ITEM|FLAG|YAML|FILE)"
-           "_"
-           "(\\w+)$")))
+       (dbg (cl-ppcre:create-scanner
+              '(:sequence
+                :start-anchor
+                ,clean-name
+                "_"
+                (:register
+                 (:alternation
+                 "LIST"
+                 "TABLE"
+                 "ITEM"
+                 "FLAG"
+                 "YAML"))
+                "_"
+                (:register
+                 (:greedy-repetition
+                  1
+                  nil
+                 :word-char-class))
+                :end-anchor)))))
      (map-sep-pat
        (cl-ppcre:create-scanner
          (concatenate
@@ -569,18 +549,15 @@
            list-sep
            "\\E"))))
     (loop
-	  for key being the hash-key of environment
+	  for key being the hash-key of env
 	  using (hash-value
 		 value)
 	  do
 	  (cl-ppcre:register-groups-bind
-           ((#'string-keyword
-             ktag)
-            (#'string-keyword
-             kopt))
-           (var-pattern
-            key)
-           (ingest-var
+           ((#'string-keyword ktag)
+            (#'string-keyword kopt))
+           (var-pattern key)
+           (dbg (ingest-var
              program-name
              result
              map-sep-pat
@@ -588,261 +565,6 @@
              hash-init-args
              ktag
              kopt
-             value)))
+             value))
+           ))
     result))
-
-(defun
-    get-options-from-os
-    (args
-      environment
-      cli-aliases
-      env-aliases
-      defaults
-      functions
-      list-sep
-      map-sep
-      program-name
-      setup
-      teardown
-      hash-init-args
-  "
-  Get arguments from FS, Environment (provided), and arguments (provided).
-  "
-  (let ((result (apply #'make-hash-table hash-init-args))
-        (cli-options (consume-arguments args :hash-init-args hash-init-args))
-        (env-options (consume-environment env :hash-init-args hash-init-args))
-        (config-files
-          (list
-            (let (app-data (gethash "AppData" environment))
-              (when (not (null app-data))
-                (probe-file
-                  (merge-pathnames 
-;; use `(make-pathname :directory '(:relative <things>))` to build direcotories
-;; and `(uiop:pathname-exists-p f)` to check for existence of file.
-
-
-
-
-                 ;config-files
-                 ;(reduce
-                 ;into
-                 ;()
-                 ;((if-let
-                 ;(app-data
-                 ; (System/getenv
-                 ;  "AppData"))
-                 ;(or
-                 ;(try-file
-                 ;(app-data
-                 ;i
-                 ;program-name
-                 ;"config.json"))
-                 ;(try-file
-                 ; (app-data
-                 ;program-name
-                 ;"config.yaml"))))
-                 ;(if-let
-                 ;  (home
-                 ;   (System/getenv
-                 ;    "HOME"))
-                 ;(or
-                 ;(try-file
-                 ;  (home
-                 ;(str
-                 ;"."
-                 ;program-name
-                 ;".json")))
-                 ;(try-file
-                 ;   (home
-                 ;(str
-                 ;"."
-                 ;program-name
-                 ;".yaml"))))
-                 ;(if-let
-                 ;    (home
-                 ;     (get
-                 ;      properties "user.home"))
-                 ;(or
-                 ;(try-file
-                 ;    (home
-                 ;(str
-                 ;"."
-                 ;program-name
-                 ;".json")))
-                 ;(try-file
-                 ;     (home
-                 ;(str
-                 ;"."
-                 ;program-name
-                 ;".yaml"))))))
-                 ;(if-let
-                 ;      (pwd
-                 ;       (get
-                 ;        properties "user.dir"))
-                 ;(or
-                 ;(try-file
-                 ;(pwd
-                 ;      (str
-                 ;program-name
-                 ;".json")))
-                 ;(try-file
-                 ;(pwd
-                 ;       (str
-                 ;program-name
-                 ;".yaml")))))
-                 ;(:config-files
-                   ;        expanded-env)
-                   ;(:config-files
-                     ;       expanded-cli)))
-                     ;expanded-cfg
-                     ;(reduce
-                     ;    merge
-                     ;(map
-                     ;    (fn
-                     ;     (file)
-                     ;(expand-option-packs
-                     ;available-option-packs
-                     ;(parse-string
-                     ;(data-slurp
-                     ;     file))))
-                     ;config-files))
-                     ;effective-options
-                     ;(as->
-                     ; (given-defaults
-                     ;expanded-cfg
-                     ;(dissoc
-                     ;  expanded-env :config-files)
-                     ;(dissoc
-                     ; expanded-cli :config-files)) it
-                     ;(mapv
-                     ;(fn
-                     ; (x)
-                     ;(into
-                     ; {}
-                     ;(filter
-                     ;#(not
-                     ; (nil?
-                     ;  (second
-                     ;   %)))
-                     ;x))) it)
-                     ;(reduce
-                     ;merge (hash-map)
-                     ;it))
-                     ;effective-commands
-                     ;(if-let
-                     ;(commands
-                     ; (:commands
-                        ;  effective-options))
-                        ;commands
-                        ;())
-                        ;output-style (let
-                                          ;(of
-                                          ; (:output-format
-                                             ;  effective-options))
-                                        ;(cond
-                                        ;(=
-                                          ; of "json") :json
-                                          ;(=
-                                            ;of "yaml") :yaml
-                                            ;(nil?
-                                              ;of) :json
-                                              ;:else (throw
-                                                      ;(ex-info
-                                                      ; (str
-                                                      ;  "Invalid output format: "
-                                                      ;of)
-                                                      ;{:function ::go!
-                                                      ;:parameters params})))))
-                ;(if-let
-                ;  (func
-                ;   (get
-                ;    effective-functions
-                ;effective-commands))
-                ;(try
-                ;(let
-                     ;    (ret
-                     ;(if
-                          ;     (and
-                          ;(not
-                          ;      (nil?
-                          ;       setup))
-                          ;(or
-                          ;(empty?
-                          ;     effective-commands)
-                          ;(not
-                          ;    (=
-                          ;     (nth
-                          ;      effective-commands (dec
-                          ;(count
-                          ;                          effective-commands)))
-                          ;"help"))))
-                          ;(func
-                          ;    (setup
-                          ;     effective-options))
-                        ;(func
-                        ;   effective-options)))
-                   ;(when
-                        ;(not
-                        ;(:suppress-return-output
-                          ; ret))
-                      ;(println
-                      ;(generate-string
-                      ; (dissoc
-                      ;  ret :onecli) output-style)))
-                   ;(when
-                        ;(not
-                        ; (nil?
-                        ;  teardown))
-                      ;(teardown
-                      ; effective-options))
-                   ;(if-let
-                   ;(return-code
-                   ; (:exit-code
-                      ;  (:onecli
-                          ;   ret)))
-                          ;return-code
-                          ;0))
-                          ;(catch
-                          ;clojure.lang.ExceptionInfo e
-                          ;(exit-error
-                          ;(if-let
-                          ;(code
-                          ; (:exit-code
-                             ;  (:onecli
-                                 ;   (ex-data
-                                 ;    e))))
-                                 ;code
-                                 ;128)
-                                 ;(generate-string
-                                 ;(as->
-                                 ;(ex-data
-                                 ; e) it
-                                 ;(assoc
-                                 ;it :error (str
-                                 ;           e))
-                                 ;(assoc
-                                 ;it :stacktrace
-                                 ;(stacktrace-string
-                                 ;e output-style))
-                                 ;(assoc
-                                 ;it :given-options effective-options))
-                                 ;output-style)))
-                                 ;(catch
-                                 ;Exception e
-                                 ;(exit-error
-                                 ;128
-                                 ;(generate-string
-                                 ;{:error (str
-                                 ;e)
-                                 ;:problem :unknown-problem
-                                 ;:stacktrace (stacktrace-string
-                                 ;e output-style)
-                                 ;:given-options effective-options}
-                                 ;output-style))))
-                                 ;(exit-error
-                                 ;1
-                                 ;(generate-string
-                                 ;{:error "Unknown command"
-                                 ;:problem :unknown-command
-                                 ;:given-options effective-options}
-                                 ;output-style)))))

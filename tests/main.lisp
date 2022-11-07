@@ -226,10 +226,21 @@
     (ok
       (equal (cl-i:generate-string
                (cl-i:consume-arguments
-                 '("--enable-foo" "--disable-bar" "baz" "--set-quux" "farquad")))
+                 '("--enable-foo" "--disable-bar" "baz" "--yaml-force" "15" "--set-quux" "farquad")))
              (join-lines
                "---"
                "FOO: true"
                "BAR: false"
                "QUUX: farquad"
+               "FORCE: 15"
                "...")))))
+(deftest
+  consume-environment
+  (cl-i:generate-string (cl-i:consume-environment
+    "hello"
+    (alexandria:alist-hash-table
+      '(("HELLO_LIST_MAPLE" . "1,2,3,4,5")
+        ("HELLO_FANGLE_DOG" . "12345")
+        ("VARS" . "xtreem")
+        ("HELLO_FLAG_FORESIGHT" . "0")
+        ("HELLO_ITEM_FORKS" . "whenceandwhither"))))))

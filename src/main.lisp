@@ -390,7 +390,7 @@
            (error "not a k/v pair, check map sep pattern: ~a" value))))
     ((eql kact :yaml)
      (setf (gethash kopt opts)
-           (parse-string value)))
+           (parse-string (dbg value))))
     (:else
      (error "uknown action ~a" kact))))
 
@@ -464,12 +464,11 @@
      (loop for piece in (cl-ppcre:split list-sep-pat value) do
            (ingest-option opts map-sep-pat hash-init-args :join kopt piece)))
     ((eql ktag :yaml)
-     (ingest-option opts map-sep-pat hash-init-args ktag value)))
-  (t
-    (error "Unknown tag while parsing env vars for program `~A`: `~A`"
-           program-name
-           ktag)))
-
+     (ingest-option opts map-sep-pat hash-init-args ktag kopt value))
+    (t
+     (error "Unknown tag while parsing env vars for program `~A`: `~A`"
+            program-name
+            ktag))))
 
 ;; TODO: Test this
 (defun expand-arg-aliases (aliases args)
@@ -492,7 +491,12 @@
     for key being the hash-key of env
     using (hash-value value)
     collect (cons (or (gethash key aliases) key) value)))
-; 
+;(setf cincuenta (consume-environment "hello-world" (alexandria:alist-hash-table '(("HELLO_WORLD_LIST_IRON_MAN" . "1,2,3,4,5") ("HELLO_WORLD_YAML_DISEASE" . "{'he': 'could', 'do': false, 'it': 'rightnow'}")))))
+
+; =>
+
+; (list (:DISEASE . (alexandria:hash-table-alist '(("it" . "rightnow") ("do") ("he" . "could")) ))
+; (:IRON_MAN "5" "4" "3" "2" "1"))
 
 (defun
     consume-environment
@@ -509,45 +513,39 @@
   (let*
     ((result
        (apply
-         #'make-hash-table hash-init-args))
-     (clean-name
-       (string-upcase
-         (cl-ppcre:regex-replace-all
-           "\\W" program-name "_")))
-     (var-pattern
-       (dbg (cl-ppcre:create-scanner
-              '(:sequence
-                :start-anchor
-                ,clean-name
-                "_"
-                (:register
-                 (:alternation
-                 "LIST"
-                 "TABLE"
-                 "ITEM"
-                 "FLAG"
-                 "YAML"))
-                "_"
-                (:register
-                 (:greedy-repetition
-                  1
-                  nil
-                 :word-char-class))
-                :end-anchor)))))
-     (map-sep-pat
-       (cl-ppcre:create-scanner
-         (concatenate
-           'string
-           "\\Q"
-           map-sep
-           "\\E")))
-     (list-sep-pat
-       (cl-ppcre:create-scanner
-         (concatenate
-           'string
-           "\\Q"
-           list-sep
-           "\\E"))))
+           #'make-hash-table hash-init-args))
+       (clean-name
+         (string-upcase
+           (cl-ppcre:regex-replace-all
+             "\\W" program-name "_")))
+       (var-pattern
+         (cl-ppcre:create-scanner
+           `(:sequence
+             :start-anchor
+             ,clean-name
+             "_"
+             (:register
+              (:alternation
+               "LIST"
+               "TABLE"
+               "ITEM"
+               "FLAG"
+               "YAML"))
+             "_"
+             (:register
+              (:greedy-repetition
+               1
+               nil
+               :word-char-class))
+             :end-anchor)))
+       (map-sep-pat
+         (cl-ppcre:create-scanner
+           `(:sequence
+             ,map-sep)))
+       (list-sep-pat
+         (cl-ppcre:create-scanner
+           `(:sequence
+             ,list-sep))))
     (loop
 	  for key being the hash-key of env
 	  using (hash-value
@@ -563,8 +561,8 @@
              map-sep-pat
              list-sep-pat
              hash-init-args
-             ktag
-             kopt
-             value))
+             (dbg ktag)
+             (dbg kopt)
+             (dbg value)))
            ))
     result))

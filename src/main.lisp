@@ -41,7 +41,7 @@
   result, etc.
   stops when subsequent calls return equal.
   "
-  (declare (integer repeats))
+  (declare (type integer repeats))
   (when
       (<= repeats 0)
     (error "ran repeats times without terminating. arg: ~a" arg))
@@ -65,7 +65,7 @@
   etc.
   doesn't stop until check-p returns t when given `arg`.
   "
-  (declare (integer repeats))
+  (declare (type integer repeats))
   (labels
       ((helper
            (arg
@@ -218,6 +218,7 @@
   - otherwise, the data is loaded from the string or pathname as if it named
   a file.
   "
+  (declare (type string resource))
   (flet
       ((http-call
            (&rest
@@ -398,6 +399,30 @@
   Consume arguments, presumably collected from the command line.
   Assumes any aliases have already been expanded (that is,
   it uses the arguments as-is, with no transformation).
+
+  Assumes an open-world. For each argument, it examines its form.
+
+  If the argument is of the form `--(enable|disable)-(?P<argument>[^ ]*)`,
+  the keyword named `argument` is associated with `t` or `nil` in the resulting
+  hash-table, respectively.
+
+  If the argument is of the form `--(?P<act>set|add|join|yaml)-(?P<argument>[^
+  ]*)`, the next argument is consumed as the value.
+
+  If the first part (`act`) is `set`, associate the value as a string to the
+  keyword `argument` in the resulting hash table.
+
+  If the `act` is `add`, cons the value onto a list and ensure that list
+  is associated with the `argument` keyword in the resulting list.
+
+  If the `act` is `join`, split the value using an equals sign (or something
+  else as specified by `map-sep-pat`) into two parts, a key and a val. Associate
+  the key with the val in a hash-table, and ensure that hash table is the value
+  associated with the keyword `argument` in the resulting options hash-table.
+
+  If the `act` is `yaml`, parse the value string as if it were a yaml string.
+  Set the value as found to the `argument` keyword in the resulting options
+  hash-table.
   "
       (let ((map-sep-pat (cl-ppcre:create-scanner map-sep))
             (consumable (copy-list args))
@@ -482,12 +507,18 @@
 (defun expand-env-aliases (aliases env)
   "
   Replace the names of environment variables according to the map
-  found in `aliases`.
+  found in `aliases`. The keys of the `aliases` hash table are matched
+  as strings to the name of the environment variable names (keys in the env var
+  map). If they match, the key is removed from the hash table and a key with
+  the value of the associated entry in `aliases` is used as the new key,
+  associating it with the value of the old removed key.
   "
+  (declare (type hash-table aliases env))
   (loop
     for key being the hash-key of env
     using (hash-value value)
     collect (cons (or (gethash key aliases) key) value)))
+
 ;(setf cincuenta (consume-environment "hello-world" (alexandria:alist-hash-table '(("HELLO_WORLD_LIST_IRON_MAN" . "1,2,3,4,5") ("HELLO_WORLD_YAML_DISEASE" . "{'he': 'could', 'do': false, 'it': 'rightnow'}")))))
 
 ; =>
@@ -505,8 +536,37 @@
       (list-sep ",")
       (map-sep "="))
   "
-  Consume OS Environment variables as part of the options map.
+  Consume variables, presumably collected from the OS.
+  Assumes any aliases have already been expanded (that is,
+  it uses the variables as-is, with no transformation).
+
+  Assumes an open-world. For each environment variable, it examines its form.
+
+  If the variable is of the form
+  `^(<PROGRAM_NAME>)_(?P<opt>LIST|TABLE|ITEM|FLAG|YAML)_(?P<arg>.*)$`, then the
+  variable will be used to add to the resulting options hash table.
+
+  If the `opt` is `LIST`, the value of the variable will be split using
+  `list-sep` and the resulting list of strings will be associated with the 
+  keyword `arg` in the options.
+
+  If the `opt` is `TABLE`, the value of the variable will be split using
+  `list-sep`, then each entry in that list will also be split using `map-sep`.
+  The resulting key/value pair list is turned into a hash-table and this hash
+  table is associated to the keyword `arg` in the options.
+
+  If the `opt` is ITEM`, the value of the variable will be set to the keyword
+  `arg` in the options.
+
+  If the `opt` is `YAML`, the value of the variable will be parsed as a YAML
+  string and its resultant value set as the value of the keyword `arg` in the
+  returned options hash table.
   "
+  (declare (type hash-table env)
+           (type string program-name)
+           (type cons hash-init-args)
+           (type string list-sep)
+           (type string map-sep))
   (let*
     ((result
        (apply

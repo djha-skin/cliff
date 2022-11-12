@@ -1,7 +1,6 @@
-ql dexador
-ql alexandria
-ql trivial-package-local-nicknames
-ql arrows
-ql quri
-ql fset
 git cl-yaml https://github.com/eudoxia0/cl-yaml :branch master
+ql alexandria
+ql arrows
+ql dexador
+ql quri
+ql trivial-package-local-nicknames

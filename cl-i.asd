@@ -3,11 +3,9 @@
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (
-               "alexandria"
                "arrows"
                "cl-yaml"
                "dexador"
-               "fset"
                "quri"
                "trivial-package-local-nicknames"
                )
@@ -23,6 +21,7 @@
   :license "MIT"
   :depends-on (
       "cl-i"
+      "alexandria"
       "rove")
   :components ((:module "tests"
                 :components

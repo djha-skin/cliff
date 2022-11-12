@@ -13,12 +13,9 @@
     rules constructs a hash table
     which is then passed to the
     subcommands.")
-    (:import-from #:alexandria)
-    (:import-from #:fset)
     (:import-from #:arrows)
     (:import-from #:cl-yaml)
     (:import-from #:dexador)
-    (:import-from #:flexi-streams)
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
     (:export

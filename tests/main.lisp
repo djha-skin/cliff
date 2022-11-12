@@ -1,5 +1,4 @@
 (in-package #:cl-user)
-
 (defpackage #:cl-i/tests
   (:use #:cl
         #:rove)
@@ -236,11 +235,30 @@
                "...")))))
 (deftest
   consume-environment
+  (testing
+    "Basic"
+    (ok
+      (equal
+        (join-lines
+          "---"
+          "MAPLE:"
+          "- 5"
+          "- 4"
+          "- 3"
+          "- 2"
+          "- 1"
+          "FINES:"
+          "  key: 155.2"
+          "FORESIGHT: true"
+          "FORKS: whenceandwhither"
+          "..."
+          )
   (cl-i:generate-string (cl-i:consume-environment
     "hello"
     (alexandria:alist-hash-table
       '(("HELLO_LIST_MAPLE" . "1,2,3,4,5")
         ("HELLO_FANGLE_DOG" . "12345")
         ("VARS" . "xtreem")
+        ("HELLO_YAML_FINES" . "{ 'key': 155.2 }")
         ("HELLO_FLAG_FORESIGHT" . "0")
-        ("HELLO_ITEM_FORKS" . "whenceandwhither"))))))
+        ("HELLO_ITEM_FORKS" . "whenceandwhither")))))))))

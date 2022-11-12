@@ -387,7 +387,7 @@
            (error "not a k/v pair, check map sep pattern: ~a" value))))
     ((eql kact :yaml)
      (setf (gethash kopt opts)
-           (parse-string (dbg value))))
+           (parse-string value)))
     (:else
      (error "uknown action ~a" kact))))
 
@@ -552,14 +552,14 @@
            ((#'string-keyword ktag)
             (#'string-keyword kopt))
            (var-pattern key)
-           (dbg (ingest-var
+           (ingest-var
              program-name
              result
              map-sep-pat
              list-sep-pat
              hash-init-args
-             (dbg ktag)
-             (dbg kopt)
-             (dbg value)))
+             ktag
+             kopt
+             value)
            ))
     result))

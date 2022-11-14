@@ -1,8 +1,8 @@
 (in-package #:cl-user)
 (defpackage
-    #:cl-i (:use #:cl)
-    (:documentation
-     "package that has a function,
+  #:cl-i (:use #:cl)
+  (:documentation
+    "package that has a function,
     `start-cli`, which does the
     following: - registers functions
     mapped to specific subcommands -
@@ -13,22 +13,136 @@
     rules constructs a hash table
     which is then passed to the
     subcommands.")
-    (:import-from #:arrows)
-    (:import-from #:cl-yaml)
-    (:import-from #:dexador)
-    (:import-from #:uiop/pathname)
-    (:import-from #:quri)
-    (:export
-     consume-arguments
-     consume-environment
-     data-slurp dbg
-     find-file
-     generate-string
-     parse-string
-     repeatedly
-     repeatedly-eq
-     slurp-stream))
+  (:import-from #:arrows)
+  (:import-from #:cl-yaml)
+  (:import-from #:dexador)
+  (:import-from #:uiop/pathname)
+  (:import-from #:quri)
+  (:import-from #:trival-features)
+  (:export
+    partition
+
+    consume-arguments
+    consume-environment
+    data-slurp dbg
+    find-file
+    generate-string
+    parse-string
+    repeatedly
+    repeatedly-eq
+    slurp-stream))
 (in-package #:cl-i)
+
+;; TODO: TEST
+(defun partition (a at)
+  "partition a list at `at`, returning everything before that point
+  and everything after."
+  (declare (type list a))
+  (let ((newlst nil)
+        (marker a))
+    (loop for i from 0 to (- at 1) do
+          (setf newlst (cons (car marker) newlst))
+          (setf marker (cdr marker)))
+    (values (nreverse newlst)
+            marker)))
+
+;; TODO: TEST
+(defun extract-path (path-part-str pathsep)
+  ; https://unix.stackexchange.com/a/596656/9696
+  ; The function `cl-ppcre:split` Needs a limit for some reason
+  ; in order to work with trailing slashes
+  (let ((path-parts-of (cl-ppcre:split pathsep path-part-str :limit 4097)))
+    (multiple-value-bind (path-parts fdesignator-lst)
+        (partition path-parts-of (- (length path-parts-of) 1))
+      (let ((fdesignator (car fdesignator-lst)))
+        (multiple-value-bind (_ groups)
+            (cl-ppcre:scan-to-strings "(.+)\\.([^.]+)$" fdesignator)
+          (declare (ignore _))
+          (let ((f-name (if (null groups)
+                            (if (not (string= "" fdesignator))
+                                fdesignator
+                                nil)
+                            (aref groups 0)))
+                (f-type (when (not (null groups))
+                          (aref groups 1))))
+                   (apply #'concatenate
+                          (list 'list
+                                (list :directory
+                                      (if (string= "" (car path-parts))
+                                          (cons :absolute
+                                                (cdr path-parts))
+                                          (cons :relative path-parts)))
+                                (when (not (null f-name))
+                                  (list :name f-name))
+                                (when (not (null f-type))
+                                  (list :type f-type))))))))))
+;; TODO: TEST
+(defun make-unix-path
+    (pstr)
+  (apply #'make-pathname
+         (extract-path pstr "/+")))
+
+; (setf pp (make-windows-path "C:\\a\\b\\"))
+; (setf pp (make-windows-path "C:\\a\\b\\c.d"))
+; (setf pp (make-windows-path "a\\b\\c.d"))
+; (setf pp (make-windows-path "a\\c.d"))
+; (setf pp (make-windows-path "a\\"))
+; (setf pp (make-windows-path "a"))
+; (setf pp (make-windows-path ".c")) -> Should not have a type set, only name
+; (setf pp (make-windows-path ""))
+;; TODO: TEST
+(defun make-windows-path (pathstr)
+  (let* ((device-parts (cl-ppcre:split ":" pathstr))
+         (device-name (when (> (length device-parts) 1) (car device-parts)))
+         (path-part-str (if (> (length device-parts) 1)
+
+                            (cadr device-parts)
+                            (car device-parts))))
+    (apply #'make-pathname
+           (apply #'concatenate
+                  (list 'list
+                        (when (not (null device-name))
+                          (list :device device-name))
+                        (extract-path path-part-str "\\\\+"))))))
+
+;; TODO: TEST
+(setf (fdefinition 'make-os-specific-path)
+      (function
+        #+windows make-windows-path
+        #-windows make-unix-path))
+
+(defun home-config-file
+    (program-name getenv)
+    (let* ((home
+            (make-os-specific-path
+              #+windows (funcall getenv "USERPROFILE")
+              #-windows (funcall getenv "HOME"))))
+            (merge-pathnames
+              home
+              (make-pathname
+                :directory
+                #+windows (list
+                            :relative
+                            "AppData"
+                            "Local"
+                            program-name)
+                #+darwin (list
+                           :relative
+                           "Library"
+                           "Preferences"
+                           program-name)
+                #+linux (list
+                          :relative
+                          ".config"
+                          program-name)
+                #-windows (list
+                            :relative
+                            (concatenate
+                              'string
+                              "."
+                              program-name))
+                :name "config"
+                :type "yaml"))))
 
 (defun repeatedly-eq
     (func
@@ -90,26 +204,27 @@
 					; get file
 (defun
     find-file
-    (from cmd-name)
+    (from marker)
   "
-  starting at the directory given,
-  find the marking file.
+  Starting at the directory given,
+  find the marking file named `.<cmd-name>.yaml`.
   "
-  (arrows:as->
-   from it
-   (repeatedly-eq
-    #'uiop/pathname:pathname-parent-directory-pathname it)
-   (mapcar
-    (lambda
-        (path)
-      (merge-pathnames
-       path
-       (pathname
-        (format
-         nil ".~a.yaml" cmd-name))))
-    it)
-   (some
-    #'uiop/filesystem:file-exists-p it)))
+  (if (null cmd-name)
+      null
+      (arrows:as->
+        from it
+        (repeatedly-eq
+          #'uiop/pathname:pathname-parent-directory-pathname it)
+        (mapcar
+          (lambda
+              (path)
+            (merge-pathnames
+              path
+              marker)) it)
+        (some
+          (lambda (f)
+            (or (uiop/filesystem:file-exists-p f)
+                (uiop/filesystem:directory-exists-p f))) it))))
 
 (defmacro
     dbg

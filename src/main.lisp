@@ -18,7 +18,6 @@
   (:import-from #:dexador)
   (:import-from #:uiop/pathname)
   (:import-from #:quri)
-  (:import-from #:trival-features)
   (:export
     partition
     home-config-file
@@ -114,14 +113,20 @@
         #+windows make-windows-path
         #-windows make-unix-path))
 
+; (home-config-file "forager" #'uiop/os:getenv)
 (defun home-config-file
     (program-name getenv)
     (let* ((home
             (make-os-specific-path
-              #+windows (funcall getenv "USERPROFILE")
-              #-windows (funcall getenv "HOME"))))
+              #+windows (concatenate
+                          'string
+                          (funcall getenv "USERPROFILE")
+                          "\\")
+              #-windows (concatenate
+                          'string
+                          (funcall getenv "HOME")
+                          "/"))))
             (merge-pathnames
-              home
               (make-pathname
                 :directory
                 #+windows (list
@@ -138,14 +143,15 @@
                           :relative
                           ".config"
                           program-name)
-                #-windows (list
+                #-(or darwin linux windows) (list
                             :relative
                             (concatenate
                               'string
                               "."
                               program-name))
                 :name "config"
-                :type "yaml"))))
+                :type "yaml")
+              home)))
 
 (defun repeatedly-eq
     (func
@@ -213,7 +219,7 @@
   find the marking file named `.<cmd-name>.yaml`.
   "
   (if (null marker)
-      null
+      nil
       (arrows:as->
         from it
         (repeatedly-eq

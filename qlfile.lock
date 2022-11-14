@@ -22,6 +22,10 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2022-11-07"))
+("trivial-features" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2022-11-07"))
 ("trivial-package-local-nicknames" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)

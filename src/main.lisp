@@ -211,6 +211,9 @@
     (helper arg repeats)))
 
 					; get file
+; (find-file (uiop/os:getcwd) (pathname ".git/"))
+; (find-file (uiop/os:getcwd) (pathname ".config/"))
+; (find-file (uiop/os:getcwd) (pathname ".barf"))
 (defun
     find-file
     (from marker)
@@ -228,8 +231,8 @@
           (lambda
               (path)
             (merge-pathnames
-              path
-              marker)) it)
+              marker
+              path)) it)
         (some
           (lambda (f)
             (or (uiop/filesystem:file-exists-p f)

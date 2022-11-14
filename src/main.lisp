@@ -21,7 +21,10 @@
   (:import-from #:trival-features)
   (:export
     partition
-
+    home-config-file
+    make-windows-path
+    make-unix-path
+    make-os-specific-path
     consume-arguments
     consume-environment
     data-slurp dbg
@@ -209,7 +212,7 @@
   Starting at the directory given,
   find the marking file named `.<cmd-name>.yaml`.
   "
-  (if (null cmd-name)
+  (if (null marker)
       null
       (arrows:as->
         from it

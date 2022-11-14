@@ -7,6 +7,7 @@
                "cl-yaml"
                "dexador"
                "quri"
+               "trivial-features"
                "trivial-package-local-nicknames"
                )
   :components ((:module "src"

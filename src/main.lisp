@@ -213,7 +213,7 @@
 					; get file
 ; (find-file (uiop/os:getcwd) (pathname ".git/"))
 ; (find-file (uiop/os:getcwd) (pathname ".config/"))
-; (find-file (uiop/os:getcwd) (pathname ".barf"))
+; (find-file (uiop/os:getcwd) (pathname ".gitconfig"))
 (defun
     find-file
     (from marker)

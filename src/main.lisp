@@ -631,7 +631,7 @@
 
 
 ;; TODO: TEST THIS
-(defun expand-env-aliases (aliases env)
+(defun expand-env-aliases (aliases env &rest hash-init-args)
   "
   Replace the names of environment variables according to the map
   found in `aliases`. The keys of the `aliases` hash table are matched
@@ -641,10 +641,17 @@
   associating it with the value of the old removed key.
   "
   (declare (type hash-table aliases env))
-  (loop
-    for key being the hash-key of env
-    using (hash-value value)
-    collect (cons (or (gethash key aliases) key) value)))
+  (let ((result (apply #'make-hash-table hash-init-args)))
+    (loop
+      for key being the hash-key of env
+      using (hash-value value)
+      do
+      (setf (gethash
+              (or (gethash key aliases)
+                  key) result)
+            value))
+    result))
+
 
 ;(setf cincuenta (consume-environment "hello-world" (alexandria:alist-hash-table '(("HELLO_WORLD_LIST_IRON_MAN" . "1,2,3,4,5") ("HELLO_WORLD_YAML_DISEASE" . "{'he': 'could', 'do': false, 'it': 'rightnow'}")))))
 

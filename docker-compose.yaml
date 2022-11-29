@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  lighttpd:
+    image: jitesoft/lighttpd
+    ports:
+       - 8443:8443
+    volumes:
+      - .:/code
+    environment:
+      PORT: "8443"
+      SERVER_NAME: "localhost"
+      SERVER_ROOT: "/code/lighttpd-environment/wwwroot"
+      CONFIG_FILE: "/code/lighttpd-environment/lighttpd/lighttpd.conf"
+      SKIP_HEALTHCHECK: "false"
+      MAX_FDS: "1024"

@@ -26,32 +26,8 @@ cp server.pem lighttpd
 config_file="${testing_path}/lighttpd/lighttpd.conf"
 auth_file="${testing_path}/lighttpd/auth.conf"
 cat > "${auth_file}" << AUTH
-mode:code
 AUTH
 
-cat > "${config_file}" << CONF
-
-var.confdir = "${testing_path}/lighttpd"
-server.modules += ("mod_access", "mod_auth", "mod_authn_file", "mod_openssl")
-server.username = "$(id -un)"
-server.groupname = "$(id -gn)"
-server.port = 8443
-server.dir-listing = "enable"
-ssl.engine = "enable"
-ssl.pemfile = var.confdir + "/server.pem"
-server.name = "djha-skin.me"
-server.document-root = "${testing_path}/wwwroot"
-auth.backend = "plain"
-auth.backend.plain.userfile = "${auth_file}"
-# insecure location; temporary; FIX to something better
-auth.require = ( "/basic" => ("method" => "basic", "realm" => "djha-skin.me", "require" => "valid-user") )
-
-\$HTTP["url"] =~ "^/token/" {
-    \$REQUEST_HEADER["Authorization"] != "Bearer 600dc0de6077a10ada600ddea10fda7a" {
-        url.access-deny = ( "" )
-    }
-}
-CONF
 
 rm -rf wwwroot
 mkdir wwwroot

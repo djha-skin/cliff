@@ -1,0 +1,14 @@
+# Lighttpd stuff
+*.conf text eol=lf
+*.pem text eol=lf
+*.crt text eol=lf
+
+# Code
+*.ps1 text eol=crlf
+*.sh text eol=lf
+*.lisp text
+*.asd text
+
+# Images
+*.png binary
+*.jpg binary

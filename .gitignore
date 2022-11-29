@@ -9,9 +9,7 @@
 .#*
 .*.sw[a-z]
 
-/lighttpd-environment/wwwroot
 /lighttpd-environment/test-data
-/lighttpd-environment/lighttpd
 /.repl/ros_history
 
 /.qlot/

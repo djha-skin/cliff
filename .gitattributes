@@ -1,13 +1,19 @@
-# Lighttpd stuff
+# Linux
+*.sh text eol=lf
+*.screen text eol=lf
+
+## Lighttpd stuff
 *.conf text eol=lf
 *.pem text eol=lf
 *.crt text eol=lf
 
-# Code
+# Windows
 *.ps1 text eol=crlf
-*.sh text eol=lf
+
+# Both OS's
 *.lisp text
 *.asd text
+*.md text
 
 # Images
 *.png binary

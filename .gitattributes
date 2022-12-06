@@ -14,6 +14,7 @@
 *.lisp text
 *.asd text
 *.md text
+*.lock text
 
 # Images
 *.png binary

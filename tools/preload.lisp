@@ -1,3 +1,6 @@
+(asdf:load-system "qlot")
+(setf (uiop/os:getenv "QUICKLISP_HOME")
+      (uiop:native-namestring (merge-pathnames #P".qlot/" (uiop/os:getcwd))))
 (let* ((name "cl-i")
        (asds (list (concatenate 'string name ".asd"))))
   (asdf:load-system name)

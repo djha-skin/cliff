@@ -1,5 +1,6 @@
 git cl-yaml https://github.com/eudoxia0/cl-yaml :branch master
 ql alexandria
+git cl-i https://git.djha.skin/me/cl-i.git :branch main
 ql arrows
 ql dexador
 ql quri

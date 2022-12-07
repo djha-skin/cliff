@@ -6,18 +6,6 @@
     #:cl-i))
 (in-package :cl-i/tests)
 
-(defun join
-  (strs &key (fmt "~%"))
-  (format nil
-          (apply
-            #'concatenate
-            (cons 'string
-          (mapcar (lambda (str) (concatenate 'string str fmt))
-          strs)))))
-
-(defun join-lines
-  (&rest lines)
-  (funcall #'join lines))
 
 (defvar *tests-dir*
   (merge-pathnames
@@ -194,7 +182,7 @@
           )
        )
       (ok (equal
-            (join-lines
+            (cl-i:join-lines
               "---"
               "DARK-MODE:"
               "- firm"
@@ -217,7 +205,7 @@
       (equal (cl-i:generate-string
                (cl-i:consume-arguments
                  '()))
-             (join-lines
+             (cl-i:join-lines
                "--- {}"
                "..."))))
   (testing
@@ -226,7 +214,7 @@
       (equal (cl-i:generate-string
                (cl-i:consume-arguments
                  '("--enable-foo" "--disable-bar" "baz" "--yaml-force" "15" "--set-quux" "farquad")))
-             (join-lines
+             (cl-i:join-lines
                "---"
                "FOO: true"
                "BAR: false"
@@ -239,7 +227,7 @@
     "Basic"
     (ok
       (equal
-        (join-lines
+        (cl-i:join-lines
           "---"
           "MAPLE:"
           "- 5"

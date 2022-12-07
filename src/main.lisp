@@ -35,6 +35,20 @@
     slurp-stream))
 (in-package #:cl-i)
 
+(defun join-strings
+  (strs &key (fmt "~%"))
+  (format nil
+          (apply
+            #'concatenate
+            (cons 'string
+          (mapcar (lambda (str) (concatenate 'string str fmt))
+          strs)))))
+
+(defun join-lines
+  (&rest lines)
+  (funcall #'join-strings lines))
+
+
 ;; TODO: TEST
 (defun partition (a at)
   "partition a list at `at`, returning everything before that point
@@ -47,6 +61,41 @@
           (setf marker (cdr marker)))
     (values (nreverse newlst)
             marker)))
+
+(defun exit-error
+  (status msg)
+  "
+  Prints error message to standard out
+  and returns the error code.
+  "
+  (format "~A~%" msg)
+  status)
+
+(defun url-to-pathname
+    (url)
+  (cl-ppcre:register-groups-bind
+        (_
+          device-name path)
+        ("^file://(([^/]+):)?/(.*)$"
+         url)
+        (declare (ignore _))
+        (let
+            ((path-components
+               (cl-ppcre:split
+                 "/+" path)))
+          (arrows:as->
+            path-components *
+            (cons :absolute *)
+            (if
+                device-name
+                (list
+                  :device device-name
+                  :directory *)
+                (list
+                  :directory *))
+            (apply
+              #'make-pathname *)))))
+
 
 ;; TODO: TEST
 (defun extract-path (path-part-str pathsep)
@@ -107,6 +156,9 @@
                           (list :device device-name))
                         (extract-path path-part-str "\\\\+"))))))
 
+(setf (fdefinition 'display-config)
+      (function identity))
+      
 ;; TODO: TEST
 (setf (fdefinition 'make-os-specific-path)
       (function
@@ -328,7 +380,8 @@
 ;;  takes alist
 ;; handles http.
 ;  :content-type 'application/json
-(defun data-slurp (resource &rest more-args)
+
+(defun http-expanded-url (dexfun resource &rest more-args)
   "
   slurp config, using specified options.
 
@@ -351,7 +404,7 @@
            (&rest
              args)
          (apply
-           #'dex:get
+           dexfun
            (concatenate
              'list
              args
@@ -380,7 +433,8 @@
             (quri:url-decode
               username)
             (quri:url-decode
-              password))))
+              password)))
+        t)
       (cl-ppcre:register-groups-bind
         (protocol
           header headerval rest-of-it)
@@ -397,7 +451,8 @@
               (quri:url-decode
                 header)
               (quri:url-decode
-                headerval)))))
+                headerval))))
+        t)
       (cl-ppcre:register-groups-bind
         (protocol
           token rest-of-it)
@@ -414,38 +469,16 @@
               "authorization"
               (format
                 nil "bearer ~a" (quri:url-decode
-                                  token))))))
+                                  token)))))
+        t)
       (cl-ppcre:register-groups-bind
         ()
         ("^https?://.*$"
          resource)
         (http-call
-          resource))
-
-      (cl-ppcre:register-groups-bind
-        (_
-          device-name path)
-        ("^file://(([^/]+):)?/(.*)$"
-         resource)
-        (declare (ignore _))
-        (let
-            ((path-components
-               (cl-ppcre:split
-                 "/+" path)))
-          (arrows:as->
-            path-components *
-            (cons :absolute *)
-            (if
-                device-name
-                (list
-                  :device device-name
-                  :directory *)
-                (list
-                  :directory *))
-            (apply
-              #'make-pathname *)
-            (base-slurp
-              *))))
+          resource)
+        t))
+      (base-slurp (url-to-pathname resource))
       (base-slurp
         resource))))
 
@@ -618,8 +651,6 @@
      (error "Unknown tag while parsing env vars for program `~A`: `~A`"
             program-name
             ktag))))
-
-;; TODO: Test this
 (defun expand-arg-aliases (aliases args)
   (mapcar
     (lambda (arg)
@@ -757,3 +788,191 @@
              value)
            ))
     result))
+
+
+; (declaim (optimize (speed 0) (space 0) (debug 3)))
+
+(defun update-hash
+    (to from)
+  (loop for key being the hash-key of from
+        using (hash-value value)
+        do
+        (setf (gethash key to) value)))
+
+(defun config-file-options
+    (program-name
+      environment
+      defaults
+      &optional
+      reference-file
+      root-path)
+  ; https://github.com/adrg/xdg/blob/master/paths_darwin_test.go
+  (let* ((effective-root (if (null root-path)
+                             (uiop/os:getcwd)
+                             root-path))
+         (home-config-path (cl-i:home-config-file
+                             *program-name*
+                             (lambda (var)
+                               (gethash var environment))))
+         (result (alexandria:hash-table-copy defaults))
+         (marked-config-file-name
+           (make-pathname
+                             :name
+                             (concatenate
+                               "."
+                               *program-name*)
+                             :type
+                             "yaml"))
+         (marked-config-path
+           (if (null reference-file)
+                            null
+                            (or
+                         (find-file
+                           effective-root
+                           marked-config-file-name)
+                         (merge-pathnames
+                           (uiop/pathname:pathname-parent-directory-pathname
+                             (cl-i:find-file
+                               effective-root
+                               reference-file))
+                           marked-config-file-name)))))
+    (update-hash result (data-slurp home-config-path))
+    (update-hash result (data-slurp marked-config-path))
+    result))
+
+
+(defun
+    gather-options
+    (defaults
+      cli-arguments
+      cli-aliases
+      environment-variables
+      environment-aliases
+      functions
+      &optional &key
+      hash-init-args
+      root-path
+      reference-file
+      defaults
+      (setup identity)
+      (teardown identity))
+  (let ((effective-defaults (if (null defaults)
+                                (apply #'make-hash-table hash-init-args)
+                                defaults))
+        (effective-environment
+          (cl-i:expand-env-aliases
+            environment-variables
+            environment-aliases
+            hash-init-args))
+         (effective-cli
+          (cl-i:expand-cli-aliases
+            cli-arguments
+            cli-aliases))
+         (result (config-file-options
+                   program-name
+                   effective-environment
+                   effective-defaults
+                   reference-file
+                   root-path)))
+    (update-hash
+      result
+      (cl-i:consume-environment
+        effective-environment
+        program-name
+        effecitve-environment
+        hash-init-args
+        list-sep
+        map-sep))
+    (multiple-value-bind (opts other-args)
+          (cl-i:consume-arguments
+            effective-cli
+            hash-init-args
+            list-sep
+            map-sep)
+      (update-hash result opts)
+      (let ((returned
+              (funcall (or
+                 (gethash functions other-args)
+                 ;; TODO: Custom error where you can specify a different
+                 ;; function
+                 (error "Invalid subcommand: `~A`"
+                        (join-strings other-args :fmt " ")))
+               result
+               hash-init-args)))
+        (format "~A~%" (generate-string result) t)
+        (cond ((eql (gethash :status result) :succesful)
+               0)
+
+              ((eql 
+        (if (eql (gethash :status) successful)
+            0
+            (
+
+
+
+    (cl-i:consume-arguments effective-cli hash-init-args map-sep)
+    (cl-I:
+
+
+
+
+
+    (
+     (cl-
+
+
+          (config-file-options
+            (expand-
+          (update-hash result (data-jj
+          (loop for borkdog in (list home-config-path
+
+          (update-hash
+            result
+          (loop for key being the hash-key of (data-slurp marking-file)
+                using (hash-value value)
+                do
+                (setf (gethash key result) value))
+          (
+
+
+      (
+
+
+  (when (null marking-file)
+      (error "Can't find root of forager directory from `~A`." cwd))
+  (let ((root-path (uiop/pathname:pathname-directory-pathname marking-file))
+        (config-options (cl-i:data-slurp marking-file))
+        (environment-options
+          (arrows:as-> (osicat:environment) *
+                       (alexandria:alist-hash-table * :test #'equal)
+                       (consume-environment "sample" *)))
+        (all-options (make-hash-table)))
+    (multiple-value-bind (opts subcmds)
+        ((values cli-options
+          (cl-i:consume-arguments uiop/image:*command-line-arguments*))
+        (all-options
+        (for key being the hash-keys of environment-options
+         using (hash-value value)
+         do
+         (setf (gethash key
+         (setf (gethash key environment-options)
+         do
+         collect
+
+  k
+
+
+      (config-options
+        )
+
+        k
+                     (cl-i:consume-arguments *))
+(
+                     (cl-i:expan(
+                     (cl-i:consume-arguments *)
+
+
+
+
+
+(alexandria:alist-hash-table (osicat:environment))

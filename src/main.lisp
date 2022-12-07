@@ -73,28 +73,30 @@
 
 (defun url-to-pathname
     (url)
-  (cl-ppcre:register-groups-bind
-        (_
-          device-name path)
-        ("^file://(([^/]+):)?/(.*)$"
-         url)
-        (declare (ignore _))
-        (let
-            ((path-components
-               (cl-ppcre:split
-                 "/+" path)))
-          (arrows:as->
-            path-components *
-            (cons :absolute *)
-            (if
-                device-name
-                (list
-                  :device device-name
-                  :directory *)
-                (list
-                  :directory *))
-            (apply
-              #'make-pathname *)))))
+  (or
+    (cl-ppcre:register-groups-bind
+      (_
+        device-name path)
+      ("^file://(([^/]+):)?/(.*)$"
+       url)
+      (declare (ignore _))
+      (let
+          ((path-components
+             (cl-ppcre:split
+               "/+" path)))
+        (arrows:as->
+          path-components *
+          (cons :absolute *)
+          (if
+              device-name
+              (list
+                :device device-name
+                :directory *)
+              (list
+                :directory *))
+          (apply
+            #'make-pathname *))))
+    nil))
 
 
 ;; TODO: TEST
@@ -377,11 +379,7 @@
           (slurp-stream
             in-stream)))))
 
-;;  takes alist
-;; handles http.
-;  :content-type 'application/json
-
-(defun http-expanded-url (dexfun resource &rest more-args)
+(defun data-slurp (resource &rest more-args)
   "
   slurp config, using specified options.
 
@@ -398,7 +396,29 @@
   - otherwise, the data is loaded from the string or pathname as if it named
   a file.
   "
-  (declare (type string resource))
+  (declare (type (or pathname string) resource))
+    (or
+      (when
+          (equal
+            'pathname (type-of
+                        resource))
+        (base-slurp
+          resource))
+      (apply
+        #'http-expanded-url 
+        (concatenate
+          'list
+          (list #'dex:get resource)
+          more-args))
+      (let (pname (url-to-pathname resource))
+        (if pname
+            (base-slurp pname)
+            (base-slurp resource)))))
+
+;;  takes alist
+;; handles http.
+;  :content-type 'application/json
+(defun http-expanded-url (dexfun resource &rest more-args)
   (flet
       ((http-call
            (&rest
@@ -412,12 +432,6 @@
              '(:force-string
                t)))))
     (or
-      (when
-          (equal
-            'pathname (type-of
-                        resource))
-        (base-slurp
-          resource))
       (cl-ppcre:register-groups-bind
         (protocol
           username password rest-of-it)
@@ -477,10 +491,8 @@
          resource)
         (http-call
           resource)
-        t))
-      (base-slurp (url-to-pathname resource))
-      (base-slurp
-        resource))))
+        t)
+      nil)))
 
 (defun
     string-keyword (str)
@@ -651,6 +663,7 @@
      (error "Unknown tag while parsing env vars for program `~A`: `~A`"
             program-name
             ktag))))
+
 (defun expand-arg-aliases (aliases args)
   (mapcar
     (lambda (arg)
@@ -659,7 +672,6 @@
        arg aliases)
       arg))
    args))
-
 
 ;; TODO: TEST THIS
 (defun expand-env-aliases (aliases env &rest hash-init-args)

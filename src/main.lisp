@@ -62,15 +62,6 @@
     (values (nreverse newlst)
             marker)))
 
-(defun exit-error
-  (status msg)
-  "
-  Prints error message to standard out
-  and returns the error code.
-  "
-  (format "~A~%" msg)
-  status)
-
 (defun url-to-pathname
     (url)
   (or
@@ -405,10 +396,10 @@
         (base-slurp
           resource))
       (apply
-        #'http-expanded-url 
+        #'http-expanded-url
         (concatenate
           'list
-          (list #'dex:get resource)
+          (list #'dexador:get resource)
           more-args))
       (let (pname (url-to-pathname resource))
         (if pname
@@ -447,8 +438,7 @@
             (quri:url-decode
               username)
             (quri:url-decode
-              password)))
-        t)
+              password))))
       (cl-ppcre:register-groups-bind
         (protocol
           header headerval rest-of-it)
@@ -465,8 +455,7 @@
               (quri:url-decode
                 header)
               (quri:url-decode
-                headerval))))
-        t)
+                headerval)))))
       (cl-ppcre:register-groups-bind
         (protocol
           token rest-of-it)
@@ -483,15 +472,13 @@
               "authorization"
               (format
                 nil "bearer ~a" (quri:url-decode
-                                  token)))))
-        t)
+                                  token))))))
       (cl-ppcre:register-groups-bind
         ()
         ("^https?://.*$"
          resource)
         (http-call
-          resource)
-        t)
+          resource))
       nil)))
 
 (defun
@@ -822,11 +809,11 @@
   (let* ((effective-root (if (null root-path)
                              (uiop/os:getcwd)
                              root-path))
-         (home-config-path (cl-i:home-config-file
+         (home-config-path (home-config-file
                              *program-name*
                              (lambda (var)
                                (gethash var environment))))
-         (result (alexandria:hash-table-copy defaults))
+         (result (alexandria:copy-hash-table defaults))
          (marked-config-file-name
            (make-pathname
                              :name
@@ -837,26 +824,24 @@
                              "yaml"))
          (marked-config-path
            (if (null reference-file)
-                            null
-                            (or
-                         (find-file
-                           effective-root
-                           marked-config-file-name)
-                         (merge-pathnames
-                           (uiop/pathname:pathname-parent-directory-pathname
-                             (cl-i:find-file
-                               effective-root
-                               reference-file))
-                           marked-config-file-name)))))
+               nil
+               (or
+                 (find-file
+                   effective-root
+                   marked-config-file-name)
+                 (merge-pathnames
+                   (uiop/pathname:pathname-parent-directory-pathname
+                     (find-file
+                       effective-root
+                       reference-file))
+                   marked-config-file-name)))))
     (update-hash result (data-slurp home-config-path))
     (update-hash result (data-slurp marked-config-path))
     result))
 
-
 (defun
     gather-options
-    (defaults
-      cli-arguments
+    (cli-arguments
       cli-aliases
       environment-variables
       environment-aliases
@@ -872,12 +857,12 @@
                                 (apply #'make-hash-table hash-init-args)
                                 defaults))
         (effective-environment
-          (cl-i:expand-env-aliases
+          (expand-env-aliases
             environment-variables
             environment-aliases
             hash-init-args))
          (effective-cli
-          (cl-i:expand-cli-aliases
+          (expand-cli-aliases
             cli-arguments
             cli-aliases))
          (result (config-file-options
@@ -888,103 +873,39 @@
                    root-path)))
     (update-hash
       result
-      (cl-i:consume-environment
-        effective-environment
+      (consume-environment
         program-name
-        effecitve-environment
+        effective-environment
         hash-init-args
         list-sep
         map-sep))
-    (multiple-value-bind (opts other-args)
-          (cl-i:consume-arguments
-            effective-cli
-            hash-init-args
-            list-sep
-            map-sep)
+    (multiple-value-bind
+        (opts other-args)
+        (consume-arguments
+          effective-cli
+          hash-init-args
+          list-sep
+          map-sep)
       (update-hash result opts)
       (let ((returned
-              (funcall (or
+              (teardown (funcall (setup (or
                  (gethash functions other-args)
                  ;; TODO: Custom error where you can specify a different
                  ;; function
                  (error "Invalid subcommand: `~A`"
-                        (join-strings other-args :fmt " ")))
+                        (join-strings other-args :fmt " "))))
                result
-               hash-init-args)))
-        (format "~A~%" (generate-string result) t)
-        (cond ((eql (gethash :status result) :succesful)
+               hash-init-args))))
+        (format t "~A~%" (generate-string returned))
+        (cond ((eql (gethash :status returned) :succesful)
                0)
-
-              ((eql 
-        (if (eql (gethash :status) successful)
-            0
-            (
-
-
-
-    (cl-i:consume-arguments effective-cli hash-init-args map-sep)
-    (cl-I:
-
-
-
-
-
-    (
-     (cl-
-
-
-          (config-file-options
-            (expand-
-          (update-hash result (data-jj
-          (loop for borkdog in (list home-config-path
-
-          (update-hash
-            result
-          (loop for key being the hash-key of (data-slurp marking-file)
-                using (hash-value value)
-                do
-                (setf (gethash key result) value))
-          (
-
-
-      (
-
-
-  (when (null marking-file)
-      (error "Can't find root of forager directory from `~A`." cwd))
-  (let ((root-path (uiop/pathname:pathname-directory-pathname marking-file))
-        (config-options (cl-i:data-slurp marking-file))
-        (environment-options
-          (arrows:as-> (osicat:environment) *
-                       (alexandria:alist-hash-table * :test #'equal)
-                       (consume-environment "sample" *)))
-        (all-options (make-hash-table)))
-    (multiple-value-bind (opts subcmds)
-        ((values cli-options
-          (cl-i:consume-arguments uiop/image:*command-line-arguments*))
-        (all-options
-        (for key being the hash-keys of environment-options
-         using (hash-value value)
-         do
-         (setf (gethash key
-         (setf (gethash key environment-options)
-         do
-         collect
-
-  k
-
-
-      (config-options
-        )
-
-        k
-                     (cl-i:consume-arguments *))
-(
-                     (cl-i:expan(
-                     (cl-i:consume-arguments *)
-
-
-
-
-
-(alexandria:alist-hash-table (osicat:environment))
+              ((eql (gethash :status returned) :invalid-request)
+               1)
+              ((eql (gethash :status returned) :failure)
+               2)
+              ((eql (gethash :status returned) :error)
+               e)
+              ((eql (gethash :status returned) :custom)
+               (gethash :custom-exit-status returned))
+              (t
+               128))))))

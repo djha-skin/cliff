@@ -1,4 +1,5 @@
 (in-package #:cl-user)
+
 (defpackage #:cl-i/tests
   (:use #:cl
         #:rove)
@@ -21,6 +22,34 @@
 
 ; For the REPL:
 ;(setf fiveam:*run-test-when-defined* t)
+
+
+(defmacro check-both-values (expr left right)
+  "
+  Takes an expression that returns two values. Checks that both
+  of them are equal to the given `left` and `right values.
+  "
+  (let ((myl (gensym "left"))
+        (myr (gensym "right")))
+        `(multiple-value-bind
+           (,myl ,myr)
+           ,expr
+           (ok (equal ,left (cl-i:dbg ,myl)))
+           (ok (equal ,right (cl-i:dbg ,myr))))))
+
+(defmacro check-partition (args left right)
+  `(check-both-values (apply #'cl-i:partition ,args) ,left ,right))
+
+(deftest
+  partition
+  (testing "basic-partition"
+           (check-both-values (cl-i:partition nil 15) nil nil)
+           (check-both-values (cl-i:partition nil 0) nil nil)
+           (check-both-values (cl-i:partition '(1 2 3) 0) nil '(1 2 3))
+           (check-both-values (cl-i:partition '(1 2 3) 3) '(1 2 3) nil)
+           (check-both-values (cl-i:partition '(1 2 3) 15) '(1 2 3) nil))
+  (testing "error-partition"
+           (signals (cl-i:partition nil -1))))
 
 (defun positive-dec (n) (declare (number n)) (if (> n 0) (- n 1) 0))
 
@@ -109,20 +138,37 @@
 
 (deftest
   slurp
-  (testing
-    "paths"
-    (ok
-      (equal
-        (cl-i:data-slurp
-          #P"tests/.cl-i.yaml")
-        "hoo: haa")))
-  (testing
-    "file"
-    (ok
-      (equal
-        (cl-i:data-slurp
-          "file:///home/djha-skin/Code/lisp/cl-i/tests/.cl-i.yaml")
-        "hoo: haa")))
+  (let ((test-config-file
+          (merge-pathnames
+            (make-pathname
+              :directory
+              (list
+                :relative
+                "Code"
+                "lisp"
+                "cl-i"
+                "tests")
+              :name
+              ".cl-i"
+              :type
+              "yaml")
+            (cl-i:os-specific-home #'uiop/os:getenv))))
+    (testing
+      "paths"
+      (ok
+        (equal
+          (cl-i:data-slurp
+            test-config-file)
+          "hoo: haa")))
+    (testing
+      "file URL"
+      (ok
+        (equal
+          (cl-i:data-slurp
+            (concatenate 'string
+                         "file://"
+                         (namestring test-config-file)))
+          "hoo: haa"))))
   (testing
     "noauth"
     (ok

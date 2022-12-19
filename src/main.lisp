@@ -24,6 +24,7 @@
     make-windows-path
     make-unix-path
     make-os-specific-path
+    os-specific-home
     consume-arguments
     consume-environment
     data-slurp dbg
@@ -34,6 +35,36 @@
     repeatedly-eq
     slurp-stream))
 (in-package #:cl-i)
+
+(defmacro
+    dbg
+    (body
+      &optional
+      (destination
+        *standard-output*))
+  (let
+      ((rbody
+         (gensym
+           "cl-i-dbg"))
+       (rdest
+         (gensym
+           "cl-i-dbg")))
+    `(let
+         ((,rbody
+            ,body)
+          (,rdest
+            ,destination))
+       (format
+         ,rdest "debug: type of `~a` = `~a`~%" (quote
+                                                 ,body)
+         (type-of
+           ,rbody))
+       (format
+         ,rdest "debug: eval of `~a` = `~a`~%" (quote
+                                                 ,body) ,rbody)
+       (finish-output
+         ,rdest)
+       ,rbody)))
 
 (defun join-strings
   (strs &key (fmt "~%"))
@@ -48,15 +79,19 @@
   (&rest lines)
   (funcall #'join-strings lines))
 
-
-;; TODO: TEST
 (defun partition (a at)
-  "partition a list at `at`, returning everything before that point
-  and everything after."
-  (declare (type list a))
+  "
+  partition a list at `at`, returning everything before that point
+  and everything after.
+  "
+  (declare (type list a)
+           (type number at))
+  (when (< at 0) (error "Variable `at` must be non-negative."))
   (let ((newlst nil)
         (marker a))
-    (loop for i from 0 to (- at 1) do
+    (loop for i from 0 to (- at 1)
+          do
+          (when (null marker) (return))
           (setf newlst (cons (car marker) newlst))
           (setf marker (cdr marker)))
     (values (nreverse newlst)
@@ -66,29 +101,12 @@
     (url)
   (or
     (cl-ppcre:register-groups-bind
-      (_
-        device-name path)
-      ("^file://(([^/]+):)?/(.*)$"
+      (logical-path)
+      ("^file://(.*)$"
        url)
       (declare (ignore _))
-      (let
-          ((path-components
-             (cl-ppcre:split
-               "/+" path)))
-        (arrows:as->
-          path-components *
-          (cons :absolute *)
-          (if
-              device-name
-              (list
-                :device device-name
-                :directory *)
-              (list
-                :directory *))
-          (apply
-            #'make-pathname *))))
+      (pathname logical-path))
     nil))
-
 
 ;; TODO: TEST
 (defun extract-path (path-part-str pathsep)
@@ -151,26 +169,28 @@
 
 (setf (fdefinition 'display-config)
       (function identity))
-      
+
 ;; TODO: TEST
 (setf (fdefinition 'make-os-specific-path)
       (function
         #+windows make-windows-path
         #-windows make-unix-path))
 
+(defun os-specific-home (getenv)
+  (make-os-specific-path
+    #+windows (concatenate
+                'string
+                (funcall getenv "USERPROFILE")
+                "\\")
+    #-windows (concatenate
+                'string
+                (funcall getenv "HOME")
+                "/")))
+
 ; (home-config-file "forager" #'uiop/os:getenv)
 (defun home-config-file
     (program-name getenv)
-    (let* ((home
-            (make-os-specific-path
-              #+windows (concatenate
-                          'string
-                          (funcall getenv "USERPROFILE")
-                          "\\")
-              #-windows (concatenate
-                          'string
-                          (funcall getenv "HOME")
-                          "/"))))
+    (let* ((home (os-specific-home getenv)))
             (merge-pathnames
               (make-pathname
                 :directory
@@ -283,35 +303,7 @@
             (or (uiop/filesystem:file-exists-p f)
                 (uiop/filesystem:directory-exists-p f))) it))))
 
-(defmacro
-    dbg
-    (body
-      &optional
-      (destination
-        *standard-output*))
-  (let
-      ((rbody
-         (gensym
-           "cl-i-dbg"))
-       (rdest
-         (gensym
-           "cl-i-dbg")))
-    `(let
-         ((,rbody
-            ,body)
-          (,rdest
-            ,destination))
-       (format
-         ,rdest "debug: type of `~a` = `~a`~%" (quote
-                                                 ,body)
-         (type-of
-           ,rbody))
-       (format
-         ,rdest "debug: eval of `~a` = `~a`~%" (quote
-                                                 ,body) ,rbody)
-       (finish-output
-         ,rdest)
-       ,rbody)))
+
 
 (defun
     generate-string
@@ -372,20 +364,20 @@
 
 (defun data-slurp (resource &rest more-args)
   "
-  slurp config, using specified options.
+  Slurp config, using specified options.
 
   if `:resource` is a url, download the contents according to the following
   rules:
   - if it is of the form `http(s)://user:pw@url`,
-  it uses basic auth;
+    it uses basic auth;
   - if it is of the form `http(s)://header=val@url`,
-  a header is set;
+    a header is set;
   - if it is of the form `http(s)://tok@url`,
-  a bearer token is used;
+    a bearer token is used;
   - if it is of the form `file://loc`, it is loaded as a normal file;
   - if it is of the form `-`, the data is loaded from standard input;
   - otherwise, the data is loaded from the string or pathname as if it named
-  a file.
+    a file.
   "
   (declare (type (or pathname string) resource))
     (or
@@ -651,7 +643,10 @@
             program-name
             ktag))))
 
-(defun expand-arg-aliases (aliases args)
+(defun expand-cli-aliases (aliases args)
+  "
+  Expand argument aliases.
+  "
   (mapcar
     (lambda (arg)
      (or
@@ -838,39 +833,39 @@
     (update-hash result (data-slurp home-config-path))
     (update-hash result (data-slurp marked-config-path))
     result))
-
+; (gather-options nil nil nil nil nil)
 (defun
-    gather-options
-    (cli-arguments
-      cli-aliases
-      environment-variables
-      environment-aliases
-      functions
-      &optional &key
-      hash-init-args
-      root-path
-      reference-file
-      defaults
-      (setup identity)
-      (teardown identity))
+  gather-options
+  (cli-arguments
+    cli-aliases
+    environment-variables
+    environment-aliases
+    functions
+    &optional &key
+    hash-init-args
+    root-path
+    reference-file
+    defaults
+    (setup identity)
+    (teardown identity))
   (let ((effective-defaults (if (null defaults)
-                                (apply #'make-hash-table hash-init-args)
-                                defaults))
+                              (apply #'make-hash-table hash-init-args)
+                              defaults))
         (effective-environment
           (expand-env-aliases
+            (alexandria:alist-hash-table environment-aliases)
             environment-variables
-            environment-aliases
             hash-init-args))
-         (effective-cli
+        (effective-cli
           (expand-cli-aliases
             cli-arguments
-            cli-aliases))
-         (result (config-file-options
-                   program-name
-                   effective-environment
-                   effective-defaults
-                   reference-file
-                   root-path)))
+            (alexandria:alist-hash-table cli-aliases)))
+        (result (config-file-options
+                  program-name
+                  effective-environment
+                  effective-defaults
+                  reference-file
+                  root-path)))
     (update-hash
       result
       (consume-environment
@@ -880,22 +875,22 @@
         list-sep
         map-sep))
     (multiple-value-bind
-        (opts other-args)
-        (consume-arguments
-          effective-cli
-          hash-init-args
-          list-sep
-          map-sep)
+      (opts other-args)
+      (consume-arguments
+        effective-cli
+        hash-init-args
+        list-sep
+        map-sep)
       (update-hash result opts)
       (let ((returned
               (teardown (funcall (setup (or
-                 (gethash functions other-args)
-                 ;; TODO: Custom error where you can specify a different
-                 ;; function
-                 (error "Invalid subcommand: `~A`"
-                        (join-strings other-args :fmt " "))))
-               result
-               hash-init-args))))
+                                          (gethash functions other-args)
+                                          ;; TODO: Custom error where you can specify a different
+                                          ;; function
+                                          (error "Invalid subcommand: `~A`"
+                                                 (join-strings other-args :fmt " "))))
+                                 result
+                                 hash-init-args))))
         (format t "~A~%" (generate-string returned))
         (cond ((eql (gethash :status returned) :succesful)
                0)
@@ -908,4 +903,4 @@
               ((eql (gethash :status returned) :custom)
                (gethash :custom-exit-status returned))
               (t
-               128))))))
+                128))))))

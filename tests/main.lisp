@@ -7,6 +7,21 @@
     #:cl-i))
 (in-package :cl-i/tests)
 
+(defvar *test-config-file*
+  (merge-pathnames
+    (make-pathname
+      :directory
+      (list
+        :relative
+        "Code"
+        "lisp"
+        "cl-i"
+        "tests")
+      :name
+      ".cl-i"
+      :type
+      "yaml")
+    (cl-i:os-specific-home #'uiop/os:getenv)))
 
 (defvar *tests-dir*
   (merge-pathnames
@@ -81,7 +96,9 @@
   (testing "basic-find-file"
            (ok
              (equal
-               #P"/home/djha-skin/Code/lisp/cl-i/tests/.cl-i.yaml"
+               (slot-value
+                 (asdf:find-system "cl-i")
+                 'asdf/component:absolute-pathname)
                (cl-i:find-file
                  *tests-dir*
                  "cl-i")))
@@ -107,8 +124,8 @@
         nil
         (concatenate
           'string
-          "Debug: Type of `(+ 3 3)` = `(INTEGER 0 4611686018427387903)`~%"
-          "Debug: Eval of `(+ 3 3)` = `6`~%"))))))
+          "debug: type of `(+ 3 3)` = `(INTEGER 0 4611686018427387903)`~%"
+          "debug: eval of `(+ 3 3)` = `6`~%"))))))
 
 (deftest
   slurp-stream
@@ -131,34 +148,17 @@
   (ok
     (equal
     (cl-i::base-slurp
-      (merge-pathnames
-        #P".cl-i.yaml"
-        *tests-dir*))
+      *test-config-file*)
   "hoo: haa"))))
 
 (deftest
   slurp
-  (let ((test-config-file
-          (merge-pathnames
-            (make-pathname
-              :directory
-              (list
-                :relative
-                "Code"
-                "lisp"
-                "cl-i"
-                "tests")
-              :name
-              ".cl-i"
-              :type
-              "yaml")
-            (cl-i:os-specific-home #'uiop/os:getenv))))
     (testing
       "paths"
       (ok
         (equal
           (cl-i:data-slurp
-            test-config-file)
+            *test-config-file*)
           "hoo: haa")))
     (testing
       "file URL"
@@ -167,41 +167,41 @@
           (cl-i:data-slurp
             (concatenate 'string
                          "file://"
-                         (namestring test-config-file)))
-          "hoo: haa"))))
+                         (namestring *test-config-file*)))
+          "hoo: haa")))
   (testing
     "noauth"
     (ok
       (equal
         (cl-i:data-slurp
-          "https://djha-skin.me:8443/noauth/complete.txt"
+          "https://localhost:8443/noauth/complete.txt"
           :insecure t)
-        (format nil "noauth complete~%"))))
+        (format nil "noauth complete"))))
 
   (testing
     "basic"
     (ok
       (equal
         (cl-i:data-slurp
-          "https://mode:code@djha-skin.me:8443/basic/complete.txt"
+          "https://mode:code@localhost:8443/basic/complete.txt"
           :insecure t)
-        (format nil "basic complete~%"))))
+        (format nil "basic complete"))))
   (testing
     "header"
     (ok
       (equal
         (cl-i:data-slurp
-          "https://Authorization=Bearer%20600dc0de6077a10ada600ddea10fda7a@djha-skin.me:8443/token/complete.txt"
+          "https://Authorization=Bearer%20600dc0de6077a10ada600ddea10fda7a@localhost:8443/token/complete.txt"
           :insecure t)
-        (format nil "token complete~%"))))
+        (format nil "token complete"))))
   (testing
     "token"
     (ok
       (equal
         (cl-i:data-slurp
-          "https://600dc0de6077a10ada600ddea10fda7a@djha-skin.me:8443/token/complete.txt"
+          "https://600dc0de6077a10ada600ddea10fda7a@localhost:8443/token/complete.txt"
           :insecure t)
-        (format nil "token complete~%")))))
+        (format nil "token complete")))))
 
 (deftest
   consume-arguments

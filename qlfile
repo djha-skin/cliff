@@ -1,7 +1,8 @@
 git cl-yaml https://github.com/eudoxia0/cl-yaml :branch master
 ql alexandria
-git cl-i https://git.djha.skin/me/cl-i.git :branch main
 ql arrows
+#git winhttp https://github.com/fjames86/winhttp.git
+#ql winhttp
 ql dexador
 ql quri
 ql trivial-features

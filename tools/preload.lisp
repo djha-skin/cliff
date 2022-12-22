@@ -1,7 +1,11 @@
-(asdf:load-system "qlot")
-(setf (uiop/os:getenv "QUICKLISP_HOME")
-      (uiop:native-namestring (merge-pathnames #P".qlot/" (uiop/os:getcwd))))
-(let* ((name "cl-i")
-       (asds (list (concatenate 'string name ".asd"))))
+;#(asdf:load-system "qlot")
+;#(defvar cl-i-quicklisp
+;#  (uiop:native-namestring
+;#    (merge-pathnames #P".qlot/" (uiop/os:getcwd))))
+;
+;#(setf (uiop/os:getenv "QUICKLISP_HOME") cl-i-quicklisp)
+
+;(setf ql:*quicklisp-home* cl-i-quicklisp)
+(let* ((name "cl-i"))
   (asdf:load-system name)
   (asdf:load-system (format nil "~A/tests" name)))

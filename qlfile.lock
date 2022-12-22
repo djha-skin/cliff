@@ -10,10 +10,6 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2022-11-07"))
-("cl-i" .
- (:class qlot/source/git:source-git
-  :initargs (:remote-url "https://git.djha.skin/me/cl-i.git" :branch "main")
-  :version "git-730c3c39a8d6aa941eaf1a19137465a34c810e06"))
 ("arrows" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)

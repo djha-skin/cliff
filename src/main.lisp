@@ -1,3 +1,7 @@
+;https://github.com/fjames86/winhttp.git For debugging
+#+(or)
+(declaim (optimize (speed 0) (space 0) (debug 3)))
+
 (in-package #:cl-user)
 (defpackage
   #:cl-i (:use #:cl)
@@ -19,21 +23,25 @@
   (:import-from #:uiop/pathname)
   (:import-from #:quri)
   (:export
+    dbg
+    join-strings
+    join-lines
+    repeatedly-eq
+    repeatedly
     partition
-    home-config-file
+    data-slurp
     make-windows-path
     make-unix-path
     make-os-specific-path
     os-specific-home
-    consume-arguments
-    consume-environment
-    data-slurp dbg
+    home-config-file
     find-file
     generate-string
     parse-string
-    repeatedly
-    repeatedly-eq
-    slurp-stream))
+    exit-error
+    string-keyword
+    consume-arguments
+    consume-environment))
 (in-package #:cl-i)
 
 (defmacro
@@ -79,6 +87,60 @@
   (&rest lines)
   (funcall #'join-strings lines))
 
+(defun repeatedly-eq
+    (func
+      arg
+      &optional
+      (eeq #'equal)
+      (repeats 256))
+  "
+  list consisting of calls to func using arg, then calling func using that
+  result, etc.
+  stops when subsequent calls return equal.
+  "
+  (declare (type integer repeats))
+  (when
+      (<= repeats 0)
+    (error "ran repeats times without terminating. arg: ~a" arg))
+  (let
+      ((next (funcall func arg)))
+    (if (funcall eeq next arg)
+        (list arg)
+        (cons
+          arg
+          (repeatedly-eq
+            func next eeq (- repeats 1))))))
+
+(defun repeatedly
+    (func &optional (check-p (lambda (arg) (equal arg nil)))
+      (repeats 256))
+  "
+  list consisting of calls to func on arg, then calling func on that result,
+  etc.
+  doesn't stop until check-p returns t when given `arg`.
+  "
+  (declare (type integer repeats))
+  (labels
+      ((helper
+           (arg
+             on)
+         (when
+             (<= on 0)
+           (error
+             (concatenate
+               'string
+               "ran ~a times without terminating.~%"
+               "  final iteration arg: ~a~%")
+             repeats
+             arg))
+         (if (funcall check-p arg)
+             nil
+             (cons
+               arg (helper
+                     (funcall func arg)
+                     (- on 1))))))
+    (helper arg repeats)))
+
 (defun partition (a at)
   "
   partition a list at `at`, returning everything before that point
@@ -107,6 +169,156 @@
       (declare (ignore _))
       (pathname logical-path))
     nil))
+
+(defun
+    slurp-stream (f)
+  (with-output-to-string
+      (out)
+    (loop
+      do
+      (let
+          ((char-in
+             (read-char
+               f nil)))
+        (if
+            char-in
+            (write-char
+              char-in out)
+            (return))))))
+
+(defun
+    base-slurp
+    (loc)
+  (let
+      ((input
+         (if
+             (equal
+               loc "-")
+             *standard-input*
+             loc)))
+    (if
+        (typep
+          input 'stream)
+        (slurp-stream
+          input)
+        (with-open-file
+            (in-stream
+              loc
+              :direction :input
+              :external-format :utf-8)
+          (slurp-stream
+            in-stream)))))
+
+;;  takes alist
+;; handles http.
+;  :content-type 'application/json
+(defun http-expanded-url (dexfun resource &rest more-args)
+  (flet
+      ((http-call
+           (&rest
+             args)
+         (apply
+           dexfun
+           (concatenate
+             'list
+             args
+             more-args
+             '(:force-string
+               t)))))
+    (or
+      (cl-ppcre:register-groups-bind
+        (protocol
+          username password rest-of-it)
+        ("^(https?://)([^@:]+):([^@:]+)@(.+)$"
+         resource)
+        (http-call
+          (concatenate
+            'string
+            protocol
+            rest-of-it)
+          :basic-auth
+          (cons
+            (quri:url-decode
+              username)
+            (quri:url-decode
+              password))))
+      (cl-ppcre:register-groups-bind
+        (protocol
+          header headerval rest-of-it)
+        ("^(https?://)([^@=]+)=([^@=]+)@(.+)$"
+         resource)
+        (http-call
+          (concatenate
+            'string
+            protocol
+            rest-of-it)
+          :headers
+          (list
+            (cons
+              (quri:url-decode
+                header)
+              (quri:url-decode
+                headerval)))))
+      (cl-ppcre:register-groups-bind
+        (protocol
+          token rest-of-it)
+        ("^(https?://)([^@]+)@(.+)"
+         resource)
+        (http-call
+          (concatenate
+            'string
+            protocol
+            rest-of-it)
+          :headers
+          (list
+            (cons
+              "Authorization"
+              (format
+                nil "Bearer ~a" (quri:url-decode
+                                  token))))))
+      (cl-ppcre:register-groups-bind
+        ()
+        ("^https?://.*$"
+         resource)
+        (http-call
+          resource))
+      nil)))
+
+(defun data-slurp (resource &rest more-args)
+  "
+  Slurp config, using specified options.
+
+  if `:resource` is a url, download the contents according to the following
+  rules:
+  - if it is of the form `http(s)://user:pw@url`,
+    it uses basic auth;
+  - if it is of the form `http(s)://header=val@url`,
+    a header is set;
+  - if it is of the form `http(s)://tok@url`,
+    a bearer token is used;
+  - if it is of the form `file://loc`, it is loaded as a normal file;
+  - if it is of the form `-`, the data is loaded from standard input;
+  - otherwise, the data is loaded from the string or pathname as if it named
+    a file.
+  "
+  (declare (type (or pathname string) resource))
+    (or
+      (when
+          (equal
+            'pathname (type-of
+                        resource))
+        (base-slurp
+          resource))
+      (apply
+        #'http-expanded-url
+        (concatenate
+          'list
+          (list #'dexador:get resource)
+          more-args))
+      (let ((pname (url-to-pathname resource)))
+        (if pname
+            (base-slurp pname)
+            (base-slurp resource)))))
 
 ;; TODO: TEST
 (defun extract-path (path-part-str pathsep)
@@ -218,62 +430,6 @@
                 :type "yaml")
               home)))
 
-(defun repeatedly-eq
-    (func
-      arg
-      &optional
-      (eeq #'equal)
-      (repeats 256))
-  "
-  list consisting of calls to func using arg, then calling func using that
-  result, etc.
-  stops when subsequent calls return equal.
-  "
-  (declare (type integer repeats))
-  (when
-      (<= repeats 0)
-    (error "ran repeats times without terminating. arg: ~a" arg))
-  (let
-      ((next (funcall func arg)))
-    (if (funcall eeq next arg)
-        (list arg)
-        (cons
-          arg
-          (repeatedly-eq
-            func next eeq (- repeats 1))))))
-
-(defun repeatedly
-    (func
-      arg
-      &optional
-      (check-p (lambda (arg) (equal arg nil)))
-      (repeats 256))
-  "
-  list consisting of calls to func on arg, then calling func on that result,
-  etc.
-  doesn't stop until check-p returns t when given `arg`.
-  "
-  (declare (type integer repeats))
-  (labels
-      ((helper
-           (arg
-             on)
-         (when
-             (<= on 0)
-           (error
-             (concatenate
-               'string
-               "ran ~a times without terminating.~%"
-               "  final iteration arg: ~a~%")
-             repeats
-             arg))
-         (if (funcall check-p arg)
-             nil
-             (cons
-               arg (helper
-                     (funcall func arg)
-                     (- on 1))))))
-    (helper arg repeats)))
 
 					; get file
 ; (find-file (uiop/os:getcwd) (pathname ".git/"))
@@ -284,7 +440,7 @@
     (from marker)
   "
   Starting at the directory given,
-  find the marking file named `.<cmd-name>.yaml`.
+  find the marking file.
   "
   (if (null marker)
       nil
@@ -323,155 +479,7 @@
   (format destination "~a~%" msg)
   status)
 
-(defun
-    slurp-stream (f)
-  (with-output-to-string
-      (out)
-    (loop
-      do
-      (let
-          ((char-in
-             (read-char
-               f nil)))
-        (if
-            char-in
-            (write-char
-              char-in out)
-            (return))))))
 
-(defun
-    base-slurp
-    (loc)
-  (let
-      ((input
-         (if
-             (equal
-               loc "-")
-             *standard-input*
-             loc)))
-    (if
-        (typep
-          input 'stream)
-        (slurp-stream
-          input)
-        (with-open-file
-            (in-stream
-              loc
-              :direction :input
-              :external-format :utf-8)
-          (slurp-stream
-            in-stream)))))
-
-(defun data-slurp (resource &rest more-args)
-  "
-  Slurp config, using specified options.
-
-  if `:resource` is a url, download the contents according to the following
-  rules:
-  - if it is of the form `http(s)://user:pw@url`,
-    it uses basic auth;
-  - if it is of the form `http(s)://header=val@url`,
-    a header is set;
-  - if it is of the form `http(s)://tok@url`,
-    a bearer token is used;
-  - if it is of the form `file://loc`, it is loaded as a normal file;
-  - if it is of the form `-`, the data is loaded from standard input;
-  - otherwise, the data is loaded from the string or pathname as if it named
-    a file.
-  "
-  (declare (type (or pathname string) resource))
-    (or
-      (when
-          (equal
-            'pathname (type-of
-                        resource))
-        (base-slurp
-          resource))
-      (apply
-        #'http-expanded-url
-        (concatenate
-          'list
-          (list #'dexador:get resource)
-          more-args))
-      (let (pname (url-to-pathname resource))
-        (if pname
-            (base-slurp pname)
-            (base-slurp resource)))))
-
-;;  takes alist
-;; handles http.
-;  :content-type 'application/json
-(defun http-expanded-url (dexfun resource &rest more-args)
-  (flet
-      ((http-call
-           (&rest
-             args)
-         (apply
-           dexfun
-           (concatenate
-             'list
-             args
-             more-args
-             '(:force-string
-               t)))))
-    (or
-      (cl-ppcre:register-groups-bind
-        (protocol
-          username password rest-of-it)
-        ("^(https?://)([^@:]+):([^@:]+)@(.+)$"
-         resource)
-        (http-call
-          (concatenate
-            'string
-            protocol
-            rest-of-it)
-          :basic-auth
-          (cons
-            (quri:url-decode
-              username)
-            (quri:url-decode
-              password))))
-      (cl-ppcre:register-groups-bind
-        (protocol
-          header headerval rest-of-it)
-        ("^(https?://)([^@=]+)=([^@=]+)@(.+)$"
-         resource)
-        (http-call
-          (concatenate
-            'string
-            protocol
-            rest-of-it)
-          :headers
-          (list
-            (cons
-              (quri:url-decode
-                header)
-              (quri:url-decode
-                headerval)))))
-      (cl-ppcre:register-groups-bind
-        (protocol
-          token rest-of-it)
-        ("^(https?://)([^@]+)@(.+)"
-         resource)
-        (http-call
-          (concatenate
-            'string
-            protocol
-            rest-of-it)
-          :headers
-          (list
-            (cons
-              "authorization"
-              (format
-                nil "bearer ~a" (quri:url-decode
-                                  token))))))
-      (cl-ppcre:register-groups-bind
-        ()
-        ("^https?://.*$"
-         resource)
-        (http-call
-          resource))
-      nil)))
 
 (defun
     string-keyword (str)
@@ -784,8 +792,7 @@
     result))
 
 
-; (declaim (optimize (speed 0) (space 0) (debug 3)))
-
+#+(or)
 (defun update-hash
     (to from)
   (loop for key being the hash-key of from
@@ -793,6 +800,7 @@
         do
         (setf (gethash key to) value)))
 
+#+(or)
 (defun config-file-options
     (program-name
       environment
@@ -834,6 +842,8 @@
     (update-hash result (data-slurp marked-config-path))
     result))
 ; (gather-options nil nil nil nil nil)
+
+#+(or)
 (defun
   gather-options
   (cli-arguments

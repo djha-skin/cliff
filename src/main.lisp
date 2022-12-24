@@ -1,4 +1,3 @@
-;https://github.com/fjames86/winhttp.git For debugging
 #+(or)
 (declaim (optimize (speed 0) (space 0) (debug 3)))
 

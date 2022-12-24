@@ -268,3 +268,7 @@
         ("HELLO_YAML_FINES" . "{ 'key': 155.2 }")
         ("HELLO_FLAG_FORESIGHT" . "0")
         ("HELLO_ITEM_FORKS" . "whenceandwhither")))))))))
+
+(deftest
+  gather-options
+

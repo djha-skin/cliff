@@ -1,6 +1,5 @@
 #+(or)
 (declaim (optimize (speed 0) (space 0) (debug 3)))
-
 (in-package #:cl-user)
 (defpackage
   #:cl-i (:use #:cl)
@@ -826,83 +825,3 @@
     (update-hash result (data-slurp marked-config-path)))
     result))
 ; (gather-options nil nil nil nil nil)
-
-(defun
-  gather-options
-  (program-name
-    cli-arguments
-    cli-aliases
-    environment-variables
-    environment-aliases
-    functions
-    &optional &key
-    hash-init-args
-    root-path
-    reference-file
-    defaults
-    (setup identity)
-    (teardown identity))
-      (let* ((effective-defaults (if (null defaults)
-                                     (apply #'make-hash-table hash-init-args)
-                                     defaults))
-             (effective-environment
-               (expand-env-aliases
-                 environment-aliases
-                 environment-variables
-                 :hash-init-args hash-init-args))
-             (effective-cli
-               (expand-cli-aliases
-                 cli-aliases
-                 cli-arguments))
-             (result (config-file-options
-                       program-name
-                       effective-environment
-                       effective-defaults
-                       reference-file
-                       root-path)))
-    (update-hash
-      result
-      (consume-environment
-        program-name
-        effective-environment
-        :hash-init-args hash-init-args
-        :list-sep list-sep
-        :map-sep map-sep))
-    (multiple-value-bind
-      (opts other-args)
-      (consume-arguments
-        effective-cli
-        :hash-init-args hash-init-args
-        :map-sep map-sep)
-      (update-hash result opts)
-      (let ((returned
-              (teardown (funcall (setup (or
-                                          (gethash functions other-args)
-                                          ;; TODO: Custom error where you can specify a different
-                                          ;; function
-                                          (error "Invalid subcommand: `~A`"
-                                                 (join-strings other-args :fmt " "))))
-                                 result
-                                 hash-init-args))))
-        (format t "~A~%" (generate-string returned))
-        (cond ((eql (gethash :status returned) :succesful)
-               0)
-              ((eql (gethash :status returned) :invalid-request)
-               1)
-              ((eql (gethash :status returned) :failure)
-               2)
-              ((eql (gethash :status returned) :error)
-               e)
-              ((eql (gethash :status returned) :custom)
-               (gethash :custom-exit-status returned))
-              (t
-                128))))))
-
-+(or)
-(cl-i:gather-options
-  "hi"
-  nil
-  (alexandria:alist-hash-table nil)
-  (alexandria:alist-hash-table nil)
-  (alexandria:alist-hash-table nil)
-  nil)

@@ -28,7 +28,7 @@
     join-lines
     repeatedly-eq
     repeatedly
-    partition
+    slurp-stream
     data-slurp
     make-windows-path
     make-unix-path
@@ -41,7 +41,8 @@
     exit-error
     string-keyword
     consume-arguments
-    consume-environment))
+    consume-environment
+    gather-options))
 (in-package #:cl-i)
 
 (defmacro
@@ -138,26 +139,8 @@
              (cons
                arg (helper
                      (funcall func arg)
-                     (- on 1))))))
-    (helper arg repeats)))
-
-(defun partition (a at)
-  "
-  partition a list at `at`, returning everything before that point
-  and everything after.
-  "
-  (declare (type list a)
-           (type number at))
-  (when (< at 0) (error "Variable `at` must be non-negative."))
-  (let ((newlst nil)
-        (marker a))
-    (loop for i from 0 to (- at 1)
-          do
-          (when (null marker) (return))
-          (setf newlst (cons (car marker) newlst))
-          (setf marker (cdr marker)))
-    (values (nreverse newlst)
-            marker)))
+                     (- on 1))))
+    (helper arg repeats)))))
 
 (defun url-to-pathname
     (url)
@@ -325,31 +308,32 @@
   ; https://unix.stackexchange.com/a/596656/9696
   ; The function `cl-ppcre:split` Needs a limit for some reason
   ; in order to work with trailing slashes
-  (let ((path-parts-of (cl-ppcre:split pathsep path-part-str :limit 4097)))
-    (multiple-value-bind (path-parts fdesignator-lst)
-        (partition path-parts-of (- (length path-parts-of) 1))
-      (let ((fdesignator (car fdesignator-lst)))
-        (multiple-value-bind (_ groups)
-            (cl-ppcre:scan-to-strings "(.+)\\.([^.]+)$" fdesignator)
-          (declare (ignore _))
-          (let ((f-name (if (null groups)
-                            (if (not (string= "" fdesignator))
-                                fdesignator
-                                nil)
-                            (aref groups 0)))
-                (f-type (when (not (null groups))
-                          (aref groups 1))))
-                   (apply #'concatenate
-                          (list 'list
-                                (list :directory
-                                      (if (string= "" (car path-parts))
-                                          (cons :absolute
-                                                (cdr path-parts))
-                                          (cons :relative path-parts)))
-                                (when (not (null f-name))
-                                  (list :name f-name))
-                                (when (not (null f-type))
-                                  (list :type f-type))))))))))
+  (let* ((path-parts-of (cl-ppcre:split pathsep path-part-str :limit 4097))
+         (partition-point (- (length path-parts-of) 1))
+         (path-parts (subseq path-parts-of 0 partition-point))
+         (fdesignator-lst (subseq path-parts-of partition-point)))
+    (let ((fdesignator (car fdesignator-lst)))
+      (multiple-value-bind (_ groups)
+          (cl-ppcre:scan-to-strings "(.+)\\.([^.]+)$" fdesignator)
+        (declare (ignore _))
+        (let ((f-name (if (null groups)
+                          (if (not (string= "" fdesignator))
+                              fdesignator
+                              nil)
+                          (aref groups 0)))
+              (f-type (when (not (null groups))
+                        (aref groups 1))))
+          (apply #'concatenate
+                 (list 'list
+                       (list :directory
+                             (if (string= "" (car path-parts))
+                                 (cons :absolute
+                                       (cdr path-parts))
+                                 (cons :relative path-parts)))
+                       (when (not (null f-name))
+                         (list :name f-name))
+                       (when (not (null f-type))
+                         (list :type f-type)))))))))
 ;; TODO: TEST
 (defun make-unix-path
     (pstr)
@@ -402,33 +386,33 @@
 ; (home-config-file "forager" #'uiop/os:getenv)
 (defun home-config-file
     (program-name getenv)
-    (let* ((home (os-specific-home getenv)))
-            (merge-pathnames
-              (make-pathname
-                :directory
-                #+windows (list
-                            :relative
-                            "AppData"
-                            "Local"
-                            program-name)
-                #+darwin (list
-                           :relative
-                           "Library"
-                           "Preferences"
-                           program-name)
-                #+linux (list
-                          :relative
-                          ".config"
-                          program-name)
-                #-(or darwin linux windows) (list
-                            :relative
-                            (concatenate
-                              'string
-                              "."
-                              program-name))
-                :name "config"
-                :type "yaml")
-              home)))
+  (let* ((home (os-specific-home getenv)))
+    (merge-pathnames
+      (make-pathname
+        :directory
+        #+windows (list
+                    :relative
+                    "AppData"
+                    "Local"
+                    program-name)
+        #+darwin (list
+                   :relative
+                   "Library"
+                   "Preferences"
+                   program-name)
+        #+linux (list
+                  :relative
+                  ".config"
+                  program-name)
+        #-(or darwin linux windows) (list
+                                      :relative
+                                      (concatenate
+                                        'string
+                                        "."
+                                        program-name))
+        :name "config"
+        :type "yaml")
+      home)))
 
 
 					; get file
@@ -664,7 +648,7 @@
    args))
 
 ;; TODO: TEST THIS
-(defun expand-env-aliases (aliases env &rest hash-init-args)
+(defun expand-env-aliases (aliases env &key hash-init-args)
   "
   Replace the names of environment variables according to the map
   found in `aliases`. The keys of the `aliases` hash table are matched
@@ -792,7 +776,6 @@
     result))
 
 
-#+(or)
 (defun update-hash
     (to from)
   (loop for key being the hash-key of from
@@ -800,7 +783,6 @@
         do
         (setf (gethash key to) value)))
 
-#+(or)
 (defun config-file-options
     (program-name
       environment
@@ -813,7 +795,7 @@
                              (uiop/os:getcwd)
                              root-path))
          (home-config-path (home-config-file
-                             *program-name*
+                             program-name
                              (lambda (var)
                                (gethash var environment))))
          (result (alexandria:copy-hash-table defaults))
@@ -821,8 +803,9 @@
            (make-pathname
                              :name
                              (concatenate
+                               'string
                                "."
-                               *program-name*)
+                               program-name)
                              :type
                              "yaml"))
          (marked-config-path
@@ -838,15 +821,17 @@
                        effective-root
                        reference-file))
                    marked-config-file-name)))))
-    (update-hash result (data-slurp home-config-path))
-    (update-hash result (data-slurp marked-config-path))
+    (when (uiop/filesystem:file-exists-p home-config-path)
+      (update-hash result (data-slurp home-config-path)))
+    (when (uiop/filesystem:file-exists-p marked-config-path)
+    (update-hash result (data-slurp marked-config-path)))
     result))
 ; (gather-options nil nil nil nil nil)
 
-#+(or)
 (defun
   gather-options
-  (cli-arguments
+  (program-name
+    cli-arguments
     cli-aliases
     environment-variables
     environment-aliases
@@ -858,39 +843,38 @@
     defaults
     (setup identity)
     (teardown identity))
-  (let ((effective-defaults (if (null defaults)
-                              (apply #'make-hash-table hash-init-args)
-                              defaults))
-        (effective-environment
-          (expand-env-aliases
-            (alexandria:alist-hash-table environment-aliases)
-            environment-variables
-            hash-init-args))
-        (effective-cli
-          (expand-cli-aliases
-            cli-arguments
-            (alexandria:alist-hash-table cli-aliases)))
-        (result (config-file-options
-                  program-name
-                  effective-environment
-                  effective-defaults
-                  reference-file
-                  root-path)))
+      (let* ((effective-defaults (if (null defaults)
+                                     (apply #'make-hash-table hash-init-args)
+                                     defaults))
+             (effective-environment
+               (expand-env-aliases
+                 environment-aliases
+                 environment-variables
+                 :hash-init-args hash-init-args))
+             (effective-cli
+               (expand-cli-aliases
+                 cli-aliases
+                 cli-arguments))
+             (result (config-file-options
+                       program-name
+                       effective-environment
+                       effective-defaults
+                       reference-file
+                       root-path)))
     (update-hash
       result
       (consume-environment
         program-name
         effective-environment
-        hash-init-args
-        list-sep
-        map-sep))
+        :hash-init-args hash-init-args
+        :list-sep list-sep
+        :map-sep map-sep))
     (multiple-value-bind
       (opts other-args)
       (consume-arguments
         effective-cli
-        hash-init-args
-        list-sep
-        map-sep)
+        :hash-init-args hash-init-args
+        :map-sep map-sep)
       (update-hash result opts)
       (let ((returned
               (teardown (funcall (setup (or
@@ -914,3 +898,12 @@
                (gethash :custom-exit-status returned))
               (t
                 128))))))
+
++(or)
+(cl-i:gather-options
+  "hi"
+  nil
+  (alexandria:alist-hash-table nil)
+  (alexandria:alist-hash-table nil)
+  (alexandria:alist-hash-table nil)
+  nil)

@@ -41,7 +41,29 @@
     consume-arguments
     consume-environment
     gather-options))
+
 (in-package #:cl-i)
+
+(defparameter *exit-codes*
+  ;; taken from /usr/include/sysexit.h
+  (alexandria:alist-hash-table
+    '((:successful . 0)
+      (:general-error . 1)
+      (:cl-usage-error . 64)
+      (:data-format-error . 65)
+      (:cannot-open-input . 66)
+      (:addressee-unknown . 67)
+      (:hostname-unknown . 68)
+      (:service-unavailabe . 69)
+      (:internal-software-error . 70)
+      (:system-error . 71)
+      (:os-file-missing . 72)
+      (:cant-create-uof . 73)
+      (:input-output-error . 74)
+      (:temporary-failure . 75)
+      (:remote-error-in-protocol . 76)
+      (:permission-denied . 77)
+      (:configuration-error . 78))))
 
 (defmacro
     dbg
@@ -825,3 +847,76 @@
     (update-hash result (data-slurp marked-config-path)))
     result))
 ; (gather-options nil nil nil nil nil)
+
+(defun
+  gather-options
+  (program-name
+    cli-arguments
+    cli-aliases
+    environment-variables
+    environment-aliases
+    functions
+    &optional &key
+    hash-init-args
+    root-path
+    reference-file
+    defaults
+    (list-sep ",")
+    (map-sep "=")
+    (setup identity)
+    (teardown identity))
+      (let* ((effective-defaults (if (null defaults)
+                                     (apply #'make-hash-table hash-init-args)
+                                     defaults))
+             (effective-environment
+               (expand-env-aliases
+                 environment-aliases
+                 environment-variables
+                 :hash-init-args hash-init-args))
+             (effective-cli
+               (expand-cli-aliases
+                 cli-aliases
+                 cli-arguments))
+             (result (config-file-options
+                       program-name
+                       effective-environment
+                       effective-defaults
+                       reference-file
+                       root-path)))
+    (update-hash
+      result
+      (consume-environment
+        program-name
+        effective-environment
+        :hash-init-args hash-init-args
+        :list-sep list-sep
+        :map-sep map-sep))
+    (multiple-value-bind
+      (opts other-args)
+      (consume-arguments
+        effective-cli
+        :hash-init-args hash-init-args
+        :map-sep map-sep)
+      (update-hash result opts)
+      (let ((returned
+              (teardown (funcall (setup (or
+                                          (gethash functions other-args)
+                                          ;; TODO: Custom error where you can specify a different
+                                          ;; function
+                                          (error "Invalid subcommand: `~A`"
+                                                 (join-strings other-args :fmt " "))))
+                                 result
+                                 hash-init-args)))
+            (result (gethash :result returned :successful))
+            (code (gethash result *exit-codes*)))
+        (format t "~A~%" (generate-string returned))
+        code))))
+
++(or)
+(cl-i:gather-options
+  "hi"
+  nil
+  (alexandria:alist-hash-table nil)
+  (alexandria:alist-hash-table nil)
+  (alexandria:alist-hash-table nil)
+  nil)

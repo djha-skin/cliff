@@ -269,6 +269,95 @@
         ("HELLO_FLAG_FORESIGHT" . "0")
         ("HELLO_ITEM_FORKS" . "whenceandwhither")))))))))
 
-(deftest
-  gather-options
+(defun blank-command
+  (options)
+  (format t "Options:~&  ~A~&" (alexandria:hash-table-alist options))
+  (alexandria:alist-hash-table
+    '((:status . :successful))))
 
+(defun error-command
+  (options)
+  (format t "Options:~&  ~A~&" (alexandria:hash-table-alist options))
+  (alexandria:alist-hash-table
+    '((:status :general-error))))
+
+(defun io-error
+  (options)
+  (format t "Options:~&  ~A~&" (alexandria:hash-table-alist options))
+  (alexandria:alist-hash-table
+    '((status :input-output-error))))
+
+(cl-i:execute-program
+  "hi"
+  (alexandria:alist-hash-table
+    '(("HOME" . "/home/djha-skin")
+      
+      kkk)
+    :test #'equal)
+  `((nil . ,#'blank-command)
+    ("error" . ,#'error-command)
+    ("io-error" . ,#'io-error)))
+
+
+
+
+
+  
+
+(deftest
+  execute-program
+  (testing
+    "empty cases"
+    (ok
+      (signals 
+        (cl-i:execute-program
+          "Halo"
+          nil
+          nil)
+        'cl-i:necessary-env-var-absent)
+      "Necessary environment variables absent")
+    (ok
+      (signals
+        (cl-i:execute-program
+          "Halo"
+          nil
+          (make-hash-table)
+          (alexandria:alist-hash-table
+            '(("HOME" . "/home/djha-skin"))
+            :test #'equal)
+          (make-hash-table)
+          (make-hash-table))
+        'cl-i:invalid-subcommand)
+      "No test provided in hash table args")))
+;;  (testing
+;;    "typical case"
+;;    (ok (eql 0
+;;             (cl-i:execute-program
+;;               "hi"
+;;               '("-i" "fish.txt" "-o" "{\"foo\": 3}" "--" "ugly" )
+;;               (alexandria:alist-hash-table
+;;                 '(("-i" . "--set-i")
+;;                   ("-o" . "--json-o")
+;;
+;;
+;;
+;;(defparameter *exit-codes*
+;;  ;; taken from /usr/include/sysexit.h
+;;  (alexandria:alist-hash-table
+;;    '((:successful . 0)
+;;      (:general-error . 1)
+;;      (:cl-usage-error . 64)
+;;      (:data-format-error . 65)
+;;      (:cannot-open-input . 66)
+;;      (:addressee-unknown . 67)
+;;      (:hostname-unknown . 68)
+;;      (:service-unavailabe . 69)
+;;      (:internal-software-error . 70)
+;;      (:system-error . 71)
+;;      (:os-file-missing . 72)
+;;      (:cant-create-uof . 73)
+;;      (:input-output-error . 74)
+;;      (:temporary-failure . 75)
+;;      (:remote-error-in-protocol . 76)
+;;      (:permission-denied . 77)
+;;      (:configuration-error . 78))))

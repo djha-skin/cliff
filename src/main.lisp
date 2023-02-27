@@ -26,6 +26,7 @@
       join-lines
       repeatedly-eq
       repeatedly
+      nested-to-alist
       slurp-stream
       data-slurp
       invalid-subcommand
@@ -163,6 +164,23 @@
                  (funcall func arg)
                  (- on 1))))
        (helper arg repeats)))))
+
+(defun nested-to-alist
+  (value)
+  "
+  Recursively changes value, converting all hash tables within the tree to an
+  alist.
+  "
+  (cond
+    ((listp value)
+     (map 'list #'nested-to-alist value))
+    ((hash-table-p value)
+     (loop for k being the hash-key of value
+           using (hash-value v)
+           collect (cons k (nested-to-alist v))))
+    (t
+      value)))
+
 
 (defun url-to-pathname
   (url)
@@ -722,9 +740,7 @@
     env
     &optional
     &key
-    (hash-init-args
-      ; a sensible default, given we deal with so many "string" keys
-      (list :test #'equal))
+    hash-init-args
     (list-sep ",")
     (map-sep "="))
   "
@@ -862,21 +878,19 @@
              "yaml"))
          (marked-config-path
            (if (null reference-file)
-             nil
-             (or
-               (find-file
-                 effective-root
-                 marked-config-file-name)
-               (merge-pathnames
-                 (uiop/pathname:pathname-parent-directory-pathname
-                   (find-file
-                     effective-root
-                     reference-file))
-                 marked-config-file-name)))))
+             (find-file
+               effective-root
+               marked-config-file-name)
+             (merge-pathnames
+               (uiop/pathname:pathname-parent-directory-pathname
+                 (find-file
+                   effective-root
+                   reference-file))
+               marked-config-file-name))))
     (when (uiop/filesystem:file-exists-p home-config-path)
-      (update-hash result (data-slurp home-config-path)))
+      (update-hash result (parse-string (data-slurp home-config-path))))
     (when (uiop/filesystem:file-exists-p marked-config-path)
-      (update-hash result (data-slurp marked-config-path)))
+      (update-hash result (parse-string (data-slurp marked-config-path))))
     result))
 
 (define-condition invalid-subcommand (error)
@@ -897,24 +911,26 @@
     &optional &key
     cli-arguments
     cli-aliases
-    environment-aliases
-    (hash-init-args
-      ; a sensible default, given we deal with so many "string" keys
-      (list :test #'equal))
+    defaults
+    (setup #'identity)
+    (teardown #'identity)
     root-path
     reference-file
-    defaults
+    environment-aliases
     (list-sep ",")
     (map-sep "=")
-    (setup #'identity)
-    (teardown #'identity))
+    (str-hash-init-args
+      `(:test ,#'equal))
+    kw-hash-init-args
+    )
   (declare (type string program-name)
            (type hash-table environment-variables)
            (type list functions)
            (type list cli-arguments)
            (type list cli-aliases)
            (type list environment-aliases)
-           (type list hash-init-args)
+           (type list str-hash-init-args)
+           (type list kw-hash-init-args)
            (type (or null pathname) root-path)
            (type (or null pathname) reference-file)
            (type list defaults)
@@ -923,22 +939,22 @@
            (type function setup)
            (type function teardown))
   (let* ((effective-defaults (if (null defaults)
-                               (apply #'make-hash-table hash-init-args)
+                               (apply #'make-hash-table kw-hash-init-args)
                                (apply #'alexandria:alist-hash-table
                                       defaults
-                                      hash-init-args)))
+                                      kw-hash-init-args)))
          (effective-environment
            (expand-env-aliases
              (apply #'alexandria:alist-hash-table
                     environment-aliases
-                    hash-init-args)
+                    str-hash-init-args)
                environment-variables
-             :hash-init-args hash-init-args))
+             :hash-init-args str-hash-init-args))
          (effective-cli
            (expand-cli-aliases
              (apply #'alexandria:alist-hash-table
                     cli-aliases
-                    hash-init-args)
+                    str-hash-init-args)
              cli-arguments))
          (result (config-file-options
                    program-name
@@ -951,14 +967,14 @@
       (consume-environment
         program-name
         effective-environment
-        :hash-init-args hash-init-args
+        :hash-init-args kw-hash-init-args
         :list-sep list-sep
         :map-sep map-sep))
     (multiple-value-bind
       (opts other-args)
       (consume-arguments
         effective-cli
-        :hash-init-args hash-init-args
+        :hash-init-args kw-hash-init-args
         :map-sep map-sep)
       (update-hash result opts)
       (let ((result

@@ -175,6 +175,7 @@
           :insecure t)
         (format nil "token complete")))))
 
+
 (deftest
   consume-arguments
   (testing
@@ -287,29 +288,90 @@
   (alexandria:alist-hash-table
     '((status :input-output-error))))
 
+(deftest
+  nested-to-alist
+  (testing "empty"
+           (ok (equal nil (cli:nested-to-alist nil)))
+           (ok (equal "" (cli:nested-to-alist ""))))
+  (testing "atomic values"
+           (ok (equal "hi" (cli:nested-to-alist "hi")))
+           (ok (equal 15 (cli:nested-to-alist 15)))
+           (ok (equal t (cli:nested-to-alist 15)))
+           (ok (equal 'a (cli:nested-to-alist 'a)))
+           (ok (equal :b (cli:nested-to-alist :b))))
+  (testing "Typical invocations"
+           (ok
+             (equal
+               (let
+                 ((a (make-hash-table)))
+                 (setf (gethash 'a a) 1)
+                 (setf (gethash 'b a) 2)
+                 (setf (gethash 'c a) 3)
+                 (cli:nested-to-alist
+                   `(1 2 3 (4 5) 6 (7 (8 ,a)))))
+               ((A)
+                (B (:ORIGIN . "thither")
+                   (:DESTINATION . "yon"))
+                (C 1 2 3 4 5))))
+           (ok (equal
+                 (let ((a (make-hash-table))
+                       (b (make-hash-table)))
+                   (setf (gethash :origin b) "thither")
+                   (setf (gethash :destination b) "yon")
+                   (setf (gethash 'a a) nil)
+                   (setf (gethash 'b a) b)
+                   (setf (gethash 'c a) '(1 2 3 4 5))
+                   (cli:nested-to-alist a))
+                 ((A)
+                  (B (:ORIGIN . "thither")
+                     (:DESTINATION . "yon")) (C 1 2 3 4 5))))))
+
+
+
+(nested-to-alist
+  (cl-i::config-file-options
+  "hi"
+    (alexandria:alist-hash-table
+      '(
+      ("HOME" . "/home/djha-skin")
+      ("HI_ITEM_FOUR" . "square")
+      )
+      :test #'equal)
+    (make-hash-table)))
+
 (cl-i:execute-program
   "hi"
   (alexandria:alist-hash-table
-    '(("HOME" . "/home/djha-skin")
-      
-      kkk)
+    '(
+      ("HOME" . "/home/djha-skin")
+      ("HI_ITEM_FOUR" . "square")
+      )
     :test #'equal)
   `((nil . ,#'blank-command)
     ("error" . ,#'error-command)
-    ("io-error" . ,#'io-error)))
+    ("io-error" . ,#'io-error))
+  :cli-arguments
+  '(
+    "--join-deals" "a=jhyghyjub"
+    "--join-deals" "c=d"
+    "--add-barf" "1"
+    "--add-barf" "2"
+    "--add-barf" "3"
+    "--enable-gary"
+    "--reset-gary"
+    "--set-gary" "four"
+    "--disable-all-the-things"
+    ))
 
 
 
-
-
-  
 
 (deftest
   execute-program
   (testing
     "empty cases"
     (ok
-      (signals 
+      (signals
         (cl-i:execute-program
           "Halo"
           nil

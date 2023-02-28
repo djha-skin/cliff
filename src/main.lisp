@@ -43,6 +43,7 @@
       string-keyword
       consume-arguments
       consume-environment
+      config-file-options
       execute-program))
 
 (in-package #:cl-i)
@@ -181,7 +182,6 @@
     (t
       value)))
 
-
 (defun url-to-pathname
   (url)
   (or
@@ -192,7 +192,6 @@
       (declare (ignore _))
       (pathname logical-path))
     nil))
-
 
 (defun slurp-stream (f)
   (with-output-to-string
@@ -843,12 +842,14 @@
 (defun config-file-options
   (program-name
     environment
+    arguments
     defaults
     &optional
     reference-file
     root-path)
   (declare (type string program-name)
            (type hash-table environment)
+           (type hash-table arguments)
            (type hash-table defaults)
            (type (or null pathname) reference-file)
            (type (or null pathname) root-path))
@@ -867,6 +868,15 @@
                                      default)
                                    result)))))
          (result (alexandria:copy-hash-table defaults))
+         (home-config-path-file
+           (merge-pathnames
+             (make-pathname
+               :name
+               "config"
+               :type
+               "yaml")
+             home-config-path
+           ))
          (marked-config-file-name
            (make-pathname
              :name
@@ -882,15 +892,35 @@
                effective-root
                marked-config-file-name)
              (merge-pathnames
+               marked-config-file-name
                (uiop/pathname:pathname-parent-directory-pathname
                  (find-file
                    effective-root
-                   reference-file))
-               marked-config-file-name))))
+                   reference-file)))))
+         (result (alexandria:copy-hash-table defaults)))
     (when (uiop/filesystem:file-exists-p home-config-path)
-      (update-hash result (parse-string (data-slurp home-config-path))))
+      (update-hash result (parse-string (data-slurp home-config-path-file))))
     (when (uiop/filesystem:file-exists-p marked-config-path)
       (update-hash result (parse-string (data-slurp marked-config-path))))
+    (multiple-value-bind
+      (defaults-config-file
+        defaults-config-file-exists)
+      (gethash defaults :config-file)
+      (when defaults-config-file-exists
+        (update-hash
+          result
+          (parse-string
+            (data-slurp
+              defaults-config-file)))))
+    (multiple-value-bind
+      (arg-config-file arg-config-file-exists)
+      (gethash arguments "--config-file")
+      (when arg-config-file-exists)
+      (update-hash
+        result
+        (parse-string
+          (data-slurp
+              arg-config-file))))
     result))
 
 (define-condition invalid-subcommand (error)
@@ -959,6 +989,7 @@
          (result (config-file-options
                    program-name
                    effective-environment
+                   effective-cli
                    effective-defaults
                    reference-file
                    root-path)))

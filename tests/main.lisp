@@ -1,5 +1,4 @@
 (in-package #:cl-user)
-
 (defpackage #:cl-i/tests
   (:use #:cl
         #:rove)
@@ -49,6 +48,7 @@
   (ok (equal (cl-i:repeatedly-eq #'positive-dec 3) '(3 2 1 0)))))
 
 
+
 (deftest
   repeatedly
   (testing "repeatedly"
@@ -62,6 +62,41 @@
                (lambda (item)
                  (<= item 0)))
              '(3 2 1)))))
+
+(deftest
+  nested-to-alist
+  (testing "empty"
+           (ok (equal nil (cl-i:nested-to-alist nil)))
+           (ok (equal "" (cl-i:nested-to-alist ""))))
+  (testing "atomic values"
+           (ok (equal "hi" (cl-i:nested-to-alist "hi")))
+           (ok (equal 15 (cl-i:nested-to-alist 15)))
+           (ok (equal t (cl-i:nested-to-alist t)))
+           (ok (equal 'a (cl-i:nested-to-alist 'a)))
+           (ok (equal :b (cl-i:nested-to-alist :b))))
+  (testing "typical invocations"
+           (ok
+             (equal
+               (let
+                 ((a (make-hash-table)))
+                 (setf (gethash 'a a) 1)
+                 (setf (gethash 'b a) 2)
+                 (setf (gethash 'c a) 3)
+                 (cl-i:nested-to-alist
+                   `(1 2 3 (4 5) 6 (7 (8 ,a)))))
+               '(1 2 3 (4 5) 6 (7 (8 ((A . 1) (B . 2) (C . 3)))))))
+           (ok (equal
+                 (let ((a (make-hash-table))
+                       (b (make-hash-table)))
+                   (setf (gethash :origin b) "thither")
+                   (setf (gethash :destination b) "yon")
+                   (setf (gethash 'a a) nil)
+                   (setf (gethash 'b a) b)
+                   (setf (gethash 'c a) '(1 2 3 4 5))
+                   (cl-i:nested-to-alist a))
+                 '((A)
+                  (B (:ORIGIN . "thither")
+                     (:DESTINATION . "yon")) (C 1 2 3 4 5))))))
 
 (deftest
   basic-find-file
@@ -288,56 +323,31 @@
   (alexandria:alist-hash-table
     '((status :input-output-error))))
 
-(deftest
-  nested-to-alist
-  (testing "empty"
-           (ok (equal nil (cli:nested-to-alist nil)))
-           (ok (equal "" (cli:nested-to-alist ""))))
-  (testing "atomic values"
-           (ok (equal "hi" (cli:nested-to-alist "hi")))
-           (ok (equal 15 (cli:nested-to-alist 15)))
-           (ok (equal t (cli:nested-to-alist 15)))
-           (ok (equal 'a (cli:nested-to-alist 'a)))
-           (ok (equal :b (cli:nested-to-alist :b))))
-  (testing "Typical invocations"
+(deftest config-file-options
+         (testing 
+           "typical invocation"
            (ok
              (equal
-               (let
-                 ((a (make-hash-table)))
-                 (setf (gethash 'a a) 1)
-                 (setf (gethash 'b a) 2)
-                 (setf (gethash 'c a) 3)
-                 (cli:nested-to-alist
-                   `(1 2 3 (4 5) 6 (7 (8 ,a)))))
-               ((A)
-                (B (:ORIGIN . "thither")
-                   (:DESTINATION . "yon"))
-                (C 1 2 3 4 5))))
-           (ok (equal
-                 (let ((a (make-hash-table))
-                       (b (make-hash-table)))
-                   (setf (gethash :origin b) "thither")
-                   (setf (gethash :destination b) "yon")
-                   (setf (gethash 'a a) nil)
-                   (setf (gethash 'b a) b)
-                   (setf (gethash 'c a) '(1 2 3 4 5))
-                   (cli:nested-to-alist a))
-                 ((A)
-                  (B (:ORIGIN . "thither")
-                     (:DESTINATION . "yon")) (C 1 2 3 4 5))))))
+               (nested-to-alist
+                 (cl-i:config-file-options
+                   "hi"
+                   (alexandria:alist-hash-table
+                     '(
+                       ("HOME" . "/home/djha-skin")
+                       ("HI_ITEM_FOUR" . "square")
+                       )
+                     :test #'equal)
+                   (make-hash-table)))
+               (("gary" . 3)
+                ("hairy" . 4)
+                ("dot")
+                ("chives"
+                 ("spices" . "yes")
+                 ("love" . 15)
+                 ("sore_losers"
+                  ("cool" . "beans")
+                  ("state" . "virginia"))))))))
 
-
-
-(nested-to-alist
-  (cl-i::config-file-options
-  "hi"
-    (alexandria:alist-hash-table
-      '(
-      ("HOME" . "/home/djha-skin")
-      ("HI_ITEM_FOUR" . "square")
-      )
-      :test #'equal)
-    (make-hash-table)))
 
 (cl-i:execute-program
   "hi"

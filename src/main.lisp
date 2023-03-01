@@ -20,6 +20,7 @@
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
+    (:import-from #:uiop/stream)
     (:export
       dbg
       join-strings
@@ -838,21 +839,14 @@
         using (hash-value value)
         do
         (setf (gethash key to) value)))
-
-(defun config-file-options
+(defun things
   (program-name
     environment
-    arguments
-    defaults
+    result
     &optional
     reference-file
     root-path)
-  (declare (type string program-name)
-           (type hash-table environment)
-           (type hash-table arguments)
-           (type hash-table defaults)
-           (type (or null pathname) reference-file)
-           (type (or null pathname) root-path))
+
   ; https://github.com/adrg/xdg/blob/master/paths_darwin_test.go
   (let* ((effective-root (if (null root-path)
                            (uiop/os:getcwd)
@@ -867,7 +861,6 @@
                                             :env-var var)
                                      default)
                                    result)))))
-         (result (alexandria:copy-hash-table defaults))
          (home-config-path-file
            (merge-pathnames
              (make-pathname
@@ -875,8 +868,7 @@
                "config"
                :type
                "yaml")
-             home-config-path
-           ))
+             home-config-path))
          (marked-config-file-name
            (make-pathname
              :name
@@ -901,26 +893,57 @@
     (when (uiop/filesystem:file-exists-p home-config-path)
       (update-hash result (parse-string (data-slurp home-config-path-file))))
     (when (uiop/filesystem:file-exists-p marked-config-path)
-      (update-hash result (parse-string (data-slurp marked-config-path))))
+      (update-hash result (parse-string (data-slurp marked-config-path))))))
+(defun config-file-options
+  (program-name
+    environment
+    opts-from-args
+    defaults
+    &optional
+    reference-file
+    root-path)
+  (declare (type string program-name)
+           (type hash-table environment)
+           (type hash-table opts-from-args)
+           (type hash-table defaults)
+           (type (or null pathname) reference-file)
+           (type (or null pathname) root-path))
+(let ((result (alexandria:copy-hash-table defaults)))
+  (multiple-value-bind
+    (defaults-config-files
+      defaults-config-files-exists)
+    (gethash defaults :config-files)
+    (if defaults-config-files-exists
+      (loop for defaults-config-file in defaults-config-files
+            do
+            (if (uiop/filesystem:file-exists-p defaults-config-files)
+              (update-hash
+                result
+                (parse-string
+                  (data-slurp
+                    defaults-config-file)))
+              (warn 'default-config-file-absent
+                    :absent-config-file defaults-config-file)))
+      (things program-name environment result reference-file root-path)
+
+
+
     (multiple-value-bind
-      (defaults-config-file
-        defaults-config-file-exists)
-      (gethash defaults :config-file)
-      (when defaults-config-file-exists
-        (update-hash
-          result
-          (parse-string
-            (data-slurp
-              defaults-config-file)))))
-    (multiple-value-bind
-      (arg-config-file arg-config-file-exists)
-      (gethash arguments "--config-file")
-      (when arg-config-file-exists)
-      (update-hash
-        result
-        (parse-string
-          (data-slurp
-              arg-config-file))))
+      (arg-config-files arg-config-files-exists)
+      (gethash opts-from-args :config-files)
+      (when arg-config-file-exists
+        (loop for arg-config-file in arg-config-files
+              do
+              (if (uiop/filesystem:file-exists-p arg-config-file)
+                (update-hash
+                  result
+                  (parse-string
+                    (data-slurp
+                      arg-config-file)))
+                (format
+                  uiop/stream:*stderr*
+                  "warning: config file `~A` does not exist, not using."
+                  arg-config-file)))))
     result))
 
 (define-condition invalid-subcommand (error)
@@ -968,7 +991,8 @@
            (type string map-sep)
            (type function setup)
            (type function teardown))
-  (let* ((effective-defaults (if (null defaults)
+
+  (let ((effective-defaults (if (null defaults)
                                (apply #'make-hash-table kw-hash-init-args)
                                (apply #'alexandria:alist-hash-table
                                       defaults
@@ -985,11 +1009,17 @@
              (apply #'alexandria:alist-hash-table
                     cli-aliases
                     str-hash-init-args)
-             cli-arguments))
-         (result (config-file-options
+             cli-arguments)))
+    (multiple-value-bind
+      (opts-from-args other-args)
+      (consume-arguments
+        effective-cli
+        :hash-init-args kw-hash-init-args
+        :map-sep map-sep)
+      (let ((result (config-file-options
                    program-name
                    effective-environment
-                   effective-cli
+                   opts-from-args
                    effective-defaults
                    reference-file
                    root-path)))
@@ -1001,12 +1031,7 @@
         :hash-init-args kw-hash-init-args
         :list-sep list-sep
         :map-sep map-sep))
-    (multiple-value-bind
-      (opts other-args)
-      (consume-arguments
-        effective-cli
-        :hash-init-args kw-hash-init-args
-        :map-sep map-sep)
+    ;; !-- TODO AAAH --!
       (update-hash result opts)
       (let ((result
               (funcall

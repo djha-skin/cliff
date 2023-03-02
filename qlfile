@@ -1,4 +1,5 @@
-git cl-yaml https://github.com/eudoxia0/cl-yaml :branch master
+#git cl-yaml https://github.com/eudoxia0/cl-yaml :branch master
+ql jzon
 ql alexandria
 ql arrows
 #git winhttp https://github.com/fjames86/winhttp.git

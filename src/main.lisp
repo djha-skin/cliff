@@ -16,7 +16,7 @@
     which is then passed to the
     subcommands.")
     (:import-from #:arrows)
-    (:import-from #:cl-yaml)
+    (:import-from #:jzon)
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
@@ -510,7 +510,17 @@
     (yaml:emit-pretty-as-document
       emit thing)))
 
+(defun
+  string-keyword (str)
+  (intern
+    (string-upcase
+      str) "KEYWORD"))
+
 (defun parse-string (thing)
+  (jzon:parse thing
+              :allow-comments t
+              :allow-trailing-comma t
+              :key-fn string-keyword
   (yaml:parse thing))
 
 (defun exit-error
@@ -520,11 +530,7 @@
   (format destination "~a~%" msg)
   status)
 
-(defun
-  string-keyword (str)
-  (intern
-    (string-upcase
-      str) "KEYWORD"))
+
 
 (defparameter
   +find-tag+
@@ -839,16 +845,31 @@
         using (hash-value value)
         do
         (setf (gethash key to) value)))
-(defun things
-  (program-name
+
+(defun add-config-from-base-config-files
+  (result
+    program-name
     environment
-    result
     &optional
     reference-file
     root-path)
-
   ; https://github.com/adrg/xdg/blob/master/paths_darwin_test.go
-  (let* ((effective-root (if (null root-path)
+  )
+
+(defun config-file-options
+  (program-name
+    environment
+    defaults
+    &optional
+    reference-file
+    root-path)
+  (declare (type string program-name)
+           (type hash-table environment)
+           (type hash-table defaults)
+           (type (or null pathname) reference-file)
+           (type (or null pathname) root-path))
+  (let* ((result (alexandria:copy-hash-table defaults))
+         (effective-root (if (null root-path)
                            (uiop/os:getcwd)
                            root-path))
          (home-config-path (os-specific-config-dir
@@ -888,63 +909,12 @@
                (uiop/pathname:pathname-parent-directory-pathname
                  (find-file
                    effective-root
-                   reference-file)))))
-         (result (alexandria:copy-hash-table defaults)))
+                   reference-file))))))
     (when (uiop/filesystem:file-exists-p home-config-path)
       (update-hash result (parse-string (data-slurp home-config-path-file))))
     (when (uiop/filesystem:file-exists-p marked-config-path)
-      (update-hash result (parse-string (data-slurp marked-config-path))))))
-(defun config-file-options
-  (program-name
-    environment
-    opts-from-args
-    defaults
-    &optional
-    reference-file
-    root-path)
-  (declare (type string program-name)
-           (type hash-table environment)
-           (type hash-table opts-from-args)
-           (type hash-table defaults)
-           (type (or null pathname) reference-file)
-           (type (or null pathname) root-path))
-(let ((result (alexandria:copy-hash-table defaults)))
-  (multiple-value-bind
-    (defaults-config-files
-      defaults-config-files-exists)
-    (gethash defaults :config-files)
-    (if defaults-config-files-exists
-      (loop for defaults-config-file in defaults-config-files
-            do
-            (if (uiop/filesystem:file-exists-p defaults-config-files)
-              (update-hash
-                result
-                (parse-string
-                  (data-slurp
-                    defaults-config-file)))
-              (warn 'default-config-file-absent
-                    :absent-config-file defaults-config-file)))
-      (things program-name environment result reference-file root-path)
-
-
-
-    (multiple-value-bind
-      (arg-config-files arg-config-files-exists)
-      (gethash opts-from-args :config-files)
-      (when arg-config-file-exists
-        (loop for arg-config-file in arg-config-files
-              do
-              (if (uiop/filesystem:file-exists-p arg-config-file)
-                (update-hash
-                  result
-                  (parse-string
-                    (data-slurp
-                      arg-config-file)))
-                (format
-                  uiop/stream:*stderr*
-                  "warning: config file `~A` does not exist, not using."
-                  arg-config-file)))))
-    result))
+      (update-hash result (parse-string (data-slurp marked-config-path)))))
+  result)
 
 (define-condition invalid-subcommand (error)
   ((given-subcommand :initarg :given-subcommand
@@ -1016,24 +986,22 @@
         effective-cli
         :hash-init-args kw-hash-init-args
         :map-sep map-sep)
-      (let ((result (config-file-options
-                   program-name
-                   effective-environment
-                   opts-from-args
-                   effective-defaults
-                   reference-file
-                   root-path)))
-    (update-hash
-      result
-      (consume-environment
-        program-name
-        effective-environment
-        :hash-init-args kw-hash-init-args
-        :list-sep list-sep
-        :map-sep map-sep))
-    ;; !-- TODO AAAH --!
-      (update-hash result opts)
       (let ((result
+              (config-file-options
+                program-name
+                effective-environment
+                effective-defaults
+                reference-file
+                root-path)))
+        (update-hash
+          result
+          (consume-environment
+            program-name
+            effective-environment
+            :hash-init-args kw-hash-init-args
+            :list-sep list-sep
+            :map-sep map-sep))
+      (let ((final-result
               (funcall
                 teardown
                 (funcall
@@ -1042,10 +1010,10 @@
                     (error 'invalid-subcommand
                            :given-subcommand other-args))
                   (funcall setup result))))
-            (status (gethash :status result :successful))
-            (code (gethash result *exit-codes*)))
+            (status (gethash :status final-result :successful))
+            (code (gethash status *exit-codes*)))
         (format t "~A~%" (generate-string result))
-        code))))
+        code)))))
 
 ;(loop for e being the external-symbols in (find-package 'alexandria) collect e)
 

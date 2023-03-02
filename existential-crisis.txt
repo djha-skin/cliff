@@ -1,0 +1,17 @@
+Well, the API is just different in this language.
+I can:
+- Continue with the original concept, but use all string keys. This has obvious
+  implications for how to use this from a typed language.
+- Convert to keyword keys myself. Might be nice since I'd like to change
+  everything to alists anyways. Easier to print, easier to work with. Hash
+  tables seem wasteful.
+- Come up with some method of using types in config. See, that might just work.
+  - the yaml library has a notion of converters for this.
+  - Then I could spread my concept past CL.
+  - But this concept is really only meant for CL.
+
+    Proposed:
+    - A map from root config keys to types. This is just a type map such as what I'd
+    need anyways. So I'd need a type map.
+    - only top level keys can be specified on CLI or environment.
+    - All CLI is yaml, except for strings, which are bare.

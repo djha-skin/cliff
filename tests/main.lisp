@@ -307,19 +307,19 @@
 
 (defun blank-command
   (options)
-  (format t "Options:~&  ~A~&" (alexandria:hash-table-alist options))
+  (format t "Options:~&  ~A~&" (cl-i:nested-to-alist options))
   (alexandria:alist-hash-table
     '((:status . :successful))))
 
 (defun error-command
   (options)
-  (format t "Options:~&  ~A~&" (alexandria:hash-table-alist options))
+  (format t "Options:~&  ~A~&" (cl-i:nested-to-alist options))
   (alexandria:alist-hash-table
     '((:status :general-error))))
 
 (defun io-error
   (options)
-  (format t "Options:~&  ~A~&" (alexandria:hash-table-alist options))
+  (format t "Options:~&  ~A~&" (cl-i:nested-to-alist options))
   (alexandria:alist-hash-table
     '((status :input-output-error))))
 
@@ -328,7 +328,7 @@
            "typical invocation"
            (ok
              (equal
-               (nested-to-alist
+               (cl-i:nested-to-alist
                  (cl-i:config-file-options
                    "hi"
                    (alexandria:alist-hash-table
@@ -338,7 +338,7 @@
                        )
                      :test #'equal)
                    (make-hash-table)))
-               (("gary" . 3)
+               '(("gary" . 3)
                 ("hairy" . 4)
                 ("dot")
                 ("chives"

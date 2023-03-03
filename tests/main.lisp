@@ -47,8 +47,6 @@
   (signals (cl-i:repeatedly-eq #'broken-dec 3))
   (ok (equal (cl-i:repeatedly-eq #'positive-dec 3) '(3 2 1 0)))))
 
-
-
 (deftest
   repeatedly
   (testing "repeatedly"
@@ -334,27 +332,25 @@
                    (alexandria:alist-hash-table
                      '(
                        ("HOME" . "/home/djha-skin")
-                       ("HI_ITEM_FOUR" . "square")
                        )
                      :test #'equal)
                    (make-hash-table)))
-               '(("gary" . 3)
-                ("hairy" . 4)
-                ("dot")
-                ("chives"
-                 ("spices" . "yes")
-                 ("love" . 15)
-                 ("sore_losers"
-                  ("cool" . "beans")
-                  ("state" . "virginia"))))))))
+               '((:GARY . 3)
+                 (:HAIRY . 4)
+                 (:DOT)
+                 (:CHIVES (:SPICES . T) (:LOVE . 15)
+                          (:SORE_LOSERS (:COOL . "beans")
+                                        (:STATE . "virginia"))))))))
 
-
++(or)
 (cl-i:execute-program
   "hi"
   (alexandria:alist-hash-table
     '(
       ("HOME" . "/home/djha-skin")
       ("HI_ITEM_FOUR" . "square")
+      ("HI_LIST_LOVERS" . "so,many,lovers")
+      ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
       )
     :test #'equal)
   `((nil . ,#'blank-command)
@@ -372,9 +368,6 @@
     "--set-gary" "four"
     "--disable-all-the-things"
     ))
-
-
-
 
 (deftest
   execute-program

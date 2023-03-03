@@ -4,7 +4,7 @@
   :license "MIT"
   :depends-on (
                "arrows"
-               "cl-yaml"
+               "com.inuoe.jzon"
                "dexador"
                "quri"
                "trivial-features"

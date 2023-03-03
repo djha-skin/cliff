@@ -46,8 +46,8 @@
       consume-arguments
       consume-environment
       config-file-options
-      execute-program))
-;;    (:local-nicknames (#:jzon #:com.inuoe.jzon)))
+      execute-program)
+    (:local-nicknames (#:jzon #:com.inuoe.jzon)))
 
 (in-package #:cl-i)
 
@@ -506,13 +506,10 @@
 
 (defun
   generate-string
-  (thing)
-  (json:with-emitter-to-string
-    (emit)
-    (json:emit-pretty-as-document
-      emit thing)))
+  (thing &optional &key pretty)
+  (jzon:stringify thing :pretty pretty))
 
-(defvar *keyword-case* (readtable-case *readtable*)()
+(defvar *keyword-case* (readtable-case *readtable*))
 
 
 #+(or)
@@ -577,7 +574,7 @@
   (jzon:parse thing
               :allow-comments t
               :allow-trailing-comma t
-              :key-fn string-keyword))
+              :key-fn #'string-keyword))
 
 (defun exit-error
   (status
@@ -642,7 +639,7 @@
            (when (not (gethash kopt opts))
              (setf (gethash kopt opts)
                    (apply #'make-hash-table hash-init-args)))
-           (setf (gethash k (gethash kopt opts)) v))
+           (setf (gethash (string-keyword k) (gethash kopt opts)) v))
          (error "not a k/v pair, check map sep pattern: ~a" value))))
     ((eql kact :json)
      (setf (gethash kopt opts)
@@ -652,7 +649,7 @@
 
 (defun
   consume-arguments
-  (args &optional &key hash-init-args (map-sep "="))
+  (args &optional &key initial-hash hash-init-args (map-sep "="))
   "
   Consume arguments, presumably collected from the command line.
   Assumes any aliases have already been expanded (that is,
@@ -685,7 +682,9 @@
   (let ((map-sep-pat (cl-ppcre:create-scanner map-sep))
         (consumable (copy-list args))
         (other-args nil)
-        (opts (apply #'make-hash-table hash-init-args)))
+        (opts (if (null initial-hash)
+                (apply #'make-hash-table hash-init-args)
+                initial-hash)))
     (loop while consumable do
           (let
             ((arg (first consumable))
@@ -738,7 +737,7 @@
     ((eql ktag :item)
      (ingest-option opts map-sep-pat hash-init-args :set kopt value))
     ((eql ktag :list)
-     (loop for piece in (cl-ppcre:split list-sep-pat value) do
+     (loop for piece in (reverse (cl-ppcre:split list-sep-pat value)) do
            (ingest-option opts map-sep-pat hash-init-args :add kopt piece)))
     ((eql ktag :table)
      (loop for piece in (cl-ppcre:split list-sep-pat value) do
@@ -967,8 +966,8 @@
     (when (uiop/filesystem:file-exists-p home-config-path)
       (update-hash result (parse-string (data-slurp home-config-path-file))))
     (when (uiop/filesystem:file-exists-p marked-config-path)
-      (update-hash result (parse-string (data-slurp marked-config-path)))))
-  result)
+      (update-hash result (parse-string (data-slurp marked-config-path))))
+  result))
 
 (define-condition invalid-subcommand (error)
   ((given-subcommand :initarg :given-subcommand
@@ -1034,12 +1033,6 @@
                     cli-aliases
                     str-hash-init-args)
              cli-arguments)))
-    (multiple-value-bind
-      (opts-from-args other-args)
-      (consume-arguments
-        effective-cli
-        :hash-init-args kw-hash-init-args
-        :map-sep map-sep)
       (let ((result
               (config-file-options
                 program-name
@@ -1055,34 +1048,23 @@
             :hash-init-args kw-hash-init-args
             :list-sep list-sep
             :map-sep map-sep))
-      (let ((final-result
-              (funcall
-                teardown
-                (funcall
-                  (or
-                    (cdr (assoc other-args functions))
-                    (error 'invalid-subcommand
-                           :given-subcommand other-args))
-                  (funcall setup result))))
-            (status (gethash :status final-result :successful))
-            (code (gethash status *exit-codes*)))
-        (format t "~A~%" (generate-string result))
+    (multiple-value-bind
+      (opts-from-args other-args)
+      (consume-arguments
+        effective-cli
+        :initial-hash result
+        :hash-init-args kw-hash-init-args
+        :map-sep map-sep)
+      (let* ((final-result
+               (funcall
+                 teardown
+                 (funcall
+                   (or
+                     (cdr (assoc other-args functions))
+                     (error 'invalid-subcommand
+                            :given-subcommand other-args))
+                   (funcall setup opts-from-args))))
+             (status (gethash :status final-result :successful))
+             (code (gethash status *exit-codes*)))
+        (format t "~A~%" (generate-string result :pretty t))
         code)))))
-
-;(loop for e being the external-symbols in (find-package 'alexandria) collect e)
-
-;; At this point in the program, I could have written a help page. But, given
-;; the open-world assumption of this library, and that some options will be
-;; useful for some subcommands but not others, it doesn't feel appropriate and
-;; more misleading than anything to provide a default help page. The caller
-;; should provide this.
-
-#+(or)
-(execute-program
-  "Halo"
-  nil
-  (make-hash-table)
-  (alexandria:alist-hash-table
-    '(("HOME" . "/home/djha-skin")))
-  (make-hash-table)
-  (make-hash-table))

@@ -16,7 +16,7 @@
     which is then passed to the
     subcommands.")
     (:import-from #:arrows)
-    (:import-from #:jzon)
+    (:import-from #:com.inuoe.jzon)
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
@@ -40,12 +40,14 @@
       find-file
       generate-string
       parse-string
+      string-uniform-case-p
       exit-error
       string-keyword
       consume-arguments
       consume-environment
       config-file-options
       execute-program))
+;;    (:local-nicknames (#:jzon #:com.inuoe.jzon)))
 
 (in-package #:cl-i)
 
@@ -505,23 +507,77 @@
 (defun
   generate-string
   (thing)
-  (yaml:with-emitter-to-string
+  (json:with-emitter-to-string
     (emit)
-    (yaml:emit-pretty-as-document
+    (json:emit-pretty-as-document
       emit thing)))
+
+(defvar *keyword-case* (readtable-case *readtable*)()
+
+
+#+(or)
+(do
+  (string-invertcase "")
+  (string-invertcase "A")
+  (string-invertcase "a")
+  (string-invertcase " ")
+  (string-invertcase "my heart's a stereo")
+  (string-invertcase "My heart's a stereo"))
+
+(defun string-invertcase
+  (str)
+  (let ((operable (remove-if-not #'both-case-p str)))
+    (if (= (length operable) 0)
+      str
+      (let* ((first-upper-case (upper-case-p (elt operable 0)))
+             (uneven-case
+               (when (> (length operable) 1)
+                      (reduce
+                        (lambda (c v)
+                          (or c v))
+                        (map
+                          'vector
+                          (lambda (x)
+                            (not (eql (upper-case-p x) first-upper-case)))
+                          (subseq operable 1))))))
+        (if uneven-case
+          str
+          (if first-upper-case
+            (string-downcase str)
+            (string-upcase str)))))))
+
+(defvar *keyword-case*
+  (readtable-case *readtable*))
 
 (defun
   string-keyword (str)
+  "
+  Creates a keyword from a string.
+
+  Creates a keyword following `(readtable-case *readtable*)` rules.
+
+  If this package's var `*keyword-case*` is `:upcase`, the string is upcased.
+  If it is `:downcase`, the string is downcased.
+  If it is `:preserve`, the string's case is preserved.
+  If it is `:invert`, the string's case is inverted as long as all caseable
+  characters are already of uniform case.
+
+  The variable `*keyword-case*` takes as its default the current value of
+  `(readtable-case *readtable*)` at package load time.
+  "
   (intern
-    (string-upcase
-      str) "KEYWORD"))
+    (cond ((eql *keyword-case* :upcase) (string-upcase str))
+          ((eql *keyword-case* :downcase) (string-downcase str))
+          ((eql *keyword-case* :preserve) str)
+          ((eql *keyword-case* :invert) (string-invertcase str))
+          (t (string-upcase str)))
+    "KEYWORD"))
 
 (defun parse-string (thing)
   (jzon:parse thing
               :allow-comments t
               :allow-trailing-comma t
-              :key-fn string-keyword
-  (yaml:parse thing))
+              :key-fn string-keyword))
 
 (defun exit-error
   (status
@@ -529,8 +585,6 @@
                     *standard-output*))
   (format destination "~a~%" msg)
   status)
-
-
 
 (defparameter
   +find-tag+
@@ -543,7 +597,7 @@
     :set
     :add
     :join
-    :yaml
+    :json
     )
   "actions that consume additional argument."
   )
@@ -590,7 +644,7 @@
                    (apply #'make-hash-table hash-init-args)))
            (setf (gethash k (gethash kopt opts)) v))
          (error "not a k/v pair, check map sep pattern: ~a" value))))
-    ((eql kact :yaml)
+    ((eql kact :json)
      (setf (gethash kopt opts)
            (parse-string value)))
     (:else
@@ -610,7 +664,7 @@
   the keyword named `argument` is associated with `t` or `nil` in the resulting
   hash-table, respectively.
 
-  If the argument is of the form `--(?P<act>set|add|join|yaml)-(?P<argument>[^
+  If the argument is of the form `--(?P<act>set|add|join|json)-(?P<argument>[^
                                                                               ]*)`, the next argument is consumed as the value.
 
   If the first part (`act`) is `set`, associate the value as a string to the
@@ -624,7 +678,7 @@
   the key with the val in a hash-table, and ensure that hash table is the value
   associated with the keyword `argument` in the resulting options hash-table.
 
-  If the `act` is `yaml`, parse the value string as if it were a yaml string.
+  If the `act` is `json`, parse the value string as if it were a json string.
   Set the value as found to the `argument` keyword in the resulting options
   hash-table.
   "
@@ -689,7 +743,7 @@
     ((eql ktag :table)
      (loop for piece in (cl-ppcre:split list-sep-pat value) do
            (ingest-option opts map-sep-pat hash-init-args :join kopt piece)))
-    ((eql ktag :yaml)
+    ((eql ktag :json)
      (ingest-option opts map-sep-pat hash-init-args ktag kopt value))
     (t
       (error "Unknown tag while parsing env vars for program `~A`: `~A`"
@@ -888,7 +942,7 @@
                :name
                "config"
                :type
-               "yaml")
+               "json")
              home-config-path))
          (marked-config-file-name
            (make-pathname
@@ -898,7 +952,7 @@
                "."
                program-name)
              :type
-             "yaml"))
+             "json"))
          (marked-config-path
            (if (null reference-file)
              (find-file

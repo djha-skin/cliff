@@ -313,16 +313,16 @@
   (options)
   (format t "Options:~&  ~A~&" (cl-i:nested-to-alist options))
   (alexandria:alist-hash-table
-    '((:status :general-error))))
+    '((:status . :general-error))))
 
 (defun io-error
   (options)
   (format t "Options:~&  ~A~&" (cl-i:nested-to-alist options))
   (alexandria:alist-hash-table
-    '((status :input-output-error))))
+    '((status . :input-output-error))))
 
 (deftest config-file-options
-         (testing 
+         (testing
            "typical invocation"
            (ok
              (equal
@@ -335,39 +335,13 @@
                        )
                      :test #'equal)
                    (make-hash-table)))
-               '((:GARY . 3)
+               '(
                  (:HAIRY . 4)
+                 (:GARY . 3)
                  (:DOT)
                  (:CHIVES (:SPICES . T) (:LOVE . 15)
                           (:SORE_LOSERS (:COOL . "beans")
                                         (:STATE . "virginia"))))))))
-
-+(or)
-(cl-i:execute-program
-  "hi"
-  (alexandria:alist-hash-table
-    '(
-      ("HOME" . "/home/djha-skin")
-      ("HI_ITEM_FOUR" . "square")
-      ("HI_LIST_LOVERS" . "so,many,lovers")
-      ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
-      )
-    :test #'equal)
-  `((nil . ,#'blank-command)
-    ("error" . ,#'error-command)
-    ("io-error" . ,#'io-error))
-  :cli-arguments
-  '(
-    "--join-deals" "a=jhyghyjub"
-    "--join-deals" "c=d"
-    "--add-barf" "1"
-    "--add-barf" "2"
-    "--add-barf" "3"
-    "--enable-gary"
-    "--reset-gary"
-    "--set-gary" "four"
-    "--disable-all-the-things"
-    ))
 
 (deftest
   execute-program
@@ -393,7 +367,76 @@
           (make-hash-table)
           (make-hash-table))
         'cl-i:invalid-subcommand)
-      "No test provided in hash table args")))
+      "No test provided in hash table args"))
+  (testing "typical invocation"
+           (let* ((teststr (make-string-output-stream))
+                  (code (cl-i:execute-program
+                          "hi"
+                          (alexandria:alist-hash-table
+                            '(
+                              ("HOME" . "/home/djha-skin")
+                              ("HI_ITEM_FOUR" . "square")
+                              ("HI_LIST_LOVERS" . "so,many,lovers")
+                              ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
+                              )
+                            :test #'equal)
+                          `((nil . ,#'blank-command)
+                            ("error" . ,#'error-command)
+                            ("io-error" . ,#'io-error))
+                          :cli-arguments
+                          '(
+                            "--join-deals" "a=jhyghyjub"
+                            "--join-deals" "c=d"
+                            "--add-barf" "1"
+                            "--add-barf" "2"
+                            "--add-barf" "3"
+                            "--enable-gary"
+                            "--reset-gary"
+                            "--set-gary" "four"
+                            "--disable-all-the-things"
+                            "io-error"
+                            )
+                          :out-stream
+                          teststr)))
+             (ok
+               (equal (get-output-stream-string teststr)
+                      (cl-i:join-strings
+                        '("{"
+                          "  \"barf\": ["
+                          "    \"3\","
+                          "    \"2\","
+                          "    \"1\""
+                          "  ],"
+                          "  \"lovers\": ["
+                          "    \"so\","
+                          "    \"many\","
+                          "    \"lovers\""
+                          "  ],"
+                          "  \"all-the-things\": false,"
+                          "  \"of\": {"
+                          "    \"contents\": \"lots\","
+                          "    \"content-people\": \"few\","
+                          "    \"content-makers\": \"too-many\""
+                          "  },"
+                          "  \"gary\": \"four\","
+                          "  \"four\": \"square\","
+                          "  \"hairy\": 4,"
+                          "  \"dot\": false,"
+                          "  \"chives\": {"
+                          "    \"spices\": true,"
+                          "    \"sore_losers\": {"
+                          "      \"cool\": \"beans\","
+                          "      \"state\": \"virginia\""
+                          "    },"
+                          "    \"love\": 15"
+                          "  },"
+                          "  \"deals\": {"
+                          "    \"c\": \"d\","
+                          "    \"a\": \"jhyghyjub\""
+                          "  }"
+                          "}"
+                          ""))))
+             (ok (equal (code 74))))))
 ;;  (testing
 ;;    "typical case"
 ;;    (ok (eql 0

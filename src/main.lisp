@@ -4,19 +4,18 @@
 (defpackage
   #:cl-i (:use #:cl)
   (:documentation
-    "package that has a function,
-    `start-cli`, which does the
-    following: - registers functions
-    mapped to specific subcommands -
-    reads configuration files in
-    standard locations - reads
-    environment variables according
-    to spefic rules and from these
-    rules constructs a hash table
-    which is then passed to the
-    subcommands.")
+    "
+    package that has a function, `execute-program`, which does the following:
+
+    - registers functions mapped to specific subcommands
+    - reads configuration files in standard locations
+    - reads environment variables
+
+    according to spefic rules and from these rules constructs a hash table
+    which is then passed to the subcommands.
+    ")
     (:import-from #:arrows)
-    (:import-from #:com.inuoe.jzon)
+    (:import-from #:com.inuoe.jzon stringify parse)
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
@@ -46,10 +45,75 @@
       consume-arguments
       consume-environment
       config-file-options
-      execute-program)
-    (:local-nicknames (#:jzon #:com.inuoe.jzon)))
-
+      execute-program))
 (in-package #:cl-i)
+
+(defvar *symbol-case*
+  (readtable-case *readtable*))
+
+(defun
+  prep-symbol-string (str)
+  (cond ((eql *symbol-case* :upcase) (string-upcase str))
+        ((eql *symbol-case* :downcase) (string-downcase str))
+        ((eql *symbol-case* :preserve) str)
+        ((eql *symbol-case* :invert) (string-invertcase str))
+        (t (string-upcase str))))
+
+(defun
+  string-keyword (str)
+  "
+  Creates a keyword from a string.
+
+  Creates a keyword following `(readtable-case *readtable*)` rules.
+
+  If this package's var `*symbol-case*` is `:upcase`, the string is upcased.
+  If it is `:downcase`, the string is downcased.
+  If it is `:preserve`, the string's case is preserved.
+  If it is `:invert`, the string's case is inverted as long as all caseable
+  characters are already of uniform case.
+
+  The variable `*symbol-case*` takes as its default the current value of
+  `(readtable-case *readtable*)` at package load time.
+  "
+  (intern
+    (prep-symbol-string str)
+    "KEYWORD"))
+
+(defun
+  string-uninterned-symbol (str)
+  "
+  Creates an uninterned symbol from a string.
+
+  Creates an uninterned symbol following `(readtable-case *readtable*)` rules.
+
+  If this package's var `*symbol-case*` is `:upcase`, the string is upcased.
+  If it is `:downcase`, the string is downcased.
+  If it is `:preserve`, the string's case is preserved.
+  If it is `:invert`, the string's case is inverted as long as all caseable
+  characters are already of uniform case.
+
+  The variable `*symbol-case*` takes as its default the current value of
+  `(readtable-case *readtable*)` at package load time.
+  "
+  (make-symbol
+    (prep-symbol-string str)))
+
+(defun package-mangle (pkg topkg)
+  "Name-mangle a package name.
+  This is in place of pacakge-local nicknames, which I couldn't get to work
+  on my raspberry pi."
+  (let ((pkg (find-package pkg)))
+    (rename-package
+      pkg
+      (package-name pkg)
+      ;; For some reason, package local nicknames aren't supported on my
+      ;; raspberry pi so I've decided to use name mangling. I'm cool with it.
+      ;; Source for the inspiration: https://stackoverflow.com/a/28907543/850326
+      (adjoin (string-uninterned-symbol
+                (format nil "cl-i/~A" topkg))
+                (package-nicknames pkg)
+                :test
+                #'string=))))
 
 (defparameter *exit-codes*
   ;; taken from /usr/include/sysexit.h
@@ -71,7 +135,6 @@
       (:remote-error-in-protocol . 76)
       (:permission-denied . 77)
       (:configuration-error . 78))))
-
 (defmacro
   dbg
   (body
@@ -507,7 +570,7 @@
 (defun
   generate-string
   (thing &optional &key pretty)
-  (jzon:stringify thing :pretty pretty))
+  (stringify thing :pretty pretty))
 
 (defvar *keyword-case* (readtable-case *readtable*))
 
@@ -543,35 +606,9 @@
             (string-downcase str)
             (string-upcase str)))))))
 
-(defvar *keyword-case*
-  (readtable-case *readtable*))
-
-(defun
-  string-keyword (str)
-  "
-  Creates a keyword from a string.
-
-  Creates a keyword following `(readtable-case *readtable*)` rules.
-
-  If this package's var `*keyword-case*` is `:upcase`, the string is upcased.
-  If it is `:downcase`, the string is downcased.
-  If it is `:preserve`, the string's case is preserved.
-  If it is `:invert`, the string's case is inverted as long as all caseable
-  characters are already of uniform case.
-
-  The variable `*keyword-case*` takes as its default the current value of
-  `(readtable-case *readtable*)` at package load time.
-  "
-  (intern
-    (cond ((eql *keyword-case* :upcase) (string-upcase str))
-          ((eql *keyword-case* :downcase) (string-downcase str))
-          ((eql *keyword-case* :preserve) str)
-          ((eql *keyword-case* :invert) (string-invertcase str))
-          (t (string-upcase str)))
-    "KEYWORD"))
 
 (defun parse-string (thing)
-  (jzon:parse thing
+  (parse thing
               :allow-comments t
               :allow-trailing-comma t
               :key-fn #'string-keyword))
@@ -998,7 +1035,8 @@
     (str-hash-init-args
       `(:test ,#'equal))
     kw-hash-init-args
-    )
+    (out-stream
+                    *standard-output*))
   (declare (type string program-name)
            (type hash-table environment-variables)
            (type list functions)
@@ -1013,7 +1051,8 @@
            (type string list-sep)
            (type string map-sep)
            (type function setup)
-           (type function teardown))
+           (type function teardown)
+           (type stream out-stream))
 
   (let ((effective-defaults (if (null defaults)
                                (apply #'make-hash-table kw-hash-init-args)
@@ -1066,5 +1105,5 @@
                    (funcall setup opts-from-args))))
              (status (gethash :status final-result :successful))
              (code (gethash status *exit-codes*)))
-        (format t "~A~%" (generate-string result :pretty t))
+        (format out-stream "~A~%" (generate-string result :pretty t))
         code)))))

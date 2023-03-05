@@ -1,4 +1,7 @@
+#+(or)
+(declaim (optimize (speed 0) (space 0) (debug 3)))
 (in-package #:cl-user)
+
 (defpackage #:cl-i/tests
   (:use #:cl
         #:rove)
@@ -50,7 +53,8 @@
 (deftest
   repeatedly
   (testing "repeatedly"
-  (signals (cl-i:repeatedly
+  (signals 
+    (cl-i:repeatedly
                           #'positive-dec
                           3
                           (lambda (thing) (< thing 0))))
@@ -93,8 +97,9 @@
                    (setf (gethash 'c a) '(1 2 3 4 5))
                    (cl-i:nested-to-alist a))
                  '((A)
-                  (B (:ORIGIN . "thither")
-                     (:DESTINATION . "yon")) (C 1 2 3 4 5))))))
+                   (B 
+                     (:DESTINATION . "yon")
+                     (:ORIGIN . "thither")) (C 1 2 3 4 5))))))
 
 (deftest
   basic-find-file

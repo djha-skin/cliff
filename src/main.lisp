@@ -203,8 +203,10 @@
           func next eeq (- repeats 1))))))
 
 (defun repeatedly
-  (func &optional (check-p (lambda (arg) (equal arg nil)))
-        (repeats 256))
+    (func
+      arg
+      &optional (check-p (lambda (arg) (equal arg nil)))
+      (repeats 256))
   "
   list consisting of calls to func on arg, then calling func on that result,
   etc.
@@ -212,25 +214,25 @@
   "
   (declare (type integer repeats))
   (labels
-    ((helper
-       (arg
-         on)
-       (when
-         (<= on 0)
-         (error
-           (concatenate
-             'string
-             "ran ~a times without terminating.~%"
-             "  final iteration arg: ~a~%")
-           repeats
-           arg))
-       (if (funcall check-p arg)
-         nil
-         (cons
-           arg (helper
-                 (funcall func arg)
-                 (- on 1))))
-       (helper arg repeats)))))
+      ((helper
+           (arg
+             on)
+         (when
+             (<= on 0)
+           (error
+             (concatenate
+               'string
+               "ran ~a times without terminating.~%"
+               "  final iteration arg: ~a~%")
+             repeats
+             arg))
+         (if  (funcall check-p arg)
+             nil
+             (cons
+               arg (helper
+                     (funcall func arg)
+                     (- on 1))))))
+    (helper arg repeats)))
 
 (defun nested-to-alist
   (value)
@@ -242,9 +244,12 @@
     ((listp value)
      (map 'list #'nested-to-alist value))
     ((hash-table-p value)
-     (loop for k being the hash-key of value
+     (let ((coll
+       (loop for k being the hash-key of value
            using (hash-value v)
-           collect (cons k (nested-to-alist v))))
+           collect (cons k (nested-to-alist v)))))
+       (stable-sort coll #'string< :key (lambda (thing)
+                                          (format nil "~A" (car thing))))))
     (t
       value)))
 
@@ -646,10 +651,28 @@
   "actions that consume no additional arguments."
   )
 
+(define-condition unknown-directive (error)
+  ((context :initarg :context
+                     :initform (error "Please specify context.")
+                     :reader context)
+   (directive :initarg :directive
+              :initform (error "Please specify directive.")
+              :reader directive)
+   (option :initarg :option
+           :initform (error "Please specify an option.")
+           :reader option))
+  (:documentation
+    "The directive given was not valid.")
+  (:report (lambda (this strm)
+             (format strm
+                     "Directive `~A` for option `~A` invalid in ~A.~&"
+                     (directive this)
+                     (option this)
+                     (context this)))))
 
 (defun ingest-option
   (opts
-    map-sep-pat hash-init-args kact kopt &optional value)
+    map-sep-pat hash-init-args kact kopt context &optional value)
   (cond
     ((eql kact :enable)
      (setf (gethash kopt opts) t))
@@ -688,9 +711,9 @@
   consume-arguments
   (args &optional &key initial-hash hash-init-args (map-sep "="))
   "
-  Consume arguments, presumably collected from the command line.
-  Assumes any aliases have already been expanded (that is,
-                                                       it uses the arguments as-is, with no transformation).
+  Consume arguments, presumably collected from the command line. Assumes any
+  aliases have already been expanded (that is, it uses the arguments as-is,
+  with no transformation).
 
   Assumes an open-world. For each argument, it examines its form.
 
@@ -699,7 +722,7 @@
   hash-table, respectively.
 
   If the argument is of the form `--(?P<act>set|add|join|json)-(?P<argument>[^
-                                                                              ]*)`, the next argument is consumed as the value.
+  ]*)`, the next argument is consumed as the value.
 
   If the first part (`act`) is `set`, associate the value as a string to the
   keyword `argument` in the resulting hash table.
@@ -708,9 +731,10 @@
   is associated with the `argument` keyword in the resulting list.
 
   If the `act` is `join`, split the value using an equals sign (or something
-                                                                   else as specified by `map-sep-pat`) into two parts, a key and a val. Associate
-  the key with the val in a hash-table, and ensure that hash table is the value
-  associated with the keyword `argument` in the resulting options hash-table.
+  else as specified by `map-sep-pat`) into two parts, a key and a val.
+  Associate the key with the val in a hash-table, and ensure that hash table is
+  the value associated with the keyword `argument` in the resulting options
+  hash-table.
 
   If the `act` is `json`, parse the value string as if it were a json string.
   Set the value as found to the `argument` keyword in the resulting options
@@ -721,11 +745,12 @@
         (other-args nil)
         (opts (if (null initial-hash)
                 (apply #'make-hash-table hash-init-args)
-                initial-hash)))
+                initial-hash))
+        (context "CLI arguments"))
     (loop while consumable do
           (let
-            ((arg (first consumable))
-             (rargs (rest consumable)))
+            ((arg (dbg (first consumable)))
+             (rargs (dbg (rest consumable))))
             (or
               (cl-ppcre:register-groups-bind
                 ((#'string-keyword
@@ -737,7 +762,7 @@
                 (cond
                   ((some (lambda (x) (eql kact x)) +single-arg-actions+)
                    (ingest-option
-                     opts map-sep-pat hash-init-args kact kopt)
+                     opts map-sep-pat hash-init-args kact kopt context)
                    (setf consumable rargs))
                   ((some (lambda (x) (eql kact x)) +multiple-arg-actions+)
                    (when (not rargs)
@@ -747,8 +772,13 @@
                            (first rargs))
                          (rrargs (rest rargs)))
                      (ingest-option
-                       opts map-sep-pat hash-init-args kact kopt value)
-                     (setf consumable rrargs))))
+                       opts map-sep-pat hash-init-args kact kopt context value)
+                     (setf consumable rrargs)))
+                  (:else
+                   (error 'unknown-directive
+                          :context context
+                          :directive kact
+                          :option kopt)))
                 t)
               (progn
                 (push
@@ -756,35 +786,55 @@
                 (setf
                   consumable rargs)))))
     (values
-      opts other-args)))
+      opts other-args))))
 
 (defun
   ingest-var
   (program-name
     opts
-    map-sep-pat list-sep-pat hash-init-args ktag kopt value)
+    map-sep-pat list-sep-pat hash-init-args ktag kopt context value)
   (cond
     ((eql ktag :flag)
      (if (some
            (lambda (v)
              (eql value v))
            '("0" "false" "False" "FALSE" "no" "NO" "No"))
-       (ingest-option opts map-sep-pat hash-init-args :disable kopt)
-       (ingest-option opts map-sep-pat hash-init-args :enable kopt)))
+       (ingest-option opts map-sep-pat hash-init-args :disable kopt context)
+       (ingest-option opts map-sep-pat hash-init-args :enable kopt context)))
     ((eql ktag :item)
-     (ingest-option opts map-sep-pat hash-init-args :set kopt value))
+     (ingest-option opts map-sep-pat hash-init-args :set kopt context value))
     ((eql ktag :list)
      (loop for piece in (reverse (cl-ppcre:split list-sep-pat value)) do
-           (ingest-option opts map-sep-pat hash-init-args :add kopt piece)))
+           (ingest-option
+             opt
+             map-sep-pat
+             hash-init-args
+             :add
+             kopt
+             context
+             piece)))
     ((eql ktag :table)
      (loop for piece in (cl-ppcre:split list-sep-pat value) do
-           (ingest-option opts map-sep-pat hash-init-args :join kopt piece)))
+           (ingest-option opts
+                          map-sep-pat
+                          hash-init-args
+                          :join
+                          kopt
+                          context
+                          piece)))
     ((eql ktag :json)
-     (ingest-option opts map-sep-pat hash-init-args ktag kopt value))
+     (ingest-option opts
+                    map-sep-pat
+                    hash-init-args
+                    ktag
+                    kopt
+                    context
+                    value))
     (t
-      (error "Unknown tag while parsing env vars for program `~A`: `~A`"
-             program-name
-             ktag))))
+     (error 'unknown-directive
+            :context context
+            :option kopt
+            :directive ktag))))
 
 (defun expand-cli-aliases (aliases args)
   "
@@ -924,8 +974,8 @@
           hash-init-args
           ktag
           kopt
-          value)
-        ))
+          "environment"
+          value)))
     result))
 
 

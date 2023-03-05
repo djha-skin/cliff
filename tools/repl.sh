@@ -1,8 +1,10 @@
 #/bin/sh
-#export RLWRAP_HOME=${PWD}/.repl
+export RLWRAP_HOME=${PWD}/.repl
 export C_INCLUDE_PATH=/usr/include
 export LIBRARY_PATH=/usr/lib64:/usr/lib
 #rlwrap \
+#    --ansi-colour-aware \
+#    --no-children \
 #    --forget-matching '[^)] *$' \
 #    --multi-line='  ' \
 #    --break-chars "(){}[],'#\";|\\" \

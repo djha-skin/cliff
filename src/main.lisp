@@ -390,8 +390,8 @@
   - if it is of the form `http(s)://tok@url`,
   a bearer token is used;
   - if it is of the form `file://loc`, it is loaded as a normal file;
-  - if it is of the form `-`, the data is loaded from standard input;
-  - otherwise, the data is loaded from the string or pathname as if it named
+  - if it is of the form `-`, the json is loaded from standard input;
+  - otherwise, the json is loaded from the string or pathname as if it named
   a file.
   "
   (declare (type (or pathname string) resource))
@@ -505,7 +505,7 @@
                 "/")))
 
 #+(or)
-(os-specific-config-dir "halo" (lambda (x &optional y)
+(os-specific-config-dir "halo" (lambda (x &odptional y)
                                  (or (uiop/os:getenv x) y)))
 (defun os-specific-config-dir (program-name getenv)
   "
@@ -637,6 +637,7 @@
     :add
     :join
     :json
+    :file
     )
   "actions that consume additional argument."
   )
@@ -704,6 +705,9 @@
     ((eql kact :json)
      (setf (gethash kopt opts)
            (parse-string value)))
+    ((eql kact :file)
+     (setf (gethash kopt opts)
+           (parse-string (data-slurp value))))
     (:else
       (error "uknown action ~a" kact))))
 
@@ -749,8 +753,8 @@
         (context "CLI arguments"))
     (loop while consumable do
           (let
-            ((arg (dbg (first consumable)))
-             (rargs (dbg (rest consumable))))
+            ((arg (first consumable))
+             (rargs (rest consumable)))
             (or
               (cl-ppcre:register-groups-bind
                 ((#'string-keyword
@@ -786,7 +790,8 @@
                 (setf
                   consumable rargs)))))
     (values
-      opts other-args))))
+      opts other-args)))
+
 
 (defun
   ingest-var
@@ -806,7 +811,7 @@
     ((eql ktag :list)
      (loop for piece in (reverse (cl-ppcre:split list-sep-pat value)) do
            (ingest-option
-             opt
+             opts
              map-sep-pat
              hash-init-args
              :add
@@ -941,7 +946,7 @@
                 "TABLE"
                 "ITEM"
                 "FLAG"
-                "YAML"))
+                "JSON"))
             "_"
             (:register
               (:greedy-repetition

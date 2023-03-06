@@ -218,7 +218,7 @@
   consume-arguments
   (testing
     "other-args"
-    (multiple-value-bind (opts other-args)
+    (signals 
        (cl-i:consume-arguments
         '("--enable-dark-mode"
           "--reset-dark-mode"
@@ -234,25 +234,34 @@
           "start=great"
           "--yaml-fight"
           "15.0"
-          "--file-stride"
-          "tests/.cl-i.yaml"
-          )
-       )
+          "--yaml-stride"
+          "tests/.cl-i.yaml")))
+    (multiple-value-bind (opts other-args)
+        (cl-i:consume-arguments
+          '("--enable-dark-mode"
+            "--reset-dark-mode"
+            "--add-dark-mode"
+            "crying"
+            "--add-dark-mode"
+            "firm"
+            "well-done"
+            "medium-well"
+            "--join-my"
+            "pride=hurt"
+            "--join-my"
+            "start=great"
+            "--json-fight"
+            "15.0"
+            "--file-stride"
+            "tests/.cl-i.json"))
       (ok (equal
-            (cl-i:join-lines
-              "---"
-              "DARK-MODE:"
-              "- firm"
-              "- crying"
-              "MY:"
-              "  pride: hurt"
-              "  start: great"
-              "FIGHT: 15.0"
-              "STRIDE:"
-              "  hoo: haa"
-              "...")
-            (cl-i:generate-string
-              opts)))
+            (cl-i:nested-to-alist opts)
+            '((:DARK-MODE "firm" "crying")
+             (:FIGHT . 15.0d0)
+             (:MY (:PRIDE . "hurt")
+                  (:START . "great"))
+             (:STRIDE (:HOO . "haa")))
+            ))
       (ok (equal
             '("medium-well" "well-done")
             other-args))))
@@ -262,51 +271,34 @@
       (equal (cl-i:generate-string
                (cl-i:consume-arguments
                  '()))
-             (cl-i:join-lines
-               "--- {}"
-               "..."))))
+             "{}")))
   (testing
     "basic"
     (ok
-      (equal (cl-i:generate-string
+      (equal (cl-i:nested-to-alist
                (cl-i:consume-arguments
-                 '("--enable-foo" "--disable-bar" "baz" "--yaml-force" "15" "--set-quux" "farquad")))
-             (cl-i:join-lines
-               "---"
-               "FOO: true"
-               "BAR: false"
-               "QUUX: farquad"
-               "FORCE: 15"
-               "...")))))
+                 '("--enable-foo" "--disable-bar" "baz" "--json-force" "15" "--set-quux" "farquad")))
+             '((:BAR) (:FOO . T) (:FORCE . 15) (:QUUX . "farquad"))))))
 (deftest
   consume-environment
   (testing
     "Basic"
     (ok
       (equal
-        (cl-i:join-lines
-          "---"
-          "MAPLE:"
-          "- 5"
-          "- 4"
-          "- 3"
-          "- 2"
-          "- 1"
-          "FINES:"
-          "  key: 155.2"
-          "FORESIGHT: true"
-          "FORKS: whenceandwhither"
-          "..."
-          )
-  (cl-i:generate-string (cl-i:consume-environment
-    "hello"
-    (alexandria:alist-hash-table
-      '(("HELLO_LIST_MAPLE" . "1,2,3,4,5")
-        ("HELLO_FANGLE_DOG" . "12345")
-        ("VARS" . "xtreem")
-        ("HELLO_YAML_FINES" . "{ 'key': 155.2 }")
-        ("HELLO_FLAG_FORESIGHT" . "0")
-        ("HELLO_ITEM_FORKS" . "whenceandwhither")))))))))
+        '((:FINES (:KEY . 155.5d0))
+          (:FORESIGHT . T)
+          (:FORKS . "whenceandwhither")
+          (:MAPLE "1" "2" "3" "4" "5"))
+        (cl-i:nested-to-alist
+          (cl-i:consume-environment
+            "hello"
+            (alexandria:alist-hash-table
+              '(("HELLO_LIST_MAPLE" . "1,2,3,4,5")
+                ("HELLO_FANGLE_DOG" . "12345")
+                ("VARS" . "xtreem")
+                ("HELLO_JSON_FINES" . "{ \"key\": 155.5 }")
+                ("HELLO_FLAG_FORESIGHT" . "0")
+                ("HELLO_ITEM_FORKS" . "whenceandwhither")))))))))
 
 (defun blank-command
   (options)
@@ -340,13 +332,15 @@
                        )
                      :test #'equal)
                    (make-hash-table)))
-               '(
-                 (:HAIRY . 4)
-                 (:GARY . 3)
+               '((:CHIVES 
+                  (:LOVE . 15)
+                  (:SORE_LOSERS
+                   (:COOL . "beans")
+                   (:STATE . "virginia"))
+                  (:SPICES . T))
                  (:DOT)
-                 (:CHIVES (:SPICES . T) (:LOVE . 15)
-                          (:SORE_LOSERS (:COOL . "beans")
-                                        (:STATE . "virginia"))))))))
+                 (:GARY . 3)
+                 (:HAIRY . 4))))))
 
 (deftest
   execute-program
@@ -356,7 +350,7 @@
       (signals
         (cl-i:execute-program
           "Halo"
-          nil
+          (make-hash-table)
           nil)
         'cl-i:necessary-env-var-absent)
       "Necessary environment variables absent")
@@ -364,13 +358,10 @@
       (signals
         (cl-i:execute-program
           "Halo"
-          nil
-          (make-hash-table)
           (alexandria:alist-hash-table
             '(("HOME" . "/home/djha-skin"))
             :test #'equal)
-          (make-hash-table)
-          (make-hash-table))
+          nil)
         'cl-i:invalid-subcommand)
       "No test provided in hash table args"))
   (testing "typical invocation"

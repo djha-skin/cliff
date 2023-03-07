@@ -22,7 +22,7 @@
       :name
       ".cl-i"
       :type
-      "yaml")
+      "json")
     (cl-i:os-specific-home #'uiop/os:getenv)))
 
 (defvar *tests-dir*
@@ -125,41 +125,56 @@
 
 (deftest
   dbg
-  (testing "basic dbg"
-  (ok
-    (equal
-      (with-output-to-string (str)
-        (cl-i:dbg (+ 3 3) str))
-      (format
-        nil
-        (concatenate
-          'string
-          "debug: type of `(+ 3 3)` = `(INTEGER 0 4611686018427387903)`~%"
-          "debug: eval of `(+ 3 3)` = `6`~%"))))))
+  (testing
+    "basic dbg"
+      (ok
+    (let ((tested-string
+            (with-output-to-string (str)
+              (cl-i:dbg (+ 3 3) str))))
+        (or
+          ;; ecl
+          (equal
+            tested-string  
+            (format
+              nil
+                (concatenate
+                  'string
+                  "debug: type of `(+ 3 3)` = `(INTEGER 6 6)`~%"
+                  "debug: eval of `(+ 3 3)` = `6`~%")))
+          ;; sbcl
+          (equal
+            tested-string
+            (format
+              nil
+              (concatenate
+                'string
+                "debug: type of `(+ 3 3)` = `(INTEGER 6 6) 4611686018427387903)`~%"
+                "debug: eval of `(+ 3 3)` = `6`~%"))))))))
 
 (deftest
   slurp-stream
   (testing "basic slurp-stream"
-  (ok
-    (equal
-      (with-open-file
-        (f
-          (merge-pathnames
-            #P".cl-i.yaml"
-            *tests-dir*)
-          :direction :input
-          :external-format :utf-8)
-        (cl-i:slurp-stream f))
-      "hoo: haa"))))
+           (ok
+             (equal
+               (with-open-file
+                   (f
+                     (merge-pathnames
+                       #P".cl-i.json"
+                       *tests-dir*)
+                     :direction :input
+                     :external-format :utf-8)
+                 (cl-i:slurp-stream f))
+               "{ \"hoo\": \"haa\"}"))))
+
 
 (deftest
   base-slurp
   (testing "base-slurp"
   (ok
     (equal
-    (cl-i::base-slurp
-      *test-config-file*)
-  "hoo: haa"))))
+      (cl-i::base-slurp
+        *test-config-file*)
+      "{ \"hoo\": \"haa\"}"))))
 
 (deftest
   slurp
@@ -169,7 +184,7 @@
         (equal
           (cl-i:data-slurp
             *test-config-file*)
-          "hoo: haa")))
+      "{ \"hoo\": \"haa\"}")))
     (testing
       "file URL"
       (ok
@@ -178,7 +193,7 @@
             (concatenate 'string
                          "file://"
                          (namestring *test-config-file*)))
-          "hoo: haa")))
+          "{ \"hoo\": \"haa\"}")))
   (testing
     "noauth"
     (ok
@@ -332,7 +347,7 @@
                        )
                      :test #'equal)
                    (make-hash-table)))
-               '((:CHIVES 
+               '((:CHIVES
                   (:LOVE . 15)
                   (:SORE_LOSERS
                    (:COOL . "beans")
@@ -358,6 +373,7 @@
       (signals
         (cl-i:execute-program
           "Halo"
+
           (alexandria:alist-hash-table
             '(("HOME" . "/home/djha-skin"))
             :test #'equal)
@@ -377,8 +393,8 @@
                               )
                             :test #'equal)
                           `((nil . ,#'blank-command)
-                            ("error" . ,#'error-command)
-                            ("io-error" . ,#'io-error))
+                            (("error") . ,#'error-command)
+                            (("io-error") . ,#'io-error))
                           :cli-arguments
                           '(
                             "--join-deals" "a=jhyghyjub"
@@ -391,7 +407,7 @@
                             "--set-gary" "four"
                             "--disable-all-the-things"
                             "io-error"
-                            )
+                            ))
                           :out-stream
                           teststr)))
              (ok

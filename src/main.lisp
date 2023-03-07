@@ -1154,7 +1154,8 @@
                  teardown
                  (funcall
                    (or
-                     (cdr (assoc other-args functions))
+                     (cdr (assoc other-args functions
+                                      :test #'equal))
                      (error 'invalid-subcommand
                             :given-subcommand other-args))
                    (funcall setup opts-from-args))))

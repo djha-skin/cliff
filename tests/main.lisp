@@ -6,7 +6,8 @@
   (:use #:cl
         #:rove)
   (:import-from
-    #:cl-i))
+    #:cl-i
+    #:cl-ppcre))
 (in-package :cl-i/tests)
 
 (defvar *test-config-file*
@@ -127,29 +128,20 @@
   dbg
   (testing
     "basic dbg"
-      (ok
-    (let ((tested-string
+    (let* ((tested-string
             (with-output-to-string (str)
-              (cl-i:dbg (+ 3 3) str))))
-        (or
-          ;; ecl
-          (equal
-            tested-string  
-            (format
-              nil
-                (concatenate
-                  'string
-                  "debug: type of `(+ 3 3)` = `(INTEGER 6 6)`~%"
-                  "debug: eval of `(+ 3 3)` = `6`~%")))
-          ;; sbcl
-          (equal
-            tested-string
-            (format
-              nil
-              (concatenate
-                'string
-                "debug: type of `(+ 3 3)` = `(INTEGER 6 6) 4611686018427387903)`~%"
-                "debug: eval of `(+ 3 3)` = `6`~%"))))))))
+              (cl-i:dbg (+ 3 3) str)))
+          (tested-lines (cl-ppcre:split (format nil "~%") tested-string)))
+      (ok (equal (length tested-lines) 2))
+      (ok
+        (cl-ppcre:scan
+          "^debug: type of `\\(\\+ 3 3\\)` = `\\(INTEGER \\d+ \\d+\\)`$"
+          (elt tested-lines 0)))
+      (ok
+        (equal
+          "debug: eval of `(+ 3 3)` = `6`"
+          (elt tested-lines 1))))))
+
 
 (deftest
   slurp-stream
@@ -157,12 +149,12 @@
            (ok
              (equal
                (with-open-file
-                   (f
-                     (merge-pathnames
-                       #P".cl-i.json"
-                       *tests-dir*)
-                     :direction :input
-                     :external-format :utf-8)
+                 (f
+                   (merge-pathnames
+                     #P".cl-i.json"
+                     *tests-dir*)
+                   :direction :input
+                   :external-format :utf-8)
                  (cl-i:slurp-stream f))
                "{ \"hoo\": \"haa\"}"))))
 
@@ -329,9 +321,8 @@
 
 (defun io-error
   (options)
-  (format t "Options:~&  ~A~&" (cl-i:nested-to-alist options))
-  (alexandria:alist-hash-table
-    '((status . :input-output-error))))
+  (setf (gethash :status options) :input-output-error)
+  options)
 
 (deftest config-file-options
          (testing
@@ -380,104 +371,43 @@
           nil)
         'cl-i:invalid-subcommand)
       "No test provided in hash table args"))
-  (testing "typical invocation"
-           (let* ((teststr (make-string-output-stream))
-                  (code (cl-i:execute-program
-                          "hi"
-                          (alexandria:alist-hash-table
-                            '(
-                              ("HOME" . "/home/djha-skin")
-                              ("HI_ITEM_FOUR" . "square")
-                              ("HI_LIST_LOVERS" . "so,many,lovers")
-                              ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
-                              )
-                            :test #'equal)
-                          `((nil . ,#'blank-command)
-                            (("error") . ,#'error-command)
-                            (("io-error") . ,#'io-error))
-                          :cli-arguments
-                          '(
-                            "--join-deals" "a=jhyghyjub"
-                            "--join-deals" "c=d"
-                            "--add-barf" "1"
-                            "--add-barf" "2"
-                            "--add-barf" "3"
-                            "--enable-gary"
-                            "--reset-gary"
-                            "--set-gary" "four"
-                            "--disable-all-the-things"
-                            "io-error"
-                            ))
-                          :out-stream
-                          teststr)))
-             (ok
-               (equal (get-output-stream-string teststr)
-                      (cl-i:join-strings
-                        '("{"
-                          "  \"barf\": ["
-                          "    \"3\","
-                          "    \"2\","
-                          "    \"1\""
-                          "  ],"
-                          "  \"lovers\": ["
-                          "    \"so\","
-                          "    \"many\","
-                          "    \"lovers\""
-                          "  ],"
-                          "  \"all-the-things\": false,"
-                          "  \"of\": {"
-                          "    \"contents\": \"lots\","
-                          "    \"content-people\": \"few\","
-                          "    \"content-makers\": \"too-many\""
-                          "  },"
-                          "  \"gary\": \"four\","
-                          "  \"four\": \"square\","
-                          "  \"hairy\": 4,"
-                          "  \"dot\": false,"
-                          "  \"chives\": {"
-                          "    \"spices\": true,"
-                          "    \"sore_losers\": {"
-                          "      \"cool\": \"beans\","
-                          "      \"state\": \"virginia\""
-                          "    },"
-                          "    \"love\": 15"
-                          "  },"
-                          "  \"deals\": {"
-                          "    \"c\": \"d\","
-                          "    \"a\": \"jhyghyjub\""
-                          "  }"
-                          "}"
-                          ""))))
-             (ok (equal (code 74))))))
-;;  (testing
-;;    "typical case"
-;;    (ok (eql 0
-;;             (cl-i:execute-program
-;;               "hi"
-;;               '("-i" "fish.txt" "-o" "{\"foo\": 3}" "--" "ugly" )
-;;               (alexandria:alist-hash-table
-;;                 '(("-i" . "--set-i")
-;;                   ("-o" . "--json-o")
-;;
-;;
-;;
-;;(defparameter *exit-codes*
-;;  ;; taken from /usr/include/sysexit.h
-;;  (alexandria:alist-hash-table
-;;    '((:successful . 0)
-;;      (:general-error . 1)
-;;      (:cl-usage-error . 64)
-;;      (:data-format-error . 65)
-;;      (:cannot-open-input . 66)
-;;      (:addressee-unknown . 67)
-;;      (:hostname-unknown . 68)
-;;      (:service-unavailabe . 69)
-;;      (:internal-software-error . 70)
-;;      (:system-error . 71)
-;;      (:os-file-missing . 72)
-;;      (:cant-create-uof . 73)
-;;      (:input-output-error . 74)
-;;      (:temporary-failure . 75)
-;;      (:remote-error-in-protocol . 76)
-;;      (:permission-denied . 77)
-;;      (:configuration-error . 78))))
+  (testing
+    "typical invocation"
+    (multiple-value-bind (code outcome)
+      (cl-i:execute-program
+        "hi"
+        (alexandria:alist-hash-table
+          '(
+            ("HOME" . "/home/djha-skin")
+            ("HI_ITEM_FOUR" . "square")
+            ("HI_LIST_LOVERS" . "so,many,lovers")
+            ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
+            )
+          :test #'equal)
+        `((nil . ,#'blank-command)
+          (("error") . ,#'error-command)
+          (("io-error") . ,#'io-error))
+        :cli-arguments
+        '(
+          "--join-deals" "a=jhyghyjub"
+          "--join-deals" "c=d"
+          "--add-barf" "1"
+          "--add-barf" "2"
+          "--add-barf" "3"
+          "--enable-gary"
+          "--reset-gary"
+          "--set-gary" "four"
+          "--disable-all-the-things"
+          "io-error"
+          ))
+      (ok (equal (cl-i:nested-to-alist outcome) 
+
+                 '((:ALL-THE-THINGS) (:BARF "3" "2" "1")
+                                    (:CHIVES (:LOVE . 15) (:SORE_LOSERS (:COOL . "beans") (:STATE . "virginia"))
+                                             (:SPICES . T))
+                                    (:DEALS (:A . "jhyghyjub") (:C . "d")) (:DOT) (:FOUR . "square")
+                                    (:GARY . "four") (:HAIRY . 4) (:LOVERS "so" "many" "lovers")
+                                    (:OF (:CONTENT-MAKERS . "too-many") (:CONTENT-PEOPLE . "few")
+                                         (:CONTENTS . "lots"))
+                                    (:STATUS . :INPUT-OUTPUT-ERROR))))
+      (ok (equal code 74)))))

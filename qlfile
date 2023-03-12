@@ -4,6 +4,7 @@ ql float-features
 ql documentation-utils
 ql trivial-indent
 ql alexandria
+ql cl-ppcre
 ql arrows
 ql dexador
 ql quri

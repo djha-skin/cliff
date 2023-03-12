@@ -1089,9 +1089,7 @@
     (map-sep "=")
     (str-hash-init-args
       `(:test ,#'equal))
-    kw-hash-init-args
-    (out-stream
-                    *standard-output*))
+    kw-hash-init-args)
   (declare (type string program-name)
            (type hash-table environment-variables)
            (type list functions)
@@ -1106,8 +1104,7 @@
            (type string list-sep)
            (type string map-sep)
            (type function setup)
-           (type function teardown)
-           (type stream out-stream))
+           (type function teardown))
 
   (let ((effective-defaults (if (null defaults)
                                (apply #'make-hash-table kw-hash-init-args)
@@ -1161,5 +1158,4 @@
                    (funcall setup opts-from-args))))
              (status (gethash :status final-result :successful))
              (code (gethash status *exit-codes*)))
-        (format out-stream "~A~%" (generate-string result :pretty t))
-        code)))))
+        (values code final-result))))))

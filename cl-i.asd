@@ -23,7 +23,8 @@
   :depends-on (
       "cl-i"
       "alexandria"
-      "rove")
+      "rove"
+      "cl-ppcre")
   :components ((:module "tests"
                 :components
                 ((:file "main"))))

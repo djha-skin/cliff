@@ -12,3 +12,5 @@
 (defvar please `((nil . ,#'blank-command)
                             (("error") . ,#'error-command)
                             (("io-error") . ,#'io-error)))
+(rove:run-suite '#:cl-i/tests)
+(asdf:test-system '#:cl-i)

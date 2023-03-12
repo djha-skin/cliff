@@ -17,5 +17,5 @@ export LIBRARY_PATH=/usr/lib64:/usr/lib
 #    --prompt-colour=red \
 #    --quote-characters "\"" \
 #    --remember \
-    qlot exec ros run -S . -- -load tools/preload.lisp
+    qlot exec ros run -S . -- --load tools/preload.lisp
 #sbcl --load tools/preload.lisp

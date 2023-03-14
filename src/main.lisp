@@ -18,7 +18,7 @@
     (:import-from #:com.inuoe.jzon stringify parse)
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
-    (:import-from #:do-urlencode)
+    (:import-from #:quri)
     (:import-from #:uiop/stream)
     (:export
       dbg
@@ -331,9 +331,9 @@
             rest-of-it)
           :basic-auth
           (cons
-            (do-urlencode:urldecode
+            (quri:url-decode
               username)
-            (do-urlencode:urldecode
+            (quri:url-decode
               password))))
       (cl-ppcre:register-groups-bind
         (protocol
@@ -348,9 +348,9 @@
           :headers
           (list
             (cons
-              (do-urlencode:urldecode
+              (quri:url-decode
                 header)
-              (do-urlencode:urldecode
+              (quri:url-decode
                 headerval)))))
       (cl-ppcre:register-groups-bind
         (protocol
@@ -367,7 +367,7 @@
             (cons
               "Authorization"
               (format
-                nil "Bearer ~a" (do-urlencode:urldecode
+                nil "Bearer ~a" (quri:url-decode
                                   token))))))
       (cl-ppcre:register-groups-bind
         ()

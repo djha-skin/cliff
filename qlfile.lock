@@ -26,6 +26,10 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2023-02-15"))
+("cl-ppcre" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2023-02-15"))
 ("arrows" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)

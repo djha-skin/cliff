@@ -4,9 +4,11 @@
   :license "MIT"
   :depends-on (
                "arrows"
+               "alexandria"
                "com.inuoe.jzon"
                "dexador"
                "quri"
+               "cl-ppcre"
                "trivial-features"
                "trivial-package-local-nicknames"
                )
@@ -23,6 +25,7 @@
   :depends-on (
       "cl-i"
       "alexandria"
+      "cl-ppcre"
       "rove"
       "cl-ppcre")
   :components ((:module "tests"

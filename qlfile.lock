@@ -2,10 +2,10 @@
  (:class qlot/source/dist:source-dist
   :initargs (:distribution "http://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
   :version "2023-02-15"))
-("jzon" .
- (:class qlot/source/ql:source-ql
-  :initargs (:%version :latest)
-  :version "ql-2023-02-15"))
+("quri" .
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "git@github.com:djhaskin987/quri.git" :branch "djhaskin987/support-msvc-ecl")
+  :version "git-a42ebc27b1107b0949a3ca7d19986c096dacb2a4"))
 ("closer-mop" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
@@ -38,15 +38,15 @@
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2023-02-15"))
-("quri" .
- (:class qlot/source/ql:source-ql
-  :initargs (:%version :latest)
-  :version "ql-2023-02-15"))
 ("trivial-features" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2023-02-15"))
 ("trivial-package-local-nicknames" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2023-02-15"))
+("cl-yaml" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2023-02-15"))

@@ -1,4 +1,4 @@
-ql jzon
+git quri git@github.com:djhaskin987/quri.git :branch djhaskin987/support-msvc-ecl
 ql closer-mop
 ql float-features
 ql documentation-utils
@@ -7,6 +7,6 @@ ql alexandria
 ql cl-ppcre
 ql arrows
 ql dexador
-ql quri
 ql trivial-features
 ql trivial-package-local-nicknames
+ql cl-yaml

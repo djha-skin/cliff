@@ -3,12 +3,11 @@
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (
-               "arrows"
-               "alexandria"
-               "com.inuoe.jzon"
-               "dexador"
                "quri"
+               "alexandria"
+               "cl-yaml"
                "cl-ppcre"
+               "dexador"
                "trivial-features"
                "trivial-package-local-nicknames"
                )

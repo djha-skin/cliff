@@ -23,7 +23,7 @@
       :name
       ".cl-i"
       :type
-      "json")
+      "yaml")
     (cl-i:os-specific-home #'uiop/os:getenv)))
 
 (defvar *tests-dir*
@@ -101,6 +101,21 @@
                    (B 
                      (:DESTINATION . "yon")
                      (:ORIGIN . "thither")) (C 1 2 3 4 5))))))
+
+(deftest
+  hash-to-kw-hash
+  (testing "basic"
+           (equal (cl-i:nested-to-alist
+                    (cl-i::hash-to-kw-hash
+                      (alexandria:alist-hash-table
+                        '(("c" . 3)
+                          ("a" . 1)
+                          ("b" . 2))
+                        :test #'equal)))
+                  '((:A . 1)
+                    (:B . 2)
+                    (:C . 3)))))
+
 
 (deftest
   basic-find-file

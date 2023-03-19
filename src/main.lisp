@@ -15,7 +15,7 @@
     which is then passed to the subcommands.
     ")
     (:import-from #:arrows)
-    (:import-from #:com.inuoe.jzon stringify parse)
+    (:import-from #:cl-yaml)
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
@@ -27,6 +27,8 @@
       repeatedly-eq
       repeatedly
       nested-to-alist
+      generate-string
+      parse-string
       slurp-stream
       data-slurp
       invalid-subcommand
@@ -37,8 +39,6 @@
       os-specific-home
       os-specific-config-dir
       find-file
-      generate-string
-      parse-string
       string-uniform-case-p
       exit-error
       string-keyword
@@ -48,93 +48,6 @@
       execute-program))
 (in-package #:cl-i)
 
-(defvar *symbol-case*
-  (readtable-case *readtable*))
-
-(defun
-  prep-symbol-string (str)
-  (cond ((eql *symbol-case* :upcase) (string-upcase str))
-        ((eql *symbol-case* :downcase) (string-downcase str))
-        ((eql *symbol-case* :preserve) str)
-        ((eql *symbol-case* :invert) (string-invertcase str))
-        (t (string-upcase str))))
-
-(defun
-  string-keyword (str)
-  "
-  Creates a keyword from a string.
-
-  Creates a keyword following `(readtable-case *readtable*)` rules.
-
-  If this package's var `*symbol-case*` is `:upcase`, the string is upcased.
-  If it is `:downcase`, the string is downcased.
-  If it is `:preserve`, the string's case is preserved.
-  If it is `:invert`, the string's case is inverted as long as all caseable
-  characters are already of uniform case.
-
-  The variable `*symbol-case*` takes as its default the current value of
-  `(readtable-case *readtable*)` at package load time.
-  "
-  (intern
-    (prep-symbol-string str)
-    "KEYWORD"))
-
-(defun
-  string-uninterned-symbol (str)
-  "
-  Creates an uninterned symbol from a string.
-
-  Creates an uninterned symbol following `(readtable-case *readtable*)` rules.
-
-  If this package's var `*symbol-case*` is `:upcase`, the string is upcased.
-  If it is `:downcase`, the string is downcased.
-  If it is `:preserve`, the string's case is preserved.
-  If it is `:invert`, the string's case is inverted as long as all caseable
-  characters are already of uniform case.
-
-  The variable `*symbol-case*` takes as its default the current value of
-  `(readtable-case *readtable*)` at package load time.
-  "
-  (make-symbol
-    (prep-symbol-string str)))
-
-(defun package-mangle (pkg topkg)
-  "Name-mangle a package name.
-  This is in place of pacakge-local nicknames, which I couldn't get to work
-  on my raspberry pi."
-  (let ((pkg (find-package pkg)))
-    (rename-package
-      pkg
-      (package-name pkg)
-      ;; For some reason, package local nicknames aren't supported on my
-      ;; raspberry pi so I've decided to use name mangling. I'm cool with it.
-      ;; Source for the inspiration: https://stackoverflow.com/a/28907543/850326
-      (adjoin (string-uninterned-symbol
-                (format nil "cl-i/~A" topkg))
-                (package-nicknames pkg)
-                :test
-                #'string=))))
-
-(defparameter *exit-codes*
-  ;; taken from /usr/include/sysexit.h
-  (alexandria:alist-hash-table
-    '((:successful . 0)
-      (:general-error . 1)
-      (:cl-usage-error . 64)
-      (:data-format-error . 65)
-      (:cannot-open-input . 66)
-      (:addressee-unknown . 67)
-      (:hostname-unknown . 68)
-      (:service-unavailable . 69)
-      (:internal-software-error . 70)
-      (:system-error . 71)
-      (:os-file-missing . 72)
-      (:cant-create-uof . 73)
-      (:input-output-error . 74)
-      (:temporary-failure . 75)
-      (:remote-error-in-protocol . 76)
-      (:permission-denied . 77)
-      (:configuration-error . 78))))
 (defmacro
   dbg
   (body
@@ -252,6 +165,158 @@
                                           (format nil "~A" (car thing))))))
     (t
       value)))
+
+#+(or)
+(do
+  (string-invertcase "")
+  (string-invertcase "A")
+  (string-invertcase "a")
+  (string-invertcase " ")
+  (string-invertcase "my heart's a stereo")
+  (string-invertcase "My heart's a stereo"))
+
+(defun string-invertcase
+  (str)
+  (let ((operable (remove-if-not #'both-case-p str)))
+    (if (= (length operable) 0)
+      str
+      (let* ((first-upper-case (upper-case-p (elt operable 0)))
+             (uneven-case
+               (when (> (length operable) 1)
+                      (reduce
+                        (lambda (c v)
+                          (or c v))
+                        (map
+                          'vector
+                          (lambda (x)
+                            (not (eql (upper-case-p x) first-upper-case)))
+                          (subseq operable 1))))))
+        (if uneven-case
+          str
+          (if first-upper-case
+            (string-downcase str)
+            (string-upcase str)))))))
+
+
+(defvar *symbol-case*
+  (readtable-case *readtable*))
+
+(defun
+  prep-symbol-string (str)
+  (cond ((eql *symbol-case* :upcase) (string-upcase str))
+        ((eql *symbol-case* :downcase) (string-downcase str))
+        ((eql *symbol-case* :preserve) str)
+        ((eql *symbol-case* :invert) (string-invertcase str))
+        (t (string-upcase str))))
+
+(defun
+  string-keyword (str)
+  "
+  Creates a keyword from a string.
+
+  Creates a keyword following `(readtable-case *readtable*)` rules.
+
+  If this package's var `*symbol-case*` is `:upcase`, the string is upcased.
+  If it is `:downcase`, the string is downcased.
+  If it is `:preserve`, the string's case is preserved.
+  If it is `:invert`, the string's case is inverted as long as all caseable
+  characters are already of uniform case.
+
+  The variable `*symbol-case*` takes as its default the current value of
+  `(readtable-case *readtable*)` at package load time.
+  "
+  (intern
+    (prep-symbol-string str)
+    :KEYWORD))
+
+(defun hash-to-kw-hash
+  (hsh)
+  (loop for k being the hash-key of hsh
+        using (hash-value v)
+        with result = (make-hash-table :test 'eql)
+        do
+        (setf
+          (gethash
+            (string-keyword k)
+            result)
+          v)
+        finally (return result)))
+
+#+(or)
+(equal (nested-to-alist
+         (hash-to-kw-hash
+           (alexandria:alist-hash-table
+             '(("c" . 3)
+               ("a" . 1)
+               ("b" . 2))
+             :test #'equal)))
+       '((:A . 1)
+         (:B . 2)
+         (:C . 3)))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (cl-yaml:register-mapping-converter
+    nil #'hash-to-kw-hash))
+
+(defun
+  string-uninterned-symbol (str)
+  "
+  Creates an uninterned symbol from a string.
+
+  Creates an uninterned symbol following `(readtable-case *readtable*)` rules.
+
+  If this package's var `*symbol-case*` is `:upcase`, the string is upcased.
+  If it is `:downcase`, the string is downcased.
+  If it is `:preserve`, the string's case is preserved.
+  If it is `:invert`, the string's case is inverted as long as all caseable
+  characters are already of uniform case.
+
+  The variable `*symbol-case*` takes as its default the current value of
+  `(readtable-case *readtable*)` at package load time.
+  "
+  (make-symbol
+    (prep-symbol-string str)))
+
+(defun package-mangle (pkg topkg)
+  "Name-mangle a package name.
+  This is in place of pacakge-local nicknames, which I couldn't get to work
+  on my raspberry pi."
+  (let ((pkg (find-package pkg)))
+    (rename-package
+      pkg
+      (package-name pkg)
+      ;; For some reason, package local nicknames aren't supported on my
+      ;; raspberry pi so I've decided to use name mangling. I'm cool with it.
+      ;; Source for the inspiration: https://stackoverflow.com/a/28907543/850326
+      (adjoin (string-uninterned-symbol
+                (format nil "cl-i/~A" topkg))
+                (package-nicknames pkg)
+                :test
+                #'string=))))
+
+(defparameter *exit-codes*
+  ;; taken from /usr/include/sysexit.h
+  (alexandria:alist-hash-table
+    '((:successful . 0)
+      (:general-error . 1)
+      (:cl-usage-error . 64)
+      (:data-format-error . 65)
+      (:cannot-open-input . 66)
+      (:addressee-unknown . 67)
+      (:hostname-unknown . 68)
+      (:service-unavailable . 69)
+      (:internal-software-error . 70)
+      (:system-error . 71)
+      (:os-file-missing . 72)
+      (:cant-create-uof . 73)
+      (:input-output-error . 74)
+      (:temporary-failure . 75)
+      (:remote-error-in-protocol . 76)
+      (:permission-denied . 77)
+      (:configuration-error . 78))))
+
+
+
 
 (defun url-to-pathname
   (url)
@@ -575,47 +640,15 @@
 (defun
   generate-string
   (thing &optional &key pretty)
-  (stringify thing :pretty pretty))
+  (cl-yaml:with-emitter-to-string (em)
+                                  (cl-yaml:emitt-pretty-as-document em thing)))
 
-(defvar *keyword-case* (readtable-case *readtable*))
 
 
-#+(or)
-(do
-  (string-invertcase "")
-  (string-invertcase "A")
-  (string-invertcase "a")
-  (string-invertcase " ")
-  (string-invertcase "my heart's a stereo")
-  (string-invertcase "My heart's a stereo"))
-
-(defun string-invertcase
-  (str)
-  (let ((operable (remove-if-not #'both-case-p str)))
-    (if (= (length operable) 0)
-      str
-      (let* ((first-upper-case (upper-case-p (elt operable 0)))
-             (uneven-case
-               (when (> (length operable) 1)
-                      (reduce
-                        (lambda (c v)
-                          (or c v))
-                        (map
-                          'vector
-                          (lambda (x)
-                            (not (eql (upper-case-p x) first-upper-case)))
-                          (subseq operable 1))))))
-        (if uneven-case
-          str
-          (if first-upper-case
-            (string-downcase str)
-            (string-upcase str)))))))
 
 
 (defun parse-string (thing)
-  (parse thing
-              :allow-comments t
-              :allow-trailing-comma t
+  (cl-yaml:parse thing))
               :key-fn #'string-keyword))
 
 (defun exit-error
@@ -1158,4 +1191,4 @@
                    (funcall setup opts-from-args))))
              (status (gethash :status final-result :successful))
              (code (gethash status *exit-codes*)))
-        (values code final-result))))))
+        (values code final-result)))))")

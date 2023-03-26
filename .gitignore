@@ -8,6 +8,7 @@
 *~
 .#*
 .*.sw[a-z]
+/.slime_paste
 
 /lighttpd-environment/test-data
 /.repl/ros_history

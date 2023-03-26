@@ -13,12 +13,16 @@
       (error "EOF reached during reading")
       chr)))
 
-(defun is-number-char-p (chr)
+(defun number-start-p (chr)
   (or
     (digit-char-p chr)
     (char= chr #\-)
+    (char= chr #\.)))
+
+(defun number-char-p (chr)
+  (or
+    (number-start-p chr)
     (char= chr #\+)
-    (char= chr #\.)
     (char= chr #\E)
     (char= chr #\e)))
 
@@ -42,7 +46,7 @@
 (defun extract-number (strm chr)
   (let ((building nil)
         (last-read chr))
-    (loop while (is-number-char-p last-read)
+    (loop while (number-char-p last-read)
           do
           (push last-read building)
           (read-chr strm)
@@ -93,19 +97,24 @@
                                last-read)))))
             (push last-read building))
           (setf last-read (must-read-chr strm)))
-    (print (build-string building))))
+    (build-string building)))
 
 (defconstant +start-verbatim+ #\|)
 (defconstant +start-prose+ #\>)
 (defconstant +start-comment+ #\#)
+
+(defun blankspace-p (chr)
+  (or
+    (char= chr #\Tab)
+    (char= chr #\Space)
+    ))
 
 (defun whitespace-p (chr)
   (or
     (char= chr #\Newline)
     (char= chr #\Return)
     (char= chr #\Page)
-    (char= chr #\Tab)
-    (char= chr #\Space)
+    (blankspace-p chr)
     (char= chr #\,)
     (char= chr #\:)))
 
@@ -113,42 +122,296 @@
   (loop while (not (char= chr #\Newline))
         do
         (setf chr (read-chr strm)))
-  nil)
+  chr)
 
-(defun extract-sep (strm chr)
-  (loop
+(defun extract-sep (strm chr pred)
+  (loop with just-read = nil
+        with next = chr
     do
-    (cond ((char= chr +start-comment+)
-           (extract-comment strm chr))
-          ((whitespace-p chr)
-           (must-read-chr strm))
-          (t 
-            (return nil)))
-    (setf chr (peek-chr strm))))
+    (cond ((char= next +start-comment+)
+           (setf just-read (extract-comment strm chr)))
+          ((funcall pred next)
+           (setf just-read (must-read-chr strm)))
+          (t
+            (return just-read)))
+    (setf next (peek-chr strm))))
+
+(defun extract-list-sep (strm chr)
+  (extract-sep strm chr #'whitespace-p))
+
+(defun must-extract-list-sep (strm chr)
+  (let ((last-read (extract-sep strm chr #'whitespace-p)))
+    (when (null last-read)
+      (error "separator expected"))
+    last-read))
 
 
-(defun extract-multiline-string (strm chr)
-  (let ((last-read chr))
-    (loop with building = nil
+
+
+(defun extract-blob-sep (strm chr)
+  (extract-sep strm chr #'blankspace-p))
+#|
+(extract-multiline-blob t #\|)
+|one
+#and then
+    # some of
+        #
+   | two
+#this
+|  three
+
+(extract-multiline-blob t #\>)
+>one
+#and then
+    # some of
+        #
+   > two
+#this
+>  three
+
+|#
+
+(defun extract-multiline-blob (strm chr)
+  "
+  Grabs the string after the multiline marker
+  and grabs subsequent prefixed strings
+  until a non-prefix character, EOF, or two new-lines in a row.
+  "
+    (loop named toplevel
+          with last-read = nil
+          with next = chr
+          with building = nil
           while (and
-                  (char= last-read chr)
-                  (not (char= last-read +eof+)))
+                  (char= next chr)
+                  (not (char= next #\Newline))
+                  (not (char= next +eof+)))
           do
           (setf last-read (read-chr strm))
-          (loop while (and (not (char= last-read #\Newline))
-                           (not (char= last-read +eof+)))
+          (setf next (peek-chr strm))
+          (loop named getline
+                while (and (not (char= next #\Newline))
+                           (not (char= next +eof+)))
                 do
+                (setf last-read (read-chr strm))
                 (push last-read building)
-                (setf last-read (read-chr strm)))
+                (setf next (peek-chr strm)))
+          (when (char= next +eof+)
+            (return-from toplevel
+                         (build-string building)))
+          (setf last-read (read-chr strm))
           (if (char= chr +start-verbatim+)
             (push last-read building)
             (push #\Space building))
-          (setf last-read (peek-chr strm))
-          (extract-sep strm last-read)
-          (setf last-read (peek-chr strm)))
+          (setf last-read
+                (extract-blob-sep strm (peek-chr strm)))
+          (setf next (peek-chr strm))
           finally (progn
-                    (unread-char last-read strm)
-                    (build-string building))))
+                    (unless (or
+                              (char= next +eof+)
+                              (char= next #\Newline))
+                      (unread-char last-read strm))
+                    (return-from toplevel (build-string (cdr building))))))
 
-(defun 
+(defun extract-quoted-blob (strm chr)
+  (extract-quoted strm chr #\"))
 
+#+(or)
+(do
+  (string-invertcase "")
+  (string-invertcase "A")
+  (string-invertcase "a")
+  (string-invertcase " ")
+  (string-invertcase "my heart's a stereo")
+  (string-invertcase "My heart's a stereo"))
+
+(defun string-invertcase
+  (str)
+  (let ((operable (remove-if-not #'both-case-p str)))
+    (if (= (length operable) 0)
+      str
+      (let* ((first-upper-case (upper-case-p (elt operable 0)))
+             (uneven-case
+               (when (> (length operable) 1)
+                      (reduce
+                        (lambda (c v)
+                          (or c v))
+                        (map
+                          'vector
+                          (lambda (x)
+                            (not (eql (upper-case-p x) first-upper-case)))
+                          (subseq operable 1))))))
+        (if uneven-case
+          str
+          (if first-upper-case
+            (string-downcase str)
+            (string-upcase str)))))))
+
+
+(defvar *symbol-case*
+  (readtable-case *readtable*))
+
+(defun
+  prep-symbol-string (str)
+  (cond ((eql *symbol-case* :upcase) (string-upcase str))
+        ((eql *symbol-case* :downcase) (string-downcase str))
+        ((eql *symbol-case* :preserve) str)
+        ((eql *symbol-case* :invert) (string-invertcase str))
+        (t (string-upcase str))))
+
+(defun
+  string-keyword (str)
+  "
+  Creates a keyword from a string.
+
+  Creates a keyword following `(readtable-case *readtable*)` rules.
+
+  If this package's var `*symbol-case*` is `:upcase`, the string is upcased.
+  If it is `:downcase`, the string is downcased.
+  If it is `:preserve`, the string's case is preserved.
+  If it is `:invert`, the string's case is inverted as long as all caseable
+  characters are already of uniform case.
+
+  The variable `*symbol-case*` takes as its default the current value of
+  `(readtable-case *readtable*)` at package load time.
+  "
+  (intern
+    (prep-symbol-string str)
+    :KEYWORD))
+
+(defun bareword-start-p (chr)
+  (or
+    (alpha-char-p chr)
+    (char= chr #\_)
+    (char= chr #\=)
+    (char= chr #\>)
+    (char= chr #\@)
+    (char= chr #\$)
+    (char= chr #\%)
+    (char= chr #\&)
+    (char= chr #\*)
+    (char= chr #\+)
+    (char= chr #\/)
+    (char= chr #\=)))
+
+(defun bareword-middle-p (chr)
+  (or
+    (bareword-start-p chr)
+    (digit-char-p chr)
+    (char= chr #\<)
+    (char= chr #\!)
+    (char= chr #\?)
+    (char= chr #\.)
+    (char= chr #\-)))
+
+(defparameter *true* t)
+(defparameter *false* nil)
+(defparameter *null* nil)
+
+(defun convert-to-property (final-string)
+  (cond ((string= "t")
+                  t)
+        ((string= "nil")
+         nil)
+        ((string= final-string "true")
+         '*true*)
+        ((string= final-string "false")
+         '*false*)
+        ((string= final-string "null")
+         '*null*)
+        (t (string-keyword final-string))))
+
+(defun extract-bare-property (strm chr)
+  (loop with building = nil
+        with last-read = nil
+        with next = chr
+        while (bareword-middle-p next)
+        do
+        (setf last-read (read-chr strm))
+        (push last-read building)
+        (setf next (peek-chr strm))
+        finally
+        (return
+          (convert-to-property (build-string building)))))
+
+(defun extract-quoted-property (strm chr)
+  (convert-to-property
+    (extract-quoted strm chr #\')))
+
+(defun extract-value (strm chr)
+  (cond
+        ((char= chr #\")
+         (extract-quoted-blob strm chr))
+        ((char= chr #\')
+         (extract-quoted-property strm chr))
+        ((or
+           (char= chr +start-verbatim+)
+           (char= chr +start-prose+))
+         (extract-multiline-blob strm chr))
+        ((number-start-p chr)
+         (extract-number strm chr))
+        ((bareword-start-p chr)
+         (extract-bare-property strm chr))
+        (t (error "Invalid token starting with character `~A`"
+                  chr))))
+
+(defun extract-array (strm chr)
+  (declare (ignore chr))
+  (read-chr strm)
+  (loop with building = nil
+        with found-sep = t
+        with last-read = (extract-list-sep strm)
+        with next = (peek-chr strm)
+        while (and
+                (not (char= next +eof+))
+                (not (char= next #\})))
+        do
+        (unless found-sep
+          (error
+            "No separating whitespace found at character `~A`."
+            next)
+          )
+        (push (extract-value strm next) building)
+        (setf last-read (extract-list-sep strm))
+        (setf found-sep (whitespace-p last-read))
+        (setf next (peek-chr strm))
+        finally (return (reverse building))))
+
+(defun extract-hash (strm chr)
+  (declare (ignore chr))
+  (read-chr strm)
+  (loop with building = nil
+        with found-sep = t
+        with last-read = (extract-list-sep strm)
+        with next = (peek-chr strm)
+        while (and
+                (not (char= next +eof+))
+                (not (char= next #\})))
+        do
+        (unless found-sep
+          (error
+            "No separating whitespace found at character `~A`."
+            next))
+        (push (extract-value strm next) building)
+        (setf last-read (extract-list-sep strm))
+        (setf found-sep (whitespace-p last-read))
+        (setf next (peek-chr strm))
+        (unless found-sep
+          (error
+            (concatenate
+              'string
+              "While looking for val in plist, failed to find separator "
+              "whitespace at character `~A`")
+            next))
+        (push (extract-value strm next) building)
+        (setf last-read (extract-list-sep strm))
+        (setf found-sep (whitespace-p last-read))
+        (setf next (peek-chr strm))
+        finally (return
+                  (alexandria:plist-hash-table
+                  (reverse building)
+                  :test #'equal))))
+
+(defun parse-from (strm)
+  (let ((last-read (extract-list-sep strm (peek-chr strm)))
+        (next (peek-chr strm)))
+    (extract-value strm next)))

@@ -109,15 +109,6 @@
 
 (set-macro-character +start-hash+ #'read-hash)
 
-(defvar *true* t)
-(defvar *false* nil)
-(defvar *null* nil)
-(def read-tfn (strm chr)
-     (cond (((char= chr #\t) '*true*)
-            ((char= chr #\f) '*false*)
-            ((char= chr #\n) '*null*)
-            (t (error "Unrecognized constant hash character: `~A`'"
-                      chr)))))
 
 
 

@@ -1,4 +1,5 @@
 git quri git@github.com:djhaskin987/quri.git :branch djhaskin987/support-msvc-ecl
+git cl-yaml git@github.com:eudoxia0/cl-yaml.git :branch master
 ql closer-mop
 ql float-features
 ql documentation-utils
@@ -9,4 +10,3 @@ ql arrows
 ql dexador
 ql trivial-features
 ql trivial-package-local-nicknames
-ql cl-yaml

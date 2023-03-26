@@ -14,7 +14,6 @@
     according to spefic rules and from these rules constructs a hash table
     which is then passed to the subcommands.
     ")
-    (:import-from #:arrows)
     (:import-from #:cl-yaml)
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
@@ -67,7 +66,7 @@
         (,rdest
           ,destination))
        (format
-         ,rdest "debug: type of `~a` = `~a`~%" (quote
+        ,rdest "debug: type of `~a` = `~a`~%" (quote
                                                  ,body)
          (type-of
            ,rbody))
@@ -78,12 +77,86 @@
          ,rdest)
        ,rbody)))
 
-(defun join-strings
-  (strs &key (fmt "~%"))
-  (format nil
-          (apply
-            #'concatenate
-            (cons 'string
+(defconstant +lf+ #\Linefeed)
+(defconstant +verbatim+ #\!)
+(defconstant +prose+ #\?)
+(defconstant +tab+ #\Tab)
+(defconstant +space+ #\Space)
+(defconstant +start-hash+ #\{)
+(defconstant +end-hash+ #\})
+(defvar *read-hash-init-args*
+  `(:test ,#'equal))
+
+(defun read-hash (strm chr &optional (hash-init-args *read-hash-init-args*))
+  (declare (ignore chr))
+    (loop with last-read = (peek-char t strm nil nil t)
+          with result = (apply #'make-hash-table hash-init-args)
+          with key = nil
+          with val = nil
+          while (and (not (null last-read)) (not (char= last-read +end-hash+)))
+          do
+          (format t "Well then.")
+        (setf key (read))
+        (setf last-read (peek-char t strm nil nil t))
+        (when (or (null last-read)
+                  (char= last-read +end-hash+))
+          (error "Unequal number of forms in hash form"))
+        (setf val (read))
+        (setf (gethash key result) val)
+        (setf last-read (peek-char t strm nil nil t))
+        finally
+        (return result)))
+
+(set-macro-character +start-hash+ #'read-hash)
+
+(defvar *true* t)
+(defvar *false* nil)
+(defvar *null* nil)
+(def read-tfn (strm chr)
+     (cond (((char= chr #\t) '*true*)
+            ((char= chr #\f) '*false*)
+            ((char= chr #\n) '*null*)
+            (t (error "Unrecognized constant hash character: `~A`'"
+                      chr)))))
+
+
+
+
+
+
+(set-macro-character +verbatim+ #'read-multiline-string)
+(set-macro-character +prose+ #'read-multiline-string)
+
++(or)
+(print-multiline-string t "one
+two
+three")
+(defvar *multiline-string-prefix* "    ")
+(defun print-multiline-string
+  (strm str &optional (prefix *multiline-string-prefix*))
+  (if (not (find +lf+ str))
+    (prin1 str)
+    (pprint-logical-block
+      (strm nil :prefix "")
+      (let ((lines (cl-ppcre:split "\\n" str)))
+        (write-char #\Newline)
+        (write-string prefix strm)
+        (loop for line in lines
+              do
+              (write-char +verbatim+ strm)
+              (write-string line strm)
+              (write-char #\Newline strm)
+              (write-string prefix strm))))))
+
+
+
+
+
+
+(defun read-hash (strm chr)
+  (declare (ignore char))
+  (let ((last-read chr))
+    ((cons 'string
                   (mapcar (lambda (str) (concatenate 'string str fmt))
                           strs)))))
 
@@ -254,9 +327,10 @@
          (:B . 2)
          (:C . 3)))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+;;(eval-when (:compile-toplevel :load-toplevel :execute)
   (cl-yaml:register-mapping-converter
-    nil #'hash-to-kw-hash))
+    nil #'hash-to-kw-hash)
+;;  )
 
 (defun
   string-uninterned-symbol (str)
@@ -455,8 +529,8 @@
   - if it is of the form `http(s)://tok@url`,
   a bearer token is used;
   - if it is of the form `file://loc`, it is loaded as a normal file;
-  - if it is of the form `-`, the json is loaded from standard input;
-  - otherwise, the json is loaded from the string or pathname as if it named
+  - if it is of the form `-`, the yaml is loaded from standard input;
+  - otherwise, the yaml is loaded from the string or pathname as if it named
   a file.
   "
   (declare (type (or pathname string) resource))
@@ -620,20 +694,20 @@
   "
   (if (null marker)
     nil
-    (arrows:as->
-      from it
-      (repeatedly-eq
-        #'uiop/pathname:pathname-parent-directory-pathname it)
-      (mapcar
-        (lambda
-          (path)
-          (merge-pathnames
-            marker
-            path)) it)
-      (some
+    (let* ((* from)
+           (* (repeatedly-eq
+        #'uiop/pathname:pathname-parent-directory-pathname *))
+           (* (mapcar
+                (lambda
+                  (path)
+                  (merge-pathnames
+                    marker
+                    path)) *))
+           (* (some
         (lambda (f)
           (or (uiop/filesystem:file-exists-p f)
-              (uiop/filesystem:directory-exists-p f))) it))))
+              (uiop/filesystem:directory-exists-p f))) *)))
+      *)))
 
 
 
@@ -641,7 +715,7 @@
   generate-string
   (thing &optional &key pretty)
   (cl-yaml:with-emitter-to-string (em)
-                                  (cl-yaml:emitt-pretty-as-document em thing)))
+                                  (cl-yaml:emit-pretty-as-document em thing)))
 
 
 
@@ -649,7 +723,6 @@
 
 (defun parse-string (thing)
   (cl-yaml:parse thing))
-              :key-fn #'string-keyword))
 
 (defun exit-error
   (status
@@ -669,7 +742,7 @@
     :set
     :add
     :join
-    :json
+    :yaml
     :file
     )
   "actions that consume additional argument."
@@ -735,7 +808,7 @@
                    (apply #'make-hash-table hash-init-args)))
            (setf (gethash (string-keyword k) (gethash kopt opts)) v))
          (error "not a k/v pair, check map sep pattern: ~a" value))))
-    ((eql kact :json)
+    ((eql kact :yaml)
      (setf (gethash kopt opts)
            (parse-string value)))
     ((eql kact :file)
@@ -758,7 +831,7 @@
   the keyword named `argument` is associated with `t` or `nil` in the resulting
   hash-table, respectively.
 
-  If the argument is of the form `--(?P<act>set|add|join|json)-(?P<argument>[^
+  If the argument is of the form `--(?P<act>set|add|join|yaml)-(?P<argument>[^
   ]*)`, the next argument is consumed as the value.
 
   If the first part (`act`) is `set`, associate the value as a string to the
@@ -773,7 +846,7 @@
   the value associated with the keyword `argument` in the resulting options
   hash-table.
 
-  If the `act` is `json`, parse the value string as if it were a json string.
+  If the `act` is `yaml`, parse the value string as if it were a yaml string.
   Set the value as found to the `argument` keyword in the resulting options
   hash-table.
   "
@@ -860,7 +933,7 @@
                           kopt
                           context
                           piece)))
-    ((eql ktag :json)
+    ((eql ktag :yaml)
      (ingest-option opts
                     map-sep-pat
                     hash-init-args
@@ -1066,7 +1139,7 @@
                :name
                "config"
                :type
-               "json")
+               "yaml")
              home-config-path))
          (marked-config-file-name
            (make-pathname
@@ -1076,7 +1149,7 @@
                "."
                program-name)
              :type
-             "json"))
+             "yaml"))
          (marked-config-path
            (if (null reference-file)
              (find-file
@@ -1191,4 +1264,4 @@
                    (funcall setup opts-from-args))))
              (status (gethash :status final-result :successful))
              (code (gethash status *exit-codes*)))
-        (values code final-result)))))")
+        (values code final-result))))))

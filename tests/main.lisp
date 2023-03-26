@@ -6,7 +6,8 @@
   (:use #:cl
         #:rove)
   (:import-from
-    #:cl-i
+    #:cl-i)
+  (:import-from
     #:cl-ppcre))
 (in-package :cl-i/tests)
 
@@ -166,12 +167,12 @@
                (with-open-file
                  (f
                    (merge-pathnames
-                     #P".cl-i.json"
+                     #P".cl-i.yaml"
                      *tests-dir*)
                    :direction :input
                    :external-format :utf-8)
                  (cl-i:slurp-stream f))
-               "{ \"hoo\": \"haa\"}"))))
+               "hoo: haa"))))
 
 
 (deftest
@@ -181,7 +182,7 @@
     (equal
       (cl-i::base-slurp
         *test-config-file*)
-      "{ \"hoo\": \"haa\"}"))))
+      "hoo: haa"))))
 
 (deftest
   slurp
@@ -191,7 +192,7 @@
         (equal
           (cl-i:data-slurp
             *test-config-file*)
-      "{ \"hoo\": \"haa\"}")))
+      "hoo: haa")))
     (testing
       "file URL"
       (ok
@@ -200,7 +201,7 @@
             (concatenate 'string
                          "file://"
                          (namestring *test-config-file*)))
-          "{ \"hoo\": \"haa\"}")))
+          "hoo: haa")))
   (testing
     "noauth"
     (ok
@@ -272,14 +273,14 @@
             "pride=hurt"
             "--join-my"
             "start=great"
-            "--json-fight"
+            "--yaml-fight"
             "15.0"
             "--file-stride"
-            "tests/.cl-i.json"))
+            "tests/.cl-i.yaml"))
       (ok (equal
             (cl-i:nested-to-alist opts)
             '((:DARK-MODE "firm" "crying")
-             (:FIGHT . 15.0d0)
+             (:FIGHT . 15.0)
              (:MY (:PRIDE . "hurt")
                   (:START . "great"))
              (:STRIDE (:HOO . "haa")))
@@ -293,14 +294,17 @@
       (equal (cl-i:generate-string
                (cl-i:consume-arguments
                  '()))
-             "{}")))
+             (cl-i:join-strings
+               "---"
+               ""))))
   (testing
     "basic"
     (ok
       (equal (cl-i:nested-to-alist
                (cl-i:consume-arguments
-                 '("--enable-foo" "--disable-bar" "baz" "--json-force" "15" "--set-quux" "farquad")))
+                 '("--enable-foo" "--disable-bar" "baz" "--yaml-force" "15" "--set-quux" "farquad")))
              '((:BAR) (:FOO . T) (:FORCE . 15) (:QUUX . "farquad"))))))
+
 (deftest
   consume-environment
   (testing
@@ -318,7 +322,7 @@
               '(("HELLO_LIST_MAPLE" . "1,2,3,4,5")
                 ("HELLO_FANGLE_DOG" . "12345")
                 ("VARS" . "xtreem")
-                ("HELLO_JSON_FINES" . "{ \"key\": 155.5 }")
+                ("HELLO_YAML_FINES" . "{ \"key\": 155.5 }")
                 ("HELLO_FLAG_FORESIGHT" . "0")
                 ("HELLO_ITEM_FORKS" . "whenceandwhither")))))))))
 

@@ -6,6 +6,10 @@
  (:class qlot/source/git:source-git
   :initargs (:remote-url "git@github.com:djhaskin987/quri.git" :branch "djhaskin987/support-msvc-ecl")
   :version "git-a42ebc27b1107b0949a3ca7d19986c096dacb2a4"))
+("cl-yaml" .
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "git@github.com:eudoxia0/cl-yaml.git" :branch "master")
+  :version "git-12c84d43b3f57f332774c780a2e4a20eee7f47de"))
 ("closer-mop" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
@@ -43,10 +47,6 @@
   :initargs (:%version :latest)
   :version "ql-2023-02-15"))
 ("trivial-package-local-nicknames" .
- (:class qlot/source/ql:source-ql
-  :initargs (:%version :latest)
-  :version "ql-2023-02-15"))
-("cl-yaml" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)
   :version "ql-2023-02-15"))

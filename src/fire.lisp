@@ -1,5 +1,7 @@
 
 ; EOT, End Of Transmission, according to ASCII
+; It's what SBCL uses for EOF
+; Guess I'll try it out
 (defconstant +eof+ (code-char 4))
 
 (defun peek-chr (strm) (peek-char nil strm nil +eof+ nil))
@@ -308,9 +310,9 @@
 (defparameter *null* nil)
 
 (defun convert-to-property (final-string)
-  (cond ((string= "t")
+  (cond ((string= final-string "t")
                   t)
-        ((string= "nil")
+        ((string= final-string "nil")
          nil)
         ((string= final-string "true")
          '*true*)
@@ -339,6 +341,10 @@
 
 (defun extract-value (strm chr)
   (cond
+        ((char= chr #\{)
+         (extract-hash strm chr))
+        ((char= chr #\[)
+         (extract-array strm chr))
         ((char= chr #\")
          (extract-quoted-blob strm chr))
         ((char= chr #\')
@@ -359,11 +365,11 @@
   (read-chr strm)
   (loop with building = nil
         with found-sep = t
-        with last-read = (extract-list-sep strm)
+        with last-read = (extract-list-sep strm (peek-chr strm))
         with next = (peek-chr strm)
         while (and
                 (not (char= next +eof+))
-                (not (char= next #\})))
+                (not (char= next #\])))
         do
         (unless found-sep
           (error
@@ -371,7 +377,7 @@
             next)
           )
         (push (extract-value strm next) building)
-        (setf last-read (extract-list-sep strm))
+        (setf last-read (extract-list-sep strm (peek-chr strm)))
         (setf found-sep (whitespace-p last-read))
         (setf next (peek-chr strm))
         finally (return (reverse building))))
@@ -381,7 +387,7 @@
   (read-chr strm)
   (loop with building = nil
         with found-sep = t
-        with last-read = (extract-list-sep strm)
+        with last-read = (extract-list-sep strm (peek-chr strm))
         with next = (peek-chr strm)
         while (and
                 (not (char= next +eof+))
@@ -392,7 +398,7 @@
             "No separating whitespace found at character `~A`."
             next))
         (push (extract-value strm next) building)
-        (setf last-read (extract-list-sep strm))
+        (setf last-read (extract-list-sep strm (peek-chr strm)))
         (setf found-sep (whitespace-p last-read))
         (setf next (peek-chr strm))
         (unless found-sep
@@ -403,14 +409,35 @@
               "whitespace at character `~A`")
             next))
         (push (extract-value strm next) building)
-        (setf last-read (extract-list-sep strm))
+        (setf last-read (extract-list-sep strm (peek-chr strm)))
         (setf found-sep (whitespace-p last-read))
         (setf next (peek-chr strm))
         finally (return
                   (alexandria:plist-hash-table
                   (reverse building)
                   :test #'equal))))
+#|
+(parse-from t)
+{
+   the-wind "bullseye"
+   the-trees false
+   the-sparrows his-eye
+   poem
+      |His eyee
+      |is on
+      |The sparrow
+   this-should-still-work 15.0
+   other
+      |And I know
+      |He's watching
+      |Over me
 
+   'force push' >I sing
+                >because
+                >I'm happy
+}
+
+|#
 (defun parse-from (strm)
   (let ((last-read (extract-list-sep strm (peek-chr strm)))
         (next (peek-chr strm)))

@@ -1,4 +1,5 @@
-
+#+(or)
+(declaim (optimize (speed 0) (space 0) (debug 3)))
 ; EOT, End Of Transmission, according to ASCII
 ; It's what SBCL uses for EOF
 ; Guess I'll try it out
@@ -53,7 +54,7 @@
           (push last-read building)
           (read-chr strm)
           (setf last-read (peek-chr strm)))
-    (read-from-string (build-string (print building)) nil nil)))
+    (read-from-string (build-string building) nil nil)))
 
 (defun extract-quoted
   (strm chr quote-char)
@@ -121,7 +122,9 @@
     (char= chr #\:)))
 
 (defun extract-comment (strm chr)
-  (loop while (not (char= chr #\Newline))
+  (loop while (or
+                (not (char= chr +eof+))
+                (not (char= chr #\Newline)))
         do
         (setf chr (read-chr strm)))
   chr)
@@ -130,12 +133,13 @@
   (loop with just-read = nil
         with next = chr
     do
-    (cond ((char= next +start-comment+)
-           (setf just-read (extract-comment strm chr)))
-          ((funcall pred next)
-           (setf just-read (must-read-chr strm)))
-          (t
-            (return just-read)))
+    (cond
+      ((char= next +start-comment+)
+       (setf just-read (extract-comment strm chr)))
+      ((funcall pred next)
+       (setf just-read (must-read-chr strm)))
+      (t
+        (return just-read)))
     (setf next (peek-chr strm))))
 
 (defun extract-list-sep (strm chr)
@@ -179,40 +183,43 @@
   and grabs subsequent prefixed strings
   until a non-prefix character, EOF, or two new-lines in a row.
   "
-    (loop named toplevel
-          with last-read = nil
-          with next = chr
-          with building = nil
-          while (and
-                  (char= next chr)
-                  (not (char= next #\Newline))
-                  (not (char= next +eof+)))
-          do
-          (setf last-read (read-chr strm))
-          (setf next (peek-chr strm))
-          (loop named getline
-                while (and (not (char= next #\Newline))
-                           (not (char= next +eof+)))
-                do
-                (setf last-read (read-chr strm))
-                (push last-read building)
-                (setf next (peek-chr strm)))
-          (when (char= next +eof+)
-            (return-from toplevel
-                         (build-string building)))
-          (setf last-read (read-chr strm))
-          (if (char= chr +start-verbatim+)
-            (push last-read building)
-            (push #\Space building))
-          (setf last-read
-                (extract-blob-sep strm (peek-chr strm)))
-          (setf next (peek-chr strm))
-          finally (progn
-                    (unless (or
-                              (char= next +eof+)
-                              (char= next #\Newline))
-                      (unread-char last-read strm))
-                    (return-from toplevel (build-string (cdr building))))))
+  (loop named toplevel
+        with last-read = nil
+        with next = chr
+        with building = nil
+        while (and
+                (char= next chr)
+                (not (char= next #\Newline))
+                (not (char= next +eof+)))
+        do
+        (setf last-read (read-chr strm))
+        (setf next (peek-chr strm))
+        (loop named getline
+              while (and (not (char= next #\Newline))
+                         (not (char= next +eof+)))
+              do
+              (setf last-read (read-chr strm))
+              (push last-read building)
+              (setf next (peek-chr strm)))
+        (when (char= next +eof+)
+          (return-from toplevel
+                       (build-string building)))
+        (setf last-read (read-chr strm))
+        (if (char= chr +start-verbatim+)
+          (push last-read building)
+          (push #\Space building))
+        (let ((sep-result
+                (extract-blob-sep strm (peek-chr strm))))
+          (break)
+          (when sep-result
+            (setf last-read sep-result)))
+        (setf next (peek-chr strm))
+        finally (progn
+                  (unless (or
+                            (char= next +eof+)
+                            (char= next #\Newline))
+                    (error "Must end multiine blob with a newline"))
+                  (return-from toplevel (build-string (cdr building))))))
 
 (defun extract-quoted-blob (strm chr)
   (extract-quoted strm chr #\"))
@@ -412,20 +419,30 @@
         (setf last-read (extract-list-sep strm (peek-chr strm)))
         (setf found-sep (whitespace-p last-read))
         (setf next (peek-chr strm))
-        finally (return
+        finally (when (char= next #\})
+                  (read-chr strm))
+                  (return
                   (alexandria:plist-hash-table
                   (reverse building)
                   :test #'equal))))
 #|
 (parse-from t)
+# What now brown cow
 {
    the-wind "bullseye"
    the-trees false
    the-sparrows his-eye
    poem
+    # I don't know if you can hear me
       |His eyee
+    # or if
+    # you're even there
       |is on
+    # I don't know if you can listen
       |The sparrow
+
+    # to a gypsy's prayer
+
    this-should-still-work 15.0
    other
       |And I know
@@ -435,7 +452,20 @@
    'force push' >I sing
                 >because
                 >I'm happy
+
+   "i am mordac" true
+   "I am web mistress ming" false
+   "you are so wrong" null
+
 }
+
+
+(parse-from t)
+# do
+# comments
+# work
+
+
 
 |#
 (defun parse-from (strm)

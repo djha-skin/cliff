@@ -1,0 +1,339 @@
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"
+tmux -L "default" load-buffer .slime_paste
+tmux -L "default" paste-buffer -d -t ":.0"

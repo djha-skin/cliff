@@ -1,5 +1,7 @@
 #+(or)
+(progn
 (declaim (optimize (speed 0) (space 0) (debug 3)))
+(asdf:load-system "alexandria"))
 ; EOT, End Of Transmission, according to ASCII
 ; It's what SBCL uses for EOF
 ; Guess I'll try it out
@@ -113,21 +115,24 @@
     ))
 
 (defun whitespace-p (chr)
-  (or
-    (char= chr #\Newline)
-    (char= chr #\Return)
-    (char= chr #\Page)
-    (blankspace-p chr)
-    (char= chr #\,)
-    (char= chr #\:)))
+  (unless (null chr)
+    (or
+      (char= chr #\Newline)
+      (char= chr #\Return)
+      (char= chr #\Page)
+      (blankspace-p chr)
+      (char= chr #\,)
+      (char= chr #\:))))
 
 (defun extract-comment (strm chr)
-  (loop while (or
-                (not (char= chr +eof+))
-                (not (char= chr #\Newline)))
+  (loop with last-read = (read-chr strm)
+        while (and
+                (not (char= last-read +eof+))
+                (not (char= last-read #\Newline)))
         do
-        (setf chr (read-chr strm)))
-  chr)
+        (setf last-read (read-chr strm))
+        finally
+        (return last-read)))
 
 (defun extract-sep (strm chr pred)
   (loop with just-read = nil
@@ -135,7 +140,7 @@
     do
     (cond
       ((char= next +start-comment+)
-       (setf just-read (extract-comment strm chr)))
+       (setf just-read (extract-comment strm next)))
       ((funcall pred next)
        (setf just-read (must-read-chr strm)))
       (t
@@ -189,7 +194,7 @@
         with building = nil
         while (and
                 (char= next chr)
-                (not (char= next #\Newline))
+                (not (char= next #\^))
                 (not (char= next +eof+)))
         do
         (setf last-read (read-chr strm))
@@ -210,15 +215,16 @@
           (push #\Space building))
         (let ((sep-result
                 (extract-blob-sep strm (peek-chr strm))))
-          (break)
           (when sep-result
             (setf last-read sep-result)))
         (setf next (peek-chr strm))
         finally (progn
                   (unless (or
                             (char= next +eof+)
-                            (char= next #\Newline))
-                    (error "Must end multiine blob with a newline"))
+                            (char= next #\^))
+                    (error "Must end multiline blob with a caret"))
+                  (when (char= next #\^)
+                    (read-chr strm))
                   (return-from toplevel (build-string (cdr building))))))
 
 (defun extract-quoted-blob (strm chr)
@@ -312,9 +318,7 @@
     (char= chr #\.)
     (char= chr #\-)))
 
-(defparameter *true* t)
-(defparameter *false* nil)
-(defparameter *null* nil)
+(defparameter false nil)
 
 (defun convert-to-property (final-string)
   (cond ((string= final-string "t")
@@ -322,11 +326,11 @@
         ((string= final-string "nil")
          nil)
         ((string= final-string "true")
-         '*true*)
+         t)
         ((string= final-string "false")
-         '*false*)
+         'false)
         ((string= final-string "null")
-         '*null*)
+         nil)
         (t (string-keyword final-string))))
 
 (defun extract-bare-property (strm chr)
@@ -387,7 +391,12 @@
         (setf last-read (extract-list-sep strm (peek-chr strm)))
         (setf found-sep (whitespace-p last-read))
         (setf next (peek-chr strm))
-        finally (return (reverse building))))
+        finally
+        (progn (when (and
+                (char= next #\])
+                (not (char= next +eof+)))
+                  (read-chr strm))
+                  (return (reverse building)))))
 
 (defun extract-hash (strm chr)
   (declare (ignore chr))
@@ -429,6 +438,7 @@
 (parse-from t)
 # What now brown cow
 {
+
    the-wind "bullseye"
    the-trees false
    the-sparrows his-eye
@@ -440,6 +450,7 @@
       |is on
     # I don't know if you can listen
       |The sparrow
+      ^
 
     # to a gypsy's prayer
 
@@ -448,15 +459,33 @@
       |And I know
       |He's watching
       |Over me
+      ^
 
    'force push' >I sing
                 >because
                 >I'm happy
+                ^
 
    "i am mordac" true
    "I am web mistress ming" false
    "you are so wrong" null
-
+    wendover [
+            {
+            so 1
+            much -10
+            gambling 100
+            but 1000
+            also -1000
+            apparently 10000
+            paramedics -10000
+            and 1.01
+            }
+            {
+            die in
+            a fire
+            }
+            15
+            ]
 }
 
 

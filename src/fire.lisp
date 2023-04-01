@@ -115,14 +115,24 @@
     ))
 
 (defun whitespace-p (chr)
-  (unless (null chr)
     (or
       (char= chr #\Newline)
       (char= chr #\Return)
       (char= chr #\Page)
-      (blankspace-p chr)
+      (blankspace-p chr)))
+
+(defun sepchar-p (chr)
+  (or (whitespace-p chr)
       (char= chr #\,)
-      (char= chr #\:))))
+      (char= chr #\:)))
+
+(defun guarded-sepchar-p (chr)
+    (unless (null chr)
+      (sepchar-p chr)))
+
+(defun guarded-blankspace-p (chr)
+    (unless (null chr)
+      (blankspace-p chr)))
 
 (defun extract-comment (strm chr)
   (loop with last-read = (read-chr strm)
@@ -148,19 +158,17 @@
     (setf next (peek-chr strm))))
 
 (defun extract-list-sep (strm chr)
-  (extract-sep strm chr #'whitespace-p))
+  (extract-sep strm chr #'guarded-sepchar-p))
 
 (defun must-extract-list-sep (strm chr)
-  (let ((last-read (extract-sep strm chr #'whitespace-p)))
+  (let ((last-read (extract-sep strm chr #'guarded-sepchar-p)))
     (when (null last-read)
       (error "separator expected"))
     last-read))
 
 
-
-
 (defun extract-blob-sep (strm chr)
-  (extract-sep strm chr #'blankspace-p))
+  (extract-sep strm chr #'guarded-blankspace-p))
 #|
 (extract-multiline-blob t #\|)
 |one
@@ -389,7 +397,7 @@
           )
         (push (extract-value strm next) building)
         (setf last-read (extract-list-sep strm (peek-chr strm)))
-        (setf found-sep (whitespace-p last-read))
+        (setf found-sep (guarded-sepchar-p last-read))
         (setf next (peek-chr strm))
         finally
         (progn (when (and
@@ -415,7 +423,7 @@
             next))
         (push (extract-value strm next) building)
         (setf last-read (extract-list-sep strm (peek-chr strm)))
-        (setf found-sep (whitespace-p last-read))
+        (setf found-sep (guarded-sepchar-p last-read))
         (setf next (peek-chr strm))
         (unless found-sep
           (error
@@ -426,7 +434,7 @@
             next))
         (push (extract-value strm next) building)
         (setf last-read (extract-list-sep strm (peek-chr strm)))
-        (setf found-sep (whitespace-p last-read))
+        (setf found-sep (guarded-sepchar-p last-read))
         (setf next (peek-chr strm))
         finally (when (char= next #\})
                   (read-chr strm))
@@ -501,3 +509,103 @@
   (let ((last-read (extract-list-sep strm (peek-chr strm)))
         (next (peek-chr strm)))
     (extract-value strm next)))
+
+
+
+#|
+(unprintable-p (code-char #x81))
+|#
+(defun unprintable-p (chr)
+  (and
+    (not (whitespace-p chr))
+    (let ((code (char-code chr)))
+      (or
+        (< code #x1f)
+        (= code #x7f)
+        (and
+          (>= code #x80)
+          (<= code #x9f))
+        (and
+          (>= code #xd800)
+          (<= code #xdfff))
+        (= code #xfeff)))))
+
+(defun bmp-p (chr)
+  (< (char-code chr) #x10000))
+
+(defun to-surrogates (chr)
+  (let* ((subject #x10E6d)
+
+      (residue (- subject #x10000))
+      (higher (prog1 (write (ash residue -10) :base 16) (terpri)))
+      (lower (prog1 (write (logand #x003ff residue) :base 16) (terpri))))
+      (list
+        (+ #xD800 higher))
+        (+ #xDc00 lower)))
+#|
+(inject-quoted
+  t #\"
+  '(#\ude6d #\\ #\" #\c #\n #\Newline #\Tab #\Return #\c #\a #\b))
+(inject-quoted t #\" "asdf
+	\\\"blarg")
+=>
+
+* (inject-quoted
+      t #\"
+        '(#\ude6d #\\ #\" #\c #\n #\Newline #\Tab #\Return #\c #\a #\b))
+"\uDE6D\\\"cn\n\t\rcab"
+(#\UDE6D #\\ #\" #\c #\n #\Newline #\Tab #\Return #\c #\a #\b)
+* (inject-quoted t #\" "asdf
+                 ^V
+                         \\\"blarg")
+"asdf\n\u0016\n\t\\\"blarg"
+"asdf
+▬
+        \\\"blarg"
+*
+
+
+
+|#
+
+(defun inject-quoted (strm quote-char blob)
+  (write-char quote-char strm)
+  (map nil (lambda (c)
+             (cond
+               ((char= c #\Newline)
+                (write-char #\\ strm)
+                (write-char #\n strm))
+               ((char= c #\Page)
+                (write-char #\\ strm)
+                (write-char #\f strm))
+               ((char= c #\Backspace)
+                (write-char #\\ strm)
+                (write-char #\b strm))
+               ((char= c #\Return)
+                (write-char #\\ strm)
+                (write-char #\r strm))
+               ((char= c #\Tab)
+                (write-char #\\ strm)
+                (write-char #\t strm))
+               ((unprintable-p c)
+                (write-char #\\ strm)
+                (write-char #\u strm)
+                (format strm "~4,'0X" (char-code c)))
+               ((char= c #\\)
+                (write-char #\\ strm)
+                (write-char #\\ strm))
+               ((char= c quote-char)
+                (write-char #\\ strm)
+                (write-char quote-char strm))
+               (t
+                 (write-char c strm))))
+       blob)
+  (write-char quote-char strm)
+  blob)
+
+(defun print-blob
+  (blob &key stream pretty-indent)
+  (cond
+    ((find #\Newline blob) 
+
+

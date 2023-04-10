@@ -269,20 +269,49 @@
             (string-downcase str)
             (string-upcase str)))))))
 
-
-(defvar *symbol-case*
+;; Variable used to determine the case of a string
+;; used for the name of a new symbol upon deserialization.
+;;
+;; Set to `(readtable-case *readtable*)` by default.
+(defparameter *symbol-deserialize-case*
   (readtable-case *readtable*))
 
+;; Variable used to determine the case of a string
+;; generated from the name of a symbol upon serialization.
+;; Can have the same values as the output of `readtable-case`:
+;; `:upcase`, `:downcase`, `:preserve`, and `:invert`,
+;; with the same effects.
+;;
+;; Unlike its cousin, I can't just give this thing a
+;; default based on the readtable,
+;;
+;; and the printer has no notion of this. It just prints whatever case
+;; was given originally. In effect, the printer is set to `:preserve` by
+;; default.
+;;
+;; This is a default which is not useful in my case, I think.
+;;
+;; Therefore, by default, it will be set to `:downcase`, which addresses
+;; a much more common need.
+(defparameter *symbol-serialize-case*
+  :downcase)
+
 (defun
-  prep-symbol-string (str)
-  (cond ((eql *symbol-case* :upcase) (string-upcase str))
-        ((eql *symbol-case* :downcase) (string-downcase str))
-        ((eql *symbol-case* :preserve) str)
-        ((eql *symbol-case* :invert) (string-invertcase str))
+  symbol-string-prep (str case-guide)
+  "
+  Attempts to prepare a string for interning according to the normal
+  ANSI rules for internment of literal symbols.
+  "
+  (declare (type string str)
+           (type keyword case-guide))
+  (cond ((eql case-guide :upcase) (string-upcase str))
+        ((eql case-guide :downcase) (string-downcase str))
+        ((eql case-guide :preserve) str)
+        ((eql case-guide :invert) (string-invertcase str))
         (t (string-upcase str))))
 
 (defun
-  string-keyword (str)
+  string-keyword (str &optional (case-guide *symbol-deserialize-case*))
   "
   Creates a keyword from a string.
 
@@ -297,9 +326,19 @@
   The variable `*symbol-case*` takes as its default the current value of
   `(readtable-case *readtable*)` at package load time.
   "
+  (declare (type string str)
+           (type keyword case-guide))
   (intern
-    (prep-symbol-string str)
+    (symbol-string-prep str case-guide)
     :KEYWORD))
+
+(defun symbol-string
+  (sym &optional (case-guide *symbol-serialize-case*))
+  (declare (type symbol sym)
+           (type keyword case-guide))
+  (cond ((eql sym 't) "true")
+        ((eql sym 'nil) "null")
+        (t (symbol-string-prep (symbol-name sym) case-guide))))
 
 (defun bareword-start-p (chr)
   (or
@@ -568,44 +607,188 @@
 
 |#
 
+(defparameter *escape-characters*
+  '((#\Newline . #\n)
+(#\Page . #\f)
+(#\Backspace . #\b)
+(#\Return . #\r)
+(#\Tab . #\t)
+(#\\ . #\\)))
+
 (defun inject-quoted (strm quote-char blob)
   (write-char quote-char strm)
   (map nil (lambda (c)
-             (cond
-               ((char= c #\Newline)
-                (write-char #\\ strm)
-                (write-char #\n strm))
-               ((char= c #\Page)
-                (write-char #\\ strm)
-                (write-char #\f strm))
-               ((char= c #\Backspace)
-                (write-char #\\ strm)
-                (write-char #\b strm))
-               ((char= c #\Return)
-                (write-char #\\ strm)
-                (write-char #\r strm))
-               ((char= c #\Tab)
-                (write-char #\\ strm)
-                (write-char #\t strm))
-               ((unprintable-p c)
-                (write-char #\\ strm)
-                (write-char #\u strm)
-                (format strm "~4,'0X" (char-code c)))
-               ((char= c #\\)
-                (write-char #\\ strm)
-                (write-char #\\ strm))
-               ((char= c quote-char)
-                (write-char #\\ strm)
-                (write-char quote-char strm))
-               (t
-                 (write-char c strm))))
+             (let ((mapped-char (cdr (assoc c *escape-characters*))))
+               (if mapped-char
+                 (progn
+                   (write-char #\\ strm)
+                   (write-char mapped-char strm))
+                 (cond
+                   ((unprintable-p c)
+                    (write-char #\\ strm)
+                    (write-char #\u strm)
+                    (format strm "~4,'0X" (char-code c)))
+                   ((char= c quote-char)
+                    (write-char #\\ strm)
+                    (write-char quote-char strm))
+                   (t (write-char c strm))))))
        blob)
   (write-char quote-char strm)
   blob)
+#|
 
-(defun print-blob
-  (blob &key stream pretty-indent)
-  (cond
-    ((find #\Newline blob) 
+(subseq "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." 0 78)
+(break-at-spaces 80 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+(break-at-spaces 40
+"http://www.lispworks.com/documentation/HyperSpec/Body/26_glo_e.htm#element doof")
+(break-at-spaces 40
+                 "")
+(break-up-blob 40
+"http://www.lispworks.com/documentation/HyperSpec/Body/26_glo_e.htm#element ")
+(break-at-spaces 0 "")
+
+|#
+(defun blob-prose-break-spot (max-width blob)
+  (let ((break-spot nil))
+    (loop for c across blob
+          for pos from 0 to (- (length blob) 1)
+          do
+          (when (and
+                  (char= c #\Space)
+                  (or
+                    (null break-spot)
+                    (< pos max-width)))
+            (setf break-spot pos)
+            )
+            (when (and (>= pos max-width)
+                       (not (null break-spot)))
+              (return break-spot))
+          finally
+          (return break-spot))))
+
+(defun blob-verbatim-break-spot (max-width blob)
+  (declare (ignore max-width))
+  (position #\Newline blob))
+
+(defun break-up-blob (max-width blob &optional (next-spot #'blob-break-spot))
+  (if (<= (length blob) 0)
+    blob
+    (loop with consumed = (copy-seq blob)
+          with chunks = nil
+          for spot = (funcall next-spot max-width consumed)
+          while (and
+                  (> (length consumed) 0)
+                  (not (null spot)))
+          do
+          (push (subseq consumed 0 spot) chunks)
+          (setf consumed
+                (if (> (length consumed) (+ 1 spot))
+                  (subseq consumed (+ 1 spot))
+                  (progn
+                    ;; Demonstrate that there should be a trailing newline
+                    (push "" chunks)
+                    (copy-seq ""))))
+          finally
+          (progn
+            (when (> (length consumed) 0)
+              (push consumed chunks))
+            (return (reverse chunks))))))
 
 
+(defun inject-blob (strm blob
+                         &optional
+                              pretty-indent indented-at
+                              (break-min-width 30)
+                              (doc-width 80)
+                              (literal nil))
+  (when (null pretty-indent)
+    (inject-quoted
+                strm
+                #\"
+                blob))
+  (let ((literal (> (count #\Newline blob) 1))
+        (line-suggested-width
+          (let ((initial (- doc-width (+ indent-position 1))))
+            (min
+              (max initial break-min-width)
+              doc-width))))
+    (when (not
+            (or literal
+              (> (length blob) line-suggested-width)))
+      (return (inject-quoted
+                strm
+                #\"
+                blob)))
+    (let* ((prefix-char (if literal
+                          +start-verbatim+
+                          +start-prose+))
+           (indent-position (+ indented-at
+                               pretty-indent))
+           (indent (make-string indent-position #\Space))
+           (next-spot (if literal
+                        #'blob-verbatim-break-spot
+                        #'blob-prose-break-spot)))
+      (loop named line-printer
+            with spacious
+            for str in (break-up-blob line-suggested-width
+                                      blob
+                                      next-spot)
+            do
+            (terpri strm)
+            (write-string indent strm)
+            (write-char prefix-char strm)
+            (write-string str strm))
+      (terpri strm)
+      (write-string indent strm)
+      (write-char #\^))))
+
+(defun inject-sep (strm pretty-indent indented-at)
+  (if (null pretty-indent)
+    (write-char #\Space)
+    (progn
+      (terpri strm)
+      (loop for i from 0 to indented-at
+            do
+            (write-char #\Space strm)))))
+
+;; The only place where I punt to the printer
+(defun inject-number (strm num)
+  (prin1 num strm))
+
+(defun escapable-p (chr quote-char)
+  (or
+    (find chr (map 'list #'car *escape-characters*))
+    (unprintable-p chr)
+    (char= chr quote-char)))
+
+(defun inject-property-content (strm prop-content)
+  (declare (type string prop-content))
+  (if (> (count-if (lambda (x)
+                     (or
+                       (char= x #\Space)
+                       (escapable-p x #\')))
+                   prop-content) 0)
+    (inject-quoted strm prop-content #\')
+    (write-string prop-content strm)))
+#|
+(inject-property t :argyle)
+(inject-property t 'terrifying)
+(inject-property t 15)
+(inject-property t 't)
+(inject-property t :|a b c|)
+
+
+|#
+(defun inject-property (strm prop)
+  (typecase prop
+    (nil (write-string "null" strm))
+    (keyword (inject-property-content strm (symbol-string prop)))
+    (symbol (cond ((eql prop 'false)
+                   (write-string "false" strm))
+                  ((eql prop 't)
+                   (write-string "true" strm))
+                  ((eql prop  'nil)
+                   (write-string "null" strm))
+                  (t (error "Writing symbols to PCL is undefined"))))
+    (t (error "wrong type of thing given to inject property for thing `~A`."
+              prop))))

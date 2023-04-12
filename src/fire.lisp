@@ -583,18 +583,17 @@
         (+ #xDc00 lower)))
 #|
 (inject-quoted
-  t #\"
+  t
   '(#\ude6d #\\ #\" #\c #\n #\Newline #\Tab #\Return #\c #\a #\b))
 (inject-quoted t #\" "asdf
 	\\\"blarg")
 =>
 
 * (inject-quoted
-      t #\"
-        '(#\ude6d #\\ #\" #\c #\n #\Newline #\Tab #\Return #\c #\a #\b))
+      t '(#\ude6d #\\ #\" #\c #\n #\Newline #\Tab #\Return #\c #\a #\b))
 "\uDE6D\\\"cn\n\t\rcab"
 (#\UDE6D #\\ #\" #\c #\n #\Newline #\Tab #\Return #\c #\a #\b)
-* (inject-quoted t #\" "asdf
+* (inject-quoted t "asdf
                  ^V
                          \\\"blarg")
 "asdf\n\u0016\n\t\\\"blarg"
@@ -615,7 +614,7 @@
 (#\Tab . #\t)
 (#\\ . #\\)))
 
-(defun inject-quoted (strm quote-char blob)
+(defun inject-quoted (strm blob &optional (quote-char #\"))
   (write-char quote-char strm)
   (map nil (lambda (c)
              (let ((mapped-char (cdr (assoc c *escape-characters*))))
@@ -703,8 +702,8 @@
                               (literal nil))
   (when (null pretty-indent)
     (inject-quoted
-                strm
                 #\"
+                strm
                 blob))
   (let ((literal (> (count #\Newline blob) 1))
         (line-suggested-width
@@ -772,11 +771,15 @@
     (write-string prop-content strm)))
 #|
 (inject-property t :argyle)
+=> [prints `argyle`]
 (inject-property t 'terrifying)
+=> [throws error, no symbols plz]
 (inject-property t 15)
+=> [throws error, no numbers plz]
 (inject-property t 't)
+=> [prints `true`]
 (inject-property t :|a b c|)
-
+=> [prints `'a b c'`]
 
 |#
 (defun inject-property (strm prop)
@@ -792,3 +795,41 @@
                   (t (error "Writing symbols to PCL is undefined"))))
     (t (error "wrong type of thing given to inject property for thing `~A`."
               prop))))
+
+;; Numbers are hard, punt on this
+(defun inject-number (strm num)
+  (prin1 num strm))
+
+(defun inject-sequence (strm seq pretty-indent indented-at seq-start seq-end)
+  (let ((sequence-indent (when (not (null pretty-indent))
+                           (+ indented-at pretty-indent))))
+    (write-char seq-start strm)
+    (loop for v in seq
+          do
+          (inject-sep strm pretty-indent sequence-indent)
+          (inject-value strm v pretty-indent sequence-indent)))
+  (inject-sep strm pretty-indent indented-at)
+  (write-char seq-end pretty-indent indented-at))
+
+(defun inject-object (strm object pretty-indent indented-at)
+  (let* ((* (alexandria:hash-table-alist object))
+         (* (stable-sort
+              *
+              #'string<
+              :key
+              (lambda (thing)
+                (format nil "~A" (car thing)))))
+         (* (alexandria:alist-plist *)))
+    (inject-sequence strm * pretty-indent indented-at #\{ #\})))
+
+(defun inject-array (strm aray pretty-indent indented-at)
+  (inject-sequence strm aray pretty-indent indented-at #\[ #\]))
+
+(defun inject-value (strm val pretty-indent)
+  (typecase val
+    (symbol (inject-property strm val))
+    (number (inject-number strm val))
+    (string (inject-blob strm val))
+    (hash-table (inject-object strm val pretty-indent indented-at))
+    (sequence (inject-array strm val pretty-indent indented-at))))
+

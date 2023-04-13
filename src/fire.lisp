@@ -7,24 +7,30 @@
 ; Guess I'll try it out
 (defconstant +eof+ (code-char 4))
 
-(defun peek-chr (strm) (peek-char nil strm nil +eof+ nil))
+(defun peek-chr (strm)
+  (declare (type (or boolean stream) strm))
+  (peek-char nil strm nil +eof+ nil))
 
 (defun read-chr (strm)
+  (declare (type (or boolean stream) strm))
   (read-char strm nil +eof+ nil))
 
 (defun must-read-chr (strm)
+  (declare (type (or boolean stream) strm))
   (let ((chr (read-chr strm)))
     (if (char= chr +eof+)
       (error "EOF reached during reading")
       chr)))
 
 (defun number-start-p (chr)
+  (declare (type character chr))
   (or
     (digit-char-p chr)
     (char= chr #\-)
     (char= chr #\.)))
 
 (defun number-char-p (chr)
+  (declare (type character chr))
   (or
     (number-start-p chr)
     (char= chr #\+)
@@ -40,6 +46,7 @@
 (equal (build-string nil) "")
 
 (defun build-string (lst)
+  (declare (type list lst))
   (let* ((size (length lst))
          (building (make-string size)))
     (loop for l in lst
@@ -49,6 +56,8 @@
     building))
 
 (defun extract-number (strm chr)
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (let ((building nil)
         (last-read chr))
     (loop while (number-char-p last-read)
@@ -60,6 +69,9 @@
 
 (defun extract-quoted
   (strm chr quote-char)
+  (declare (type (or boolean stream) strm)
+           (type character chr)
+           (type character quote-char))
   (declare (ignore chr))
   (must-read-chr strm)
   (let ((last-read (must-read-chr strm))
@@ -109,12 +121,14 @@
 (defconstant +start-comment+ #\#)
 
 (defun blankspace-p (chr)
+  (declare (type character chr))
   (or
     (char= chr #\Tab)
     (char= chr #\Space)
     ))
 
 (defun whitespace-p (chr)
+  (declare (type character chr))
     (or
       (char= chr #\Newline)
       (char= chr #\Return)
@@ -122,19 +136,24 @@
       (blankspace-p chr)))
 
 (defun sepchar-p (chr)
+  (declare (type character chr))
   (or (whitespace-p chr)
       (char= chr #\,)
       (char= chr #\:)))
 
 (defun guarded-sepchar-p (chr)
+  (declare (type character chr))
     (unless (null chr)
       (sepchar-p chr)))
 
 (defun guarded-blankspace-p (chr)
+  (declare (type character chr))
     (unless (null chr)
       (blankspace-p chr)))
 
 (defun extract-comment (strm chr)
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (loop with last-read = (read-chr strm)
         while (and
                 (not (char= last-read +eof+))
@@ -145,6 +164,9 @@
         (return last-read)))
 
 (defun extract-sep (strm chr pred)
+  (declare (type (or boolean stream) strm)
+           (type character chr)
+           (type function pred))
   (loop with just-read = nil
         with next = chr
     do
@@ -158,9 +180,13 @@
     (setf next (peek-chr strm))))
 
 (defun extract-list-sep (strm chr)
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (extract-sep strm chr #'guarded-sepchar-p))
 
 (defun must-extract-list-sep (strm chr)
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (let ((last-read (extract-sep strm chr #'guarded-sepchar-p)))
     (when (null last-read)
       (error "separator expected"))
@@ -168,6 +194,8 @@
 
 
 (defun extract-blob-sep (strm chr)
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (extract-sep strm chr #'guarded-blankspace-p))
 #|
 (extract-multiline-blob t #\|)
@@ -196,6 +224,8 @@
   and grabs subsequent prefixed strings
   until a non-prefix character, EOF, or two new-lines in a row.
   "
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (loop named toplevel
         with last-read = nil
         with next = chr
@@ -236,6 +266,8 @@
                   (return-from toplevel (build-string (cdr building))))))
 
 (defun extract-quoted-blob (strm chr)
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (extract-quoted strm chr #\"))
 
 #+(or)
@@ -249,6 +281,7 @@
 
 (defun string-invertcase
   (str)
+  (declare (type string str))
   (let ((operable (remove-if-not #'both-case-p str)))
     (if (= (length operable) 0)
       str
@@ -341,6 +374,7 @@
         (t (symbol-string-prep (symbol-name sym) case-guide))))
 
 (defun bareword-start-p (chr)
+  (declare (type character chr))
   (or
     (alpha-char-p chr)
     (char= chr #\_)
@@ -356,6 +390,7 @@
     (char= chr #\=)))
 
 (defun bareword-middle-p (chr)
+  (declare (type character chr))
   (or
     (bareword-start-p chr)
     (digit-char-p chr)
@@ -368,6 +403,7 @@
 (defparameter false nil)
 
 (defun convert-to-property (final-string)
+  (declare (type string final-string))
   (cond ((string= final-string "t")
                   t)
         ((string= final-string "nil")
@@ -381,6 +417,8 @@
         (t (string-keyword final-string))))
 
 (defun extract-bare-property (strm chr)
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (loop with building = nil
         with last-read = nil
         with next = chr
@@ -394,10 +432,14 @@
           (convert-to-property (build-string building)))))
 
 (defun extract-quoted-property (strm chr)
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (convert-to-property
     (extract-quoted strm chr #\')))
 
 (defun extract-value (strm chr)
+  (declare (type (or boolean stream) strm)
+           (type character chr))
   (cond
         ((char= chr #\{)
          (extract-hash strm chr))
@@ -419,7 +461,9 @@
                   chr))))
 
 (defun extract-array (strm chr)
-  (declare (ignore chr))
+  (declare (type (or boolean stream) strm)
+           (type character chr)
+           (ignore chr))
   (read-chr strm)
   (loop with building = nil
         with found-sep = t
@@ -446,7 +490,9 @@
                   (return (reverse building)))))
 
 (defun extract-hash (strm chr)
-  (declare (ignore chr))
+  (declare (type (or boolean stream) strm)
+           (type character chr)
+           (ignore chr))
   (read-chr strm)
   (loop with building = nil
         with found-sep = t
@@ -545,6 +591,7 @@
 
 |#
 (defun parse-from (strm)
+  (declare (type (or boolean stream) strm))
   (let ((last-read (extract-list-sep strm (peek-chr strm)))
         (next (peek-chr strm)))
     (extract-value strm next)))
@@ -555,6 +602,7 @@
 (unprintable-p (code-char #x81))
 |#
 (defun unprintable-p (chr)
+  (declare (type character chr))
   (and
     (not (whitespace-p chr))
     (let ((code (char-code chr)))
@@ -570,9 +618,11 @@
         (= code #xfeff)))))
 
 (defun bmp-p (chr)
+  (declare (type character chr))
   (< (char-code chr) #x10000))
 
 (defun to-surrogates (chr)
+  (declare (type character chr))
   (let* ((subject #x10E6d)
 
       (residue (- subject #x10000))
@@ -615,6 +665,9 @@
 (#\\ . #\\)))
 
 (defun inject-quoted (strm blob &optional (quote-char #\"))
+  (declare (type (or boolean stream) strm)
+           (type string blob)
+           (type character quote-char))
   (write-char quote-char strm)
   (map nil (lambda (c)
              (let ((mapped-char (cdr (assoc c *escape-characters*))))
@@ -648,6 +701,8 @@
 
 |#
 (defun blob-prose-break-spot (max-width blob)
+  (declare (type (integer 0 1024) max-width)
+           (type string blob))
   (let ((break-spot nil))
     (loop for c across blob
           for pos from 0 to (- (length blob) 1)
@@ -666,10 +721,15 @@
           (return break-spot))))
 
 (defun blob-verbatim-break-spot (max-width blob)
-  (declare (ignore max-width))
+  (declare (type (integer 0 1024) max-width)
+           (type string blob)
+           (ignore max-width))
   (position #\Newline blob))
 
 (defun break-up-blob (max-width blob &optional (next-spot #'blob-break-spot))
+  (declare (type (integer 0 1024) max-width)
+           (type string blob)
+           (type function next-spot))
   (if (<= (length blob) 0)
     blob
     (loop with consumed = (copy-seq blob)
@@ -698,13 +758,18 @@
                          &optional
                               pretty-indent indented-at
                               (break-min-width 30)
-                              (doc-width 80)
-                              (literal nil))
+                              (doc-width 80))
+  (declare (type (or boolean stream) strm)
+           (type (string blob))
+           (type (or null (integer 0 64)) pretty-indent)
+           (type (integer 0 1024) indented-at)
+           (type (integer 0 1024) break-min-width)
+           (type (integer 0 1024) doc-width))
   (when (null pretty-indent)
     (inject-quoted
-                #\"
                 strm
-                blob))
+                blob
+                #\"))
   (let ((literal (> (count #\Newline blob) 1))
         (line-suggested-width
           (let ((initial (- doc-width (+ indent-position 1))))
@@ -716,8 +781,8 @@
               (> (length blob) line-suggested-width)))
       (return (inject-quoted
                 strm
-                #\"
-                blob)))
+                blob
+                #\")))
     (let* ((prefix-char (if literal
                           +start-verbatim+
                           +start-prose+))
@@ -742,6 +807,9 @@
       (write-char #\^))))
 
 (defun inject-sep (strm pretty-indent indented-at)
+  (declare (type (or boolean stream) strm)
+           (type (or null (integer 0 64)) pretty-indent)
+           (type (integer 0 1024) indented-at))
   (if (null pretty-indent)
     (write-char #\Space)
     (progn
@@ -752,16 +820,21 @@
 
 ;; The only place where I punt to the printer
 (defun inject-number (strm num)
+  (declare (type (or boolean stream) strm)
+           (type number num))
   (prin1 num strm))
 
 (defun escapable-p (chr quote-char)
+  (declare (type character chr)
+           (type character quote-char))
   (or
     (find chr (map 'list #'car *escape-characters*))
     (unprintable-p chr)
     (char= chr quote-char)))
 
 (defun inject-property-content (strm prop-content)
-  (declare (type string prop-content))
+  (declare (type character chr)
+           (type string prop-content))
   (if (> (count-if (lambda (x)
                      (or
                        (char= x #\Space)
@@ -783,8 +856,11 @@
 
 |#
 (defun inject-property (strm prop)
+  (declare (type character chr)
+           (type (or null boolean symbol) prop))
   (typecase prop
-    (nil (write-string "null" strm))
+    (null (write-string "null" strm))
+    (boolean (write-string "true" strm))
     (keyword (inject-property-content strm (symbol-string prop)))
     (symbol (cond ((eql prop 'false)
                    (write-string "false" strm))
@@ -809,7 +885,7 @@
           (inject-sep strm pretty-indent sequence-indent)
           (inject-value strm v pretty-indent sequence-indent)))
   (inject-sep strm pretty-indent indented-at)
-  (write-char seq-end pretty-indent indented-at))
+  (write-char seq-end strm))
 
 (defun inject-object (strm object pretty-indent indented-at)
   (let* ((* (alexandria:hash-table-alist object))
@@ -825,11 +901,22 @@
 (defun inject-array (strm aray pretty-indent indented-at)
   (inject-sequence strm aray pretty-indent indented-at #\[ #\]))
 
-(defun inject-value (strm val pretty-indent)
+(defun inject-value (strm val pretty-indent indented-at)
+  (declare (type (or boolean stream) strm)
+           (type (or null (integer 0 64)) pretty-indent)
+           (type (or null (integer 0 1024) indented-at)))
   (typecase val
-    (symbol (inject-property strm val))
+    ((or null boolean symbol) (inject-property strm val))
     (number (inject-number strm val))
     (string (inject-blob strm val))
     (hash-table (inject-object strm val pretty-indent indented-at))
     (sequence (inject-array strm val pretty-indent indented-at))))
 
+(defun generate-to (strm val pretty-indent)
+  (declare (type (or boolean stream) strm)
+           (type (or null (integer 0 64)) pretty-indent))
+  (inject-value strm val pretty-indent 0))
+
+(defun hello (world)
+  (declare (type (or boolean string) world))
+           world)

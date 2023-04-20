@@ -572,6 +572,13 @@
             apparently 10000
             paramedics -10000
             and 1.01
+            |this
+            |that
+            ^
+            >and
+            >the
+            >other
+            ^
             }
             {
             die in
@@ -753,70 +760,96 @@
               (push consumed chunks))
             (return (reverse chunks))))))
 
-
-(defun inject-blob (strm blob
-                         &optional
-                              pretty-indent indented-at
-                              (break-min-width 30)
-                              (doc-width 80))
+(defun inject-sep (strm indented-at)
   (declare (type (or boolean stream) strm)
-           (type (string blob))
-           (type (or null (integer 0 64)) pretty-indent)
-           (type (integer 0 1024) indented-at)
-           (type (integer 0 1024) break-min-width)
-           (type (integer 0 1024) doc-width))
-  (when (null pretty-indent)
-    (inject-quoted
-                strm
-                blob
-                #\"))
-  (let ((literal (> (count #\Newline blob) 1))
-        (line-suggested-width
-          (let ((initial (- doc-width (+ indent-position 1))))
-            (min
-              (max initial break-min-width)
-              doc-width))))
-    (when (not
-            (or literal
-              (> (length blob) line-suggested-width)))
-      (return (inject-quoted
-                strm
-                blob
-                #\")))
-    (let* ((prefix-char (if literal
-                          +start-verbatim+
-                          +start-prose+))
-           (indent-position (+ indented-at
-                               pretty-indent))
-           (indent (make-string indent-position #\Space))
-           (next-spot (if literal
-                        #'blob-verbatim-break-spot
-                        #'blob-prose-break-spot)))
-      (loop named line-printer
-            with spacious
-            for str in (break-up-blob line-suggested-width
-                                      blob
-                                      next-spot)
-            do
-            (terpri strm)
-            (write-string indent strm)
-            (write-char prefix-char strm)
-            (write-string str strm))
-      (terpri strm)
-      (write-string indent strm)
-      (write-char #\^))))
-
-(defun inject-sep (strm pretty-indent indented-at)
-  (declare (type (or boolean stream) strm)
-           (type (or null (integer 0 64)) pretty-indent)
-           (type (integer 0 1024) indented-at))
-  (if (null pretty-indent)
-    (write-char #\Space)
+           (type (or null (integer 0 1024)) indented-at))
+  (if (null indented-at)
+    (write-char #\Space strm)
     (progn
       (terpri strm)
       (loop for i from 0 to indented-at
             do
             (write-char #\Space strm)))))
+
+(defun suggest-line-width
+  (indented-at
+    &key
+    (break-min-width 30)
+    (doc-width 80))
+  (declare
+    (type (or null (integer 0 1024)) indented-at)
+    (type (integer 0 1024) break-min-width)
+    (type (integer 0 1024) doc-width))
+  (when (not (null indented-at))
+    (min
+      (max
+        (- doc-width
+           ;; Account for the prefix char
+           (+ indented-at 1))
+        break-min-width)
+      doc-width)))
+
+(defun determine-blob-form (blob line-width)
+  (declare (type (string blob))
+           (type (or null (integer 0 1024)) line-width))
+  (if (null line-width)
+    :quoted
+    (cond
+      ((> (count #\Newline blob) 1)
+       :verbatim)
+      ((> (length blob) line-width)
+       :prose)
+      (t
+        :quoted))))
+
+(defun inject-multiline-blob
+  (strm blob indent line-width prefix-char next-spot)
+  (declare (type (or boolean stream) strm)
+           (type string blob)
+           (type string indent)
+           (type (integer 0 1024) line-width)
+           (type character prefix-char)
+           (type function next-spot))
+        (loop named line-printer
+              with spacious
+              for str in (break-up-blob line-width
+                                        blob
+                                        next-spot)
+              do
+              (write-char prefix-char strm)
+              (write-string str strm)
+              (terpri strm)
+              (write-string indent strm))
+        (write-char #\^))
+
+(defun inject-blob (strm blob indented-at
+                         &key
+                         line-width-args)
+  (declare (type (or boolean stream) strm)
+           (type (string blob))
+           (type (or null (integer 0 1024)) indented-at)
+           (type list line-width-args))
+  (let* ((line-suggested-width (apply
+                                 #'suggest-line-width
+                                 (cons indented-at line-width-args)))
+         (dispatch (determine-blob-form blob line-suggested-width)))
+    (if (eql dispatch :quoted)
+      (inject-quoted
+        strm
+        blob
+        #\")
+      (inject-multiline-blob
+        strm
+        blob
+        (make-string indented-at
+                     :initial-element #\Space)
+        line-suggested-width
+        (if (eql dispatch :verbatim)
+          +start-verbatim+
+          +start-prose+)
+        (if (eql dispatch :verbatim)
+                 #'blob-verbatim-break-spot
+                 #'blob-prose-break-spot)))))
 
 ;; The only place where I punt to the printer
 (defun inject-number (strm num)
@@ -876,30 +909,54 @@
 (defun inject-number (strm num)
   (prin1 num strm))
 
-(defun inject-sequence (strm seq pretty-indent indented-at seq-start seq-end)
-  (let ((sequence-indent (when (not (null pretty-indent))
+(defun inject-array (strm seq pretty-indent indented-at)
+  (let ((array-indent (when (not (null pretty-indent))
                            (+ indented-at pretty-indent))))
-    (write-char seq-start strm)
+    (write-char #\[ strm)
     (loop for v in seq
           do
-          (inject-sep strm pretty-indent sequence-indent)
-          (inject-value strm v pretty-indent sequence-indent)))
-  (inject-sep strm pretty-indent indented-at)
-  (write-char seq-end strm))
+          (inject-sep strm array-indent)
+          (inject-value strm v pretty-indent array-indent)))
+  (inject-sep strm indented-at)
+  (write-char #\] strm))
 
-(defun inject-object (strm object pretty-indent indented-at)
-  (let* ((* (alexandria:hash-table-alist object))
-         (* (stable-sort
-              *
-              #'string<
-              :key
-              (lambda (thing)
-                (format nil "~A" (car thing)))))
-         (* (alexandria:alist-plist *)))
-    (inject-sequence strm * pretty-indent indented-at #\{ #\})))
-
-(defun inject-array (strm aray pretty-indent indented-at)
-  (inject-sequence strm aray pretty-indent indented-at #\[ #\]))
+(defun inject-object (strm object pretty-indent indented-at &optional &rest
+                           line-width-args)
+  (let* ((printable
+           (stable-sort
+             (alexandria:hash-table-alist object)
+             #'string<
+             :key
+             (lambda (thing)
+               (format nil "~A" (car thing)))))
+         (object-indent (when (not (null pretty-indent))
+                          (+ indented-at pretty-indent))))
+    (write-char #\{ strm)
+    (loop for (k . v) in printable
+          do
+          (inject-sep strm object-indent)
+          (inject-value strm k pretty-indent object-indent)
+          (if
+              (and
+                (typep v 'string)
+                (not
+                  (eql
+                    :quoted
+                    (determine-blob-form
+                      v
+                      (apply
+                        #'suggest-line-width
+                        (cons
+                          (+ object-indent pretty-indent)
+                          line-width-args))))))
+(let ((blob-indent (+ object-indent pretty-indent)))
+              (inject-sep strm blob-indent)
+              (inject-blob strm v blob-indent))
+            (progn
+              (write-char #\Space strm)
+              (inject-value strm v pretty-indent object-indent))))
+    (inject-sep strm indented-at)
+    (write-char #\} strm)))
 
 (defun inject-value (strm val pretty-indent indented-at)
   (declare (type (or boolean stream) strm)
@@ -908,7 +965,7 @@
   (typecase val
     ((or null boolean symbol) (inject-property strm val))
     (number (inject-number strm val))
-    (string (inject-blob strm val))
+    (string (inject-blob strm val indented-at))
     (hash-table (inject-object strm val pretty-indent indented-at))
     (sequence (inject-array strm val pretty-indent indented-at))))
 
@@ -917,6 +974,3 @@
            (type (or null (integer 0 64)) pretty-indent))
   (inject-value strm val pretty-indent 0))
 
-(defun hello (world)
-  (declare (type (or boolean string) world))
-           world)

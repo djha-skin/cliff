@@ -20,12 +20,6 @@
     (:import-from #:quri)
     (:import-from #:uiop/stream)
     (:export
-      dbg
-      join-strings
-      join-lines
-      repeatedly-eq
-      repeatedly
-      nested-to-alist
       generate-string
       parse-string
       slurp-stream
@@ -38,122 +32,12 @@
       os-specific-home
       os-specific-config-dir
       find-file
-      string-uniform-case-p
       exit-error
-      string-keyword
       consume-arguments
       consume-environment
       config-file-options
       execute-program))
 (in-package #:cl-i)
-
-(defmacro
-  dbg
-  (body
-    &optional
-    (destination
-      *standard-output*))
-  (let
-    ((rbody
-       (gensym
-         "cl-i-dbg"))
-     (rdest
-       (gensym
-         "cl-i-dbg")))
-    `(let
-       ((,rbody
-          ,body)
-        (,rdest
-          ,destination))
-       (format
-        ,rdest "debug: type of `~a` = `~a`~%" (quote
-                                                 ,body)
-         (type-of
-           ,rbody))
-       (format
-         ,rdest "debug: eval of `~a` = `~a`~%" (quote
-                                                 ,body) ,rbody)
-       (finish-output
-         ,rdest)
-       ,rbody)))
-
-(defconstant +lf+ #\Linefeed)
-(defconstant +verbatim+ #\!)
-(defconstant +prose+ #\?)
-(defconstant +tab+ #\Tab)
-(defconstant +space+ #\Space)
-(defconstant +start-hash+ #\{)
-(defconstant +end-hash+ #\})
-(defvar *read-hash-init-args*
-  `(:test ,#'equal))
-
-(defun read-hash (strm chr &optional (hash-init-args *read-hash-init-args*))
-  (declare (ignore chr))
-    (loop with last-read = (peek-char t strm nil nil t)
-          with result = (apply #'make-hash-table hash-init-args)
-          with key = nil
-          with val = nil
-          while (and (not (null last-read)) (not (char= last-read +end-hash+)))
-          do
-          (format t "Well then.")
-        (setf key (read))
-        (setf last-read (peek-char t strm nil nil t))
-        (when (or (null last-read)
-                  (char= last-read +end-hash+))
-          (error "Unequal number of forms in hash form"))
-        (setf val (read))
-        (setf (gethash key result) val)
-        (setf last-read (peek-char t strm nil nil t))
-        finally
-        (return result)))
-
-(set-macro-character +start-hash+ #'read-hash)
-
-
-
-
-
-
-
-(set-macro-character +verbatim+ #'read-multiline-string)
-(set-macro-character +prose+ #'read-multiline-string)
-
-+(or)
-(print-multiline-string t "one
-two
-three")
-(defvar *multiline-string-prefix* "    ")
-(defun print-multiline-string
-  (strm str &optional (prefix *multiline-string-prefix*))
-  (if (not (find +lf+ str))
-    (prin1 str)
-    (pprint-logical-block
-      (strm nil :prefix "")
-      (let ((lines (cl-ppcre:split "\\n" str)))
-        (write-char #\Newline)
-        (write-string prefix strm)
-        (loop for line in lines
-              do
-              (write-char +verbatim+ strm)
-              (write-string line strm)
-              (write-char #\Newline strm)
-              (write-string prefix strm))))))
-
-
-
-
-
-
-(defun read-hash (strm chr)
-  (declare (ignore char))
-  (let ((last-read chr))
-    ((cons 'string
-                  (mapcar (lambda (str) (concatenate 'string str fmt))
-                          strs)))))
-
-(defun join-lines
-  (&rest lines)
-  (funcall #'join-strings lines))
 
 (defun repeatedly-eq
   (func
@@ -212,134 +96,6 @@ three")
     (helper arg repeats)))
 
 
-
-#+(or)
-(do
-  (string-invertcase "")
-  (string-invertcase "A")
-  (string-invertcase "a")
-  (string-invertcase " ")
-  (string-invertcase "my heart's a stereo")
-  (string-invertcase "My heart's a stereo"))
-
-(defun string-invertcase
-  (str)
-  (let ((operable (remove-if-not #'both-case-p str)))
-    (if (= (length operable) 0)
-      str
-      (let* ((first-upper-case (upper-case-p (elt operable 0)))
-             (uneven-case
-               (when (> (length operable) 1)
-                      (reduce
-                        (lambda (c v)
-                          (or c v))
-                        (map
-                          'vector
-                          (lambda (x)
-                            (not (eql (upper-case-p x) first-upper-case)))
-                          (subseq operable 1))))))
-        (if uneven-case
-          str
-          (if first-upper-case
-            (string-downcase str)
-            (string-upcase str)))))))
-
-
-(defvar *symbol-case*
-  (readtable-case *readtable*))
-
-(defun
-  prep-symbol-string (str)
-  (cond ((eql *symbol-case* :upcase) (string-upcase str))
-        ((eql *symbol-case* :downcase) (string-downcase str))
-        ((eql *symbol-case* :preserve) str)
-        ((eql *symbol-case* :invert) (string-invertcase str))
-        (t (string-upcase str))))
-
-(defun
-  string-keyword (str)
-  "
-  Creates a keyword from a string.
-
-  Creates a keyword following `(readtable-case *readtable*)` rules.
-
-  If this package's var `*symbol-case*` is `:upcase`, the string is upcased.
-  If it is `:downcase`, the string is downcased.
-  If it is `:preserve`, the string's case is preserved.
-  If it is `:invert`, the string's case is inverted as long as all caseable
-  characters are already of uniform case.
-
-  The variable `*symbol-case*` takes as its default the current value of
-  `(readtable-case *readtable*)` at package load time.
-  "
-  (intern
-    (prep-symbol-string str)
-    :KEYWORD))
-
-(defun hash-to-kw-hash
-  (hsh)
-  (loop for k being the hash-key of hsh
-        using (hash-value v)
-        with result = (make-hash-table :test 'eql)
-        do
-        (setf
-          (gethash
-            (string-keyword k)
-            result)
-          v)
-        finally (return result)))
-
-#+(or)
-(equal (nested-to-alist
-         (hash-to-kw-hash
-           (alexandria:alist-hash-table
-             '(("c" . 3)
-               ("a" . 1)
-               ("b" . 2))
-             :test #'equal)))
-       '((:A . 1)
-         (:B . 2)
-         (:C . 3)))
-
-;;(eval-when (:compile-toplevel :load-toplevel :execute)
-;;  )
-
-(defun
-  string-uninterned-symbol (str)
-  "
-  Creates an uninterned symbol from a string.
-
-  Creates an uninterned symbol following `(readtable-case *readtable*)` rules.
-
-  If this package's var `*symbol-case*` is `:upcase`, the string is upcased.
-  If it is `:downcase`, the string is downcased.
-  If it is `:preserve`, the string's case is preserved.
-  If it is `:invert`, the string's case is inverted as long as all caseable
-  characters are already of uniform case.
-
-  The variable `*symbol-case*` takes as its default the current value of
-  `(readtable-case *readtable*)` at package load time.
-  "
-  (make-symbol
-    (prep-symbol-string str)))
-
-(defun package-mangle (pkg topkg)
-  "Name-mangle a package name.
-  This is in place of pacakge-local nicknames, which I couldn't get to work
-  on my raspberry pi."
-  (let ((pkg (find-package pkg)))
-    (rename-package
-      pkg
-      (package-name pkg)
-      ;; For some reason, package local nicknames aren't supported on my
-      ;; raspberry pi so I've decided to use name mangling. I'm cool with it.
-      ;; Source for the inspiration: https://stackoverflow.com/a/28907543/850326
-      (adjoin (string-uninterned-symbol
-                (format nil "cl-i/~A" topkg))
-                (package-nicknames pkg)
-                :test
-                #'string=))))
-
 (defparameter *exit-codes*
   ;; taken from /usr/include/sysexit.h
   (alexandria:alist-hash-table
@@ -362,8 +118,6 @@ three")
       (:configuration-error . 78))))
 
 
-
-
 (defun url-to-pathname
   (url)
   (or
@@ -371,7 +125,7 @@ three")
       (logical-path)
       ("^file://(.*)$"
        url)
-      (declare (ignore _))
+      (declare (ignore logical-path))
       (pathname logical-path))
     nil))
 
@@ -749,7 +503,7 @@ three")
 
 (defun ingest-option
   (opts
-    map-sep-pat hash-init-args kact kopt context &optional value)
+    map-sep-pat hash-init-args kact kopt &optional value)
   (cond
     ((eql kact :enable)
      (setf (gethash kopt opts) t))
@@ -776,7 +530,7 @@ three")
            (when (not (gethash kopt opts))
              (setf (gethash kopt opts)
                    (apply #'make-hash-table hash-init-args)))
-           (setf (gethash (string-keyword k) (gethash kopt opts)) v))
+           (setf (gethash (nrdl:string-keyword k) (gethash kopt opts)) v))
          (error "not a k/v pair, check map sep pattern: ~a" value))))
     ((eql kact :nrdl)
      (setf (gethash kopt opts)
@@ -833,16 +587,16 @@ three")
              (rargs (rest consumable)))
             (or
               (cl-ppcre:register-groups-bind
-                ((#'string-keyword
+                ((#'nrdl:string-keyword
                   kact)
-                 (#'string-keyword
+                 (#'nrdl:string-keyword
                   kopt))
                 (+find-tag+
                   arg)
                 (cond
                   ((some (lambda (x) (eql kact x)) +single-arg-actions+)
                    (ingest-option
-                     opts map-sep-pat hash-init-args kact kopt context)
+                     opts map-sep-pat hash-init-args kact kopt)
                    (setf consumable rargs))
                   ((some (lambda (x) (eql kact x)) +multiple-arg-actions+)
                    (when (not rargs)
@@ -852,7 +606,7 @@ three")
                            (first rargs))
                          (rrargs (rest rargs)))
                      (ingest-option
-                       opts map-sep-pat hash-init-args kact kopt context value)
+                       opts map-sep-pat hash-init-args kact kopt value)
                      (setf consumable rrargs)))
                   (:else
                    (error 'unknown-directive
@@ -871,8 +625,7 @@ three")
 
 (defun
   ingest-var
-  (program-name
-    opts
+  (opts
     map-sep-pat list-sep-pat hash-init-args ktag kopt context value)
   (cond
     ((eql ktag :flag)
@@ -880,10 +633,10 @@ three")
            (lambda (v)
              (eql value v))
            '("0" "false" "False" "FALSE" "no" "NO" "No"))
-       (ingest-option opts map-sep-pat hash-init-args :disable kopt context)
-       (ingest-option opts map-sep-pat hash-init-args :enable kopt context)))
+       (ingest-option opts map-sep-pat hash-init-args :disable kopt)
+       (ingest-option opts map-sep-pat hash-init-args :enable kopt)))
     ((eql ktag :item)
-     (ingest-option opts map-sep-pat hash-init-args :set kopt context value))
+     (ingest-option opts map-sep-pat hash-init-args :set kopt value))
     ((eql ktag :list)
      (loop for piece in (reverse (cl-ppcre:split list-sep-pat value)) do
            (ingest-option
@@ -892,7 +645,6 @@ three")
              hash-init-args
              :add
              kopt
-             context
              piece)))
     ((eql ktag :table)
      (loop for piece in (cl-ppcre:split list-sep-pat value) do
@@ -901,7 +653,6 @@ three")
                           hash-init-args
                           :join
                           kopt
-                          context
                           piece)))
     ((eql ktag :nrdl)
      (ingest-option opts
@@ -909,7 +660,6 @@ three")
                     hash-init-args
                     ktag
                     kopt
-                    context
                     value))
     (t
      (error 'unknown-directive
@@ -1044,11 +794,10 @@ three")
               value)
       do
       (cl-ppcre:register-groups-bind
-        ((#'string-keyword ktag)
-         (#'string-keyword kopt))
+        ((#'nrdl:string-keyword ktag)
+         (#'nrdl:string-keyword kopt))
         (var-pattern key)
         (ingest-var
-          program-name
           result
           map-sep-pat
           list-sep-pat
@@ -1066,16 +815,6 @@ three")
         using (hash-value value)
         do
         (setf (gethash key to) value)))
-
-(defun add-config-from-base-config-files
-  (result
-    program-name
-    environment
-    &optional
-    reference-file
-    root-path)
-  ; https://github.com/adrg/xdg/blob/master/paths_darwin_test.go
-  )
 
 (defun config-file-options
   (program-name
@@ -1144,8 +883,9 @@ three")
   (:documentation
     "The subcommand given was invalid; no functions were found for it.")
   (:report (lambda (this strm)
-             (format strm "The subcommand `~A` has no actions defined for it.~&"
-                     (join-strings (given-subcommand this) :fmt " ")))))
+             (format strm
+                     "The subcommand `~{~A ~}` has no actions defined for it.~&"
+                     (given-subcommand this)))))
 
 (defun
   execute-program

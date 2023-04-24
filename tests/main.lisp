@@ -9,6 +9,7 @@
     #:cl-i)
   (:import-from
     #:cl-ppcre))
+
 (in-package :cl-i/tests)
 
 (defvar *test-config-file*
@@ -49,18 +50,18 @@
 (deftest
   repeatedly-eq
   (testing "repeatedly-eq"
-  (signals (cl-i:repeatedly-eq #'broken-dec 3))
-  (ok (equal (cl-i:repeatedly-eq #'positive-dec 3) '(3 2 1 0)))))
+  (signals (cl-i::repeatedly-eq #'broken-dec 3))
+  (ok (equal (cl-i::repeatedly-eq #'positive-dec 3) '(3 2 1 0)))))
 
 (deftest
   repeatedly
   (testing "repeatedly"
   (signals
-    (cl-i:repeatedly
+    (cl-i::repeatedly
                           #'positive-dec
                           3
                           (lambda (thing) (< thing 0))))
-  (ok (equal (cl-i:repeatedly
+  (ok (equal (cl-i::repeatedly
                #'positive-dec
                3
                (lambda (item)

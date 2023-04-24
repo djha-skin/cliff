@@ -1,5 +1,5 @@
 git quri git@github.com:djhaskin987/quri.git :branch djhaskin987/support-msvc-ecl
-git nrdl git@git.djha.skin:me/nrdl.git :tag 0.1.0
+git nrdl git@git.djha.skin:me/nrdl.git :branch main
 ql closer-mop
 ql float-features
 ql documentation-utils

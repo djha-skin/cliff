@@ -1,0 +1,15 @@
+{
+    gary  3
+    hairy 4
+    dot   false
+    slash null
+    chives {
+      spices true
+      love 15
+      sore_losers {
+          cool beans
+          # trailing commas and comments allowed
+          state "virginia"
+      }
+  }
+}

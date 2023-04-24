@@ -8,8 +8,8 @@
   :version "git-a42ebc27b1107b0949a3ca7d19986c096dacb2a4"))
 ("nrdl" .
  (:class qlot/source/git:source-git
-  :initargs (:remote-url "git@git.djha.skin:me/nrdl.git" :tag "0.1.0")
-  :version "git-c05610f1d503a55b2fd55f647c8d357c9b9dfdc7"))
+  :initargs (:remote-url "git@git.djha.skin:me/nrdl.git" :branch "main")
+  :version "git-a3041440dc1b418ae858dcac749252ee11cff6c0"))
 ("closer-mop" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)

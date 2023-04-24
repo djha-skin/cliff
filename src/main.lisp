@@ -14,7 +14,7 @@
     according to spefic rules and from these rules constructs a hash table
     which is then passed to the subcommands.
     ")
-    (:import-from #:cl-yaml)
+    (:import-from #:nrdl)
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
@@ -211,24 +211,7 @@ three")
                      (- on 1))))))
     (helper arg repeats)))
 
-(defun nested-to-alist
-  (value)
-  "
-  Recursively changes value, converting all hash tables within the tree to an
-  alist.
-  "
-  (cond
-    ((listp value)
-     (map 'list #'nested-to-alist value))
-    ((hash-table-p value)
-     (let ((coll
-       (loop for k being the hash-key of value
-           using (hash-value v)
-           collect (cons k (nested-to-alist v)))))
-       (stable-sort coll #'string< :key (lambda (thing)
-                                          (format nil "~A" (car thing))))))
-    (t
-      value)))
+
 
 #+(or)
 (do
@@ -319,8 +302,6 @@ three")
          (:C . 3)))
 
 ;;(eval-when (:compile-toplevel :load-toplevel :execute)
-  (cl-yaml:register-mapping-converter
-    nil #'hash-to-kw-hash)
 ;;  )
 
 (defun
@@ -520,8 +501,8 @@ three")
   - if it is of the form `http(s)://tok@url`,
   a bearer token is used;
   - if it is of the form `file://loc`, it is loaded as a normal file;
-  - if it is of the form `-`, the yaml is loaded from standard input;
-  - otherwise, the yaml is loaded from the string or pathname as if it named
+  - if it is of the form `-`, the nrdl is loaded from standard input;
+  - otherwise, the nrdl is loaded from the string or pathname as if it named
   a file.
   "
   (declare (type (or pathname string) resource))
@@ -705,15 +686,13 @@ three")
 (defun
   generate-string
   (thing &optional &key pretty)
-  (cl-yaml:with-emitter-to-string (em)
-                                  (cl-yaml:emit-pretty-as-document em thing)))
-
-
-
+  (with-output-to-string (strm)
+    (nrdl:generate-to strm thing pretty)))
 
 
 (defun parse-string (thing)
-  (cl-yaml:parse thing))
+  (with-input-from-string (strm thing)
+    (nrdl:parse-from strm)))
 
 (defun exit-error
   (status
@@ -733,7 +712,7 @@ three")
     :set
     :add
     :join
-    :yaml
+    :nrdl
     :file
     )
   "actions that consume additional argument."
@@ -799,7 +778,7 @@ three")
                    (apply #'make-hash-table hash-init-args)))
            (setf (gethash (string-keyword k) (gethash kopt opts)) v))
          (error "not a k/v pair, check map sep pattern: ~a" value))))
-    ((eql kact :yaml)
+    ((eql kact :nrdl)
      (setf (gethash kopt opts)
            (parse-string value)))
     ((eql kact :file)
@@ -822,7 +801,7 @@ three")
   the keyword named `argument` is associated with `t` or `nil` in the resulting
   hash-table, respectively.
 
-  If the argument is of the form `--(?P<act>set|add|join|yaml)-(?P<argument>[^
+  If the argument is of the form `--(?P<act>set|add|join|nrdl)-(?P<argument>[^
   ]*)`, the next argument is consumed as the value.
 
   If the first part (`act`) is `set`, associate the value as a string to the
@@ -837,7 +816,7 @@ three")
   the value associated with the keyword `argument` in the resulting options
   hash-table.
 
-  If the `act` is `yaml`, parse the value string as if it were a yaml string.
+  If the `act` is `nrdl`, parse the value string as if it were a nrdl string.
   Set the value as found to the `argument` keyword in the resulting options
   hash-table.
   "
@@ -924,7 +903,7 @@ three")
                           kopt
                           context
                           piece)))
-    ((eql ktag :yaml)
+    ((eql ktag :nrdl)
      (ingest-option opts
                     map-sep-pat
                     hash-init-args
@@ -1130,7 +1109,7 @@ three")
                :name
                "config"
                :type
-               "yaml")
+               "nrdl")
              home-config-path))
          (marked-config-file-name
            (make-pathname
@@ -1140,7 +1119,7 @@ three")
                "."
                program-name)
              :type
-             "yaml"))
+             "nrdl"))
          (marked-config-path
            (if (null reference-file)
              (find-file

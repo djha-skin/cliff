@@ -5,7 +5,7 @@
   :depends-on (
                "quri"
                "alexandria"
-               "cl-yaml"
+               "nrdl"
                "cl-ppcre"
                "dexador"
                "trivial-features"
@@ -24,7 +24,6 @@
   :depends-on (
       "cl-i"
       "alexandria"
-      "cl-ppcre"
       "rove"
       "cl-ppcre")
   :components ((:module "tests"

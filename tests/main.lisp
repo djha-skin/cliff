@@ -24,7 +24,7 @@
       :name
       ".cl-i"
       :type
-      "yaml")
+      "nrdl")
     (cl-i:os-specific-home #'uiop/os:getenv)))
 
 (defvar *tests-dir*
@@ -55,7 +55,7 @@
 (deftest
   repeatedly
   (testing "repeatedly"
-  (signals 
+  (signals
     (cl-i:repeatedly
                           #'positive-dec
                           3
@@ -67,41 +67,6 @@
                  (<= item 0)))
              '(3 2 1)))))
 
-(deftest
-  nested-to-alist
-  (testing "empty"
-           (ok (equal nil (cl-i:nested-to-alist nil)))
-           (ok (equal "" (cl-i:nested-to-alist ""))))
-  (testing "atomic values"
-           (ok (equal "hi" (cl-i:nested-to-alist "hi")))
-           (ok (equal 15 (cl-i:nested-to-alist 15)))
-           (ok (equal t (cl-i:nested-to-alist t)))
-           (ok (equal 'a (cl-i:nested-to-alist 'a)))
-           (ok (equal :b (cl-i:nested-to-alist :b))))
-  (testing "typical invocations"
-           (ok
-             (equal
-               (let
-                 ((a (make-hash-table)))
-                 (setf (gethash 'a a) 1)
-                 (setf (gethash 'b a) 2)
-                 (setf (gethash 'c a) 3)
-                 (cl-i:nested-to-alist
-                   `(1 2 3 (4 5) 6 (7 (8 ,a)))))
-               '(1 2 3 (4 5) 6 (7 (8 ((A . 1) (B . 2) (C . 3)))))))
-           (ok (equal
-                 (let ((a (make-hash-table))
-                       (b (make-hash-table)))
-                   (setf (gethash :origin b) "thither")
-                   (setf (gethash :destination b) "yon")
-                   (setf (gethash 'a a) nil)
-                   (setf (gethash 'b a) b)
-                   (setf (gethash 'c a) '(1 2 3 4 5))
-                   (cl-i:nested-to-alist a))
-                 '((A)
-                   (B 
-                     (:DESTINATION . "yon")
-                     (:ORIGIN . "thither")) (C 1 2 3 4 5))))))
 
 (deftest
   hash-to-kw-hash
@@ -167,7 +132,7 @@
                (with-open-file
                  (f
                    (merge-pathnames
-                     #P".cl-i.yaml"
+                     #P".cl-i.nrdl"
                      *tests-dir*)
                    :direction :input
                    :external-format :utf-8)
@@ -241,7 +206,7 @@
   consume-arguments
   (testing
     "other-args"
-    (signals 
+    (signals
        (cl-i:consume-arguments
         '("--enable-dark-mode"
           "--reset-dark-mode"
@@ -255,10 +220,10 @@
           "pride=hurt"
           "--join-my"
           "start=great"
-          "--yaml-fight"
+          "--nrdl-fight"
           "15.0"
-          "--yaml-stride"
-          "tests/.cl-i.yaml")))
+          "--nrdl-stride"
+          "tests/.cl-i.nrdl")))
     (multiple-value-bind (opts other-args)
         (cl-i:consume-arguments
           '("--enable-dark-mode"
@@ -273,10 +238,10 @@
             "pride=hurt"
             "--join-my"
             "start=great"
-            "--yaml-fight"
+            "--nrdl-fight"
             "15.0"
             "--file-stride"
-            "tests/.cl-i.yaml"))
+            "tests/.cl-i.nrdl"))
       (ok (equal
             (cl-i:nested-to-alist opts)
             '((:DARK-MODE "firm" "crying")
@@ -302,7 +267,7 @@
     (ok
       (equal (cl-i:nested-to-alist
                (cl-i:consume-arguments
-                 '("--enable-foo" "--disable-bar" "baz" "--yaml-force" "15" "--set-quux" "farquad")))
+                 '("--enable-foo" "--disable-bar" "baz" "--nrdl-force" "15" "--set-quux" "farquad")))
              '((:BAR) (:FOO . T) (:FORCE . 15) (:QUUX . "farquad"))))))
 
 (deftest
@@ -419,7 +384,7 @@
           "--disable-all-the-things"
           "io-error"
           ))
-      (ok (equal (cl-i:nested-to-alist outcome) 
+      (ok (equal (cl-i:nested-to-alist outcome)
 
                  '((:ALL-THE-THINGS) (:BARF "3" "2" "1")
                                     (:CHIVES (:LOVE . 15) (:SORE_LOSERS (:COOL . "beans") (:STATE . "virginia"))

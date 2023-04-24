@@ -6,10 +6,10 @@
  (:class qlot/source/git:source-git
   :initargs (:remote-url "git@github.com:djhaskin987/quri.git" :branch "djhaskin987/support-msvc-ecl")
   :version "git-a42ebc27b1107b0949a3ca7d19986c096dacb2a4"))
-("cl-yaml" .
+("nrdl" .
  (:class qlot/source/git:source-git
-  :initargs (:remote-url "git@github.com:eudoxia0/cl-yaml.git" :branch "master")
-  :version "git-12c84d43b3f57f332774c780a2e4a20eee7f47de"))
+  :initargs (:remote-url "git@git.djha.skin:me/nrdl.git" :tag "0.1.0")
+  :version "git-c05610f1d503a55b2fd55f647c8d357c9b9dfdc7"))
 ("closer-mop" .
  (:class qlot/source/ql:source-ql
   :initargs (:%version :latest)

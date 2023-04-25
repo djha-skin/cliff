@@ -8,18 +8,19 @@
   (:import-from
     #:cl-i)
   (:import-from
+    #:nrdl)
+  (:import-from
     #:cl-ppcre))
 
 (in-package :cl-i/tests)
 
-(defvar *test-config-file*
+(defparameter *test-config-file*
   (merge-pathnames
     (make-pathname
       :directory
       (list
         :relative
-        "Code"
-        "lisp"
+        "common-lisp"
         "cl-i"
         "tests")
       :name
@@ -28,7 +29,7 @@
       "nrdl")
     (cl-i:os-specific-home #'uiop/os:getenv)))
 
-(defvar *tests-dir*
+(defparameter *tests-dir*
   (merge-pathnames
     #P"tests/"
     (slot-value
@@ -70,21 +71,6 @@
 
 
 (deftest
-  hash-to-kw-hash
-  (testing "basic"
-           (equal (cl-i:nested-to-alist
-                    (cl-i::hash-to-kw-hash
-                      (alexandria:alist-hash-table
-                        '(("c" . 3)
-                          ("a" . 1)
-                          ("b" . 2))
-                        :test #'equal)))
-                  '((:A . 1)
-                    (:B . 2)
-                    (:C . 3)))))
-
-
-(deftest
   basic-find-file
   (testing "basic-find-file"
            (ok
@@ -105,25 +91,6 @@
                      'asdf/component:absolute-pathname))
                  "600dc0d36077a10ada600dd3a10fda7a")
                nil))))
-
-(deftest
-  dbg
-  (testing
-    "basic dbg"
-    (let* ((tested-string
-            (with-output-to-string (str)
-              (cl-i:dbg (+ 3 3) str)))
-          (tested-lines (cl-ppcre:split (format nil "~%") tested-string)))
-      (ok (equal (length tested-lines) 2))
-      (ok
-        (cl-ppcre:scan
-          "^debug: type of `\\(\\+ 3 3\\)` = `\\(INTEGER \\d+ \\d+\\)`$"
-          (elt tested-lines 0)))
-      (ok
-        (equal
-          "debug: eval of `(+ 3 3)` = `6`"
-          (elt tested-lines 1))))))
-
 
 (deftest
   slurp-stream
@@ -244,7 +211,7 @@
             "--file-stride"
             "tests/.cl-i.nrdl"))
       (ok (equal
-            (cl-i:nested-to-alist opts)
+            (nrdl:nested-to-alist opts)
             '((:DARK-MODE "firm" "crying")
              (:FIGHT . 15.0)
              (:MY (:PRIDE . "hurt")
@@ -260,13 +227,11 @@
       (equal (cl-i:generate-string
                (cl-i:consume-arguments
                  '()))
-             (cl-i:join-strings
-               "---"
-               ""))))
+             (format nil "---~%"))))
   (testing
     "basic"
     (ok
-      (equal (cl-i:nested-to-alist
+      (equal (nrdl:nested-to-alist
                (cl-i:consume-arguments
                  '("--enable-foo" "--disable-bar" "baz" "--nrdl-force" "15" "--set-quux" "farquad")))
              '((:BAR) (:FOO . T) (:FORCE . 15) (:QUUX . "farquad"))))))
@@ -281,7 +246,7 @@
           (:FORESIGHT . T)
           (:FORKS . "whenceandwhither")
           (:MAPLE "1" "2" "3" "4" "5"))
-        (cl-i:nested-to-alist
+        (nrdl:nested-to-alist
           (cl-i:consume-environment
             "hello"
             (alexandria:alist-hash-table
@@ -294,13 +259,13 @@
 
 (defun blank-command
   (options)
-  (format t "Options:~&  ~A~&" (cl-i:nested-to-alist options))
+  (format t "Options:~&  ~A~&" (nrdl:nested-to-alist options))
   (alexandria:alist-hash-table
     '((:status . :successful))))
 
 (defun error-command
   (options)
-  (format t "Options:~&  ~A~&" (cl-i:nested-to-alist options))
+  (format t "Options:~&  ~A~&" (nrdl:nested-to-alist options))
   (alexandria:alist-hash-table
     '((:status . :general-error))))
 
@@ -314,24 +279,31 @@
            "typical invocation"
            (ok
              (equal
-               (cl-i:nested-to-alist
+               (nrdl:nested-to-alist
                  (cl-i:config-file-options
                    "hi"
                    (alexandria:alist-hash-table
+                     #+windows
+                     '(
+                       ("USERPROFILE" . "C:\\Users\\djh")
+                       )
+                     #-windows
                      '(
                        ("HOME" . "/home/djha-skin")
                        )
-                     :test #'equal)
+                     :test #'equal
+                     )
                    (make-hash-table)))
                '((:CHIVES
                   (:LOVE . 15)
                   (:SORE_LOSERS
-                   (:COOL . "beans")
+                   (:COOL . :BEANS)
                    (:STATE . "virginia"))
                   (:SPICES . T))
-                 (:DOT)
+                 (:DOT . NRDL:FALSE)
                  (:GARY . 3)
-                 (:HAIRY . 4))))))
+                 (:HAIRY . 4)
+                 (:SLASH))))))
 
 (deftest
   execute-program
@@ -349,9 +321,14 @@
       (signals
         (cl-i:execute-program
           "Halo"
-
           (alexandria:alist-hash-table
-            '(("HOME" . "/home/djha-skin"))
+            #+windows
+            '(
+              ("USERPROFILE" . "C:\\Users\\djh")
+              )
+            #-windows
+            '(("HOME" . "/home/djha-skin")
+              )
             :test #'equal)
           nil)
         'cl-i:invalid-subcommand)
@@ -362,37 +339,48 @@
       (cl-i:execute-program
         "hi"
         (alexandria:alist-hash-table
+          #+windows
           '(
-            ("HOME" . "/home/djha-skin")
+            ("USERPROFILE" . "C:\\Users\\djh")
             ("HI_ITEM_FOUR" . "square")
             ("HI_LIST_LOVERS" . "so,many,lovers")
             ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
             )
-          :test #'equal)
-        `((nil . ,#'blank-command)
-          (("error") . ,#'error-command)
-          (("io-error") . ,#'io-error))
-        :cli-arguments
-        '(
-          "--join-deals" "a=jhyghyjub"
-          "--join-deals" "c=d"
-          "--add-barf" "1"
-          "--add-barf" "2"
-          "--add-barf" "3"
-          "--enable-gary"
-          "--reset-gary"
-          "--set-gary" "four"
-          "--disable-all-the-things"
-          "io-error"
-          ))
-      (ok (equal (cl-i:nested-to-alist outcome)
+          #-windows
+          '(
+          ("HOME" . "/home/djha-skin")
+          ("HI_ITEM_FOUR" . "square")
+          ("HI_LIST_LOVERS" . "so,many,lovers")
+          ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
+          )
+        :test #'equal
+        )
+      `((nil . ,#'blank-command)
+        (("error") . ,#'error-command)
+        (("io-error") . ,#'io-error))
+      :cli-arguments
+      '(
+        "--join-deals" "a=jhyghyjub"
+        "--join-deals" "c=d"
+        "--add-barf" "1"
+        "--add-barf" "2"
+        "--add-barf" "3"
+        "--enable-gary"
+        "--reset-gary"
+        "--set-gary" "four"
+        "--disable-all-the-things"
+        "io-error"
+        ))
+    (ok (equal (nrdl:nested-to-alist outcome)
 
-                 '((:ALL-THE-THINGS) (:BARF "3" "2" "1")
-                                    (:CHIVES (:LOVE . 15) (:SORE_LOSERS (:COOL . "beans") (:STATE . "virginia"))
-                                             (:SPICES . T))
-                                    (:DEALS (:A . "jhyghyjub") (:C . "d")) (:DOT) (:FOUR . "square")
-                                    (:GARY . "four") (:HAIRY . 4) (:LOVERS "so" "many" "lovers")
-                                    (:OF (:CONTENT-MAKERS . "too-many") (:CONTENT-PEOPLE . "few")
-                                         (:CONTENTS . "lots"))
-                                    (:STATUS . :INPUT-OUTPUT-ERROR))))
-      (ok (equal code 74)))))
+               '((:ALL-THE-THINGS) (:BARF "3" "2" "1")
+                                   (:CHIVES (:LOVE . 15) (:SORE_LOSERS (:COOL . :BEANS) (:STATE . "virginia"))
+                                            (:SPICES . T))
+                                   (:DEALS (:A . "jhyghyjub") (:C . "d")) (:DOT . NRDL:FALSE) (:FOUR . "square")
+                                   (:GARY . "four") (:HAIRY . 4) (:LOVERS "so" "many" "lovers")
+                                   (:OF (:CONTENT-MAKERS . "too-many") (:CONTENT-PEOPLE . "few")
+                                        (:CONTENTS . "lots"))
+                                   (:SLASH)
+                                   (:STATUS . :INPUT-OUTPUT-ERROR)
+                                   )))
+    (ok (equal code 74)))))

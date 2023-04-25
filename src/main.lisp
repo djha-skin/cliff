@@ -125,7 +125,6 @@
       (logical-path)
       ("^file://(.*)$"
        url)
-      (declare (ignore logical-path))
       (pathname logical-path))
     nil))
 

@@ -703,7 +703,7 @@
     result))
 
 
-;(setf cincuenta (consume-environment "hello-world" (alexandria:alist-hash-table '(("HELLO_WORLD_LIST_IRON_MAN" . "1,2,3,4,5") ("HELLO_WORLD_YAML_DISEASE" . "{'he': 'could', 'do': false, 'it': 'rightnow'}")))))
+;(setf cincuenta (consume-environment "hello-world" (alexandria:alist-hash-table '(("HELLO_WORLD_LIST_IRON_MAN" . "1,2,3,4,5") ("HELLO_WORLD_NRDL_DISEASE" . "{'he': 'could', 'do': false, 'it': 'rightnow'}")))))
 
 ; =>
 
@@ -727,7 +727,7 @@
   Assumes an open-world. For each environment variable, it examines its form.
 
   If the variable is of the form
-  `^(<PROGRAM_NAME>)_(?P<opt>LIST|TABLE|ITEM|FLAG|YAML)_(?P<arg>.*)$`, then the
+  `^(<PROGRAM_NAME>)_(?P<opt>LIST|TABLE|ITEM|FLAG|NRDL)_(?P<arg>.*)$`, then the
   variable will be used to add to the resulting options hash table.
 
   If the `opt` is `LIST`, the value of the variable will be split using
@@ -742,7 +742,7 @@
   If the `opt` is `ITEM`, the value of the variable will be set to the keyword
   `arg` in the options.
 
-  If the `opt` is `YAML`, the value of the variable will be parsed as a YAML
+  If the `opt` is `NRDL`, the value of the variable will be parsed as a NRDL
   string and its resultant value set as the value of the keyword `arg` in the
   returned options hash table.
   "
@@ -771,7 +771,7 @@
                 "TABLE"
                 "ITEM"
                 "FLAG"
-                "JSON"))
+                "NRDL"))
             "_"
             (:register
               (:greedy-repetition

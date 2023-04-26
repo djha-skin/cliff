@@ -105,36 +105,36 @@
                    :direction :input
                    :external-format :utf-8)
                  (cl-i:slurp-stream f))
-               "hoo: haa"))))
+               "{ \"hoo\" \"haa\" }"))))
 
 
 (deftest
   base-slurp
   (testing "base-slurp"
-  (ok
-    (equal
-      (cl-i::base-slurp
-        *test-config-file*)
-      "hoo: haa"))))
+           (ok
+             (equal
+               (cl-i::base-slurp
+                 *test-config-file*)
+               "{ \"hoo\" \"haa\" }"))))
 
 (deftest
   slurp
-    (testing
-      "paths"
-      (ok
-        (equal
-          (cl-i:data-slurp
-            *test-config-file*)
-      "hoo: haa")))
-    (testing
-      "file URL"
-      (ok
-        (equal
-          (cl-i:data-slurp
-            (concatenate 'string
-                         "file://"
-                         (namestring *test-config-file*)))
-          "hoo: haa")))
+  (testing
+    "paths"
+    (ok
+      (equal
+        (cl-i:data-slurp
+          *test-config-file*)
+        "{ \"hoo\" \"haa\" }")))
+  (testing
+    "file URL"
+    (ok
+      (equal
+        (cl-i:data-slurp
+          (concatenate 'string
+                       "file://"
+                       (namestring *test-config-file*)))
+        "{ \"hoo\" \"haa\" }")))
   (testing
     "noauth"
     (ok
@@ -216,7 +216,7 @@
              (:FIGHT . 15.0)
              (:MY (:PRIDE . "hurt")
                   (:START . "great"))
-             (:STRIDE (:HOO . "haa")))
+             (:STRIDE ("hoo" . "haa")))
             ))
       (ok (equal
             '("medium-well" "well-done")
@@ -227,7 +227,7 @@
       (equal (cl-i:generate-string
                (cl-i:consume-arguments
                  '()))
-             (format nil "---~%"))))
+             (format nil "{~%}"))))
   (testing
     "basic"
     (ok
@@ -242,7 +242,7 @@
     "Basic"
     (ok
       (equal
-        '((:FINES (:KEY . 155.5d0))
+        '((:FINES ("key" . 155.5))
           (:FORESIGHT . T)
           (:FORKS . "whenceandwhither")
           (:MAPLE "1" "2" "3" "4" "5"))
@@ -253,7 +253,7 @@
               '(("HELLO_LIST_MAPLE" . "1,2,3,4,5")
                 ("HELLO_FANGLE_DOG" . "12345")
                 ("VARS" . "xtreem")
-                ("HELLO_YAML_FINES" . "{ \"key\": 155.5 }")
+                ("HELLO_NRDL_FINES" . "{ \"key\": 155.5 }")
                 ("HELLO_FLAG_FORESIGHT" . "0")
                 ("HELLO_ITEM_FORKS" . "whenceandwhither")))))))))
 

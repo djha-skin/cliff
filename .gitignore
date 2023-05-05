@@ -9,6 +9,7 @@
 .#*
 .*.sw[a-z]
 /.slime_paste
+/.vagrant/
 
 /lighttpd-environment/test-data
 /.repl/ros_history

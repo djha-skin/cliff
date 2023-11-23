@@ -36,6 +36,7 @@
       consume-arguments
       consume-environment
       config-file-options
+      system-environment-variables
       execute-program))
 (in-package #:cl-i)
 
@@ -885,6 +886,25 @@
              (format strm
                      "The subcommand `~{~A ~}` has no actions defined for it.~&"
                      (given-subcommand this)))))
+
+(defun system-environment-variables ()
+  (let* ((output (uiop:run-program
+                   #+windows
+                   "cmd.exe /C set"
+                   #-windows
+                   "env" :output :string))
+         (stripped-output (string-trim " " output))
+         (kv-pairs (uiop:split-string stripped-output :separator '(#\Newline)))
+         (raw-alist (mapcar (lambda (s) (uiop:split-string s :separator "="))
+                            kv-pairs))
+         (alist (remove-if (lambda (pair) (or
+                                            (null (car pair))
+                                            (equal (car pair) "")))
+                           raw-alist)))
+         (alexandria:alist-hash-table alist :test #'equal)))
+
+; (alexandria:hash-table-alist
+;  (system-environment-variables))
 
 (defun
   execute-program

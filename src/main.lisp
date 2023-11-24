@@ -370,7 +370,7 @@
                 "/")))
 
 #+(or)
-(os-specific-config-dir "halo" (lambda (x &odptional y)
+(os-specific-config-dir "halo" (lambda (x &optional y)
                                  (or (uiop/os:getenv x) y)))
 (defun os-specific-config-dir (program-name getenv)
   "
@@ -895,8 +895,16 @@
                    "env" :output :string))
          (stripped-output (string-trim " " output))
          (kv-pairs (uiop:split-string stripped-output :separator '(#\Newline)))
-         (raw-alist (mapcar (lambda (s) (uiop:split-string s :separator "="))
-                            kv-pairs))
+         (raw-alist
+           (mapcar
+             (lambda (s)
+               (let ((split-at (position #\= s)))
+                 (if split-at
+                   (cons
+                     (subseq s 0 split-at)
+                     (subseq s (1+ split-at)))
+                   (cons s nil))))
+             kv-pairs))
          (alist (remove-if (lambda (pair) (or
                                             (null (car pair))
                                             (equal (car pair) "")))

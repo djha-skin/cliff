@@ -884,7 +884,7 @@
     "The subcommand given was invalid; no functions were found for it.")
   (:report (lambda (this strm)
              (format strm
-                     "The subcommand `~{~A ~}` has no actions defined for it.~&"
+                     "The subcommand `~{~A~^ ~}` has no actions defined for it.~&"
                      (given-subcommand this)))))
 
 (defun system-environment-variables ()
@@ -919,7 +919,7 @@
   (program-name
     environment-variables
     functions
-    &optional &key
+    &key
     cli-arguments
     cli-aliases
     defaults
@@ -994,11 +994,12 @@
                  teardown
                  (funcall
                    (or
-                     (cdr (assoc other-args functions
-                                      :test #'equal))
+                     (cdr (assoc other-args functions :test #'equal))
                      (error 'invalid-subcommand
                             :given-subcommand other-args))
                    (funcall setup opts-from-args))))
              (status (gethash :status final-result :successful))
              (code (gethash status *exit-codes*)))
         (values code final-result))))))
+
+

@@ -439,9 +439,9 @@
 
 (defun
   generate-string
-  (thing &optional &key pretty)
+  (thing &optional &key (pretty 0))
   (with-output-to-string (strm)
-    (nrdl:generate-to strm thing pretty)))
+    (nrdl:generate-to strm thing :pretty-indent pretty)))
 
 
 (defun parse-string (thing)
@@ -1001,5 +1001,4 @@
              (status (gethash :status final-result :successful))
              (code (gethash status *exit-codes*)))
         (values code final-result))))))
-
 

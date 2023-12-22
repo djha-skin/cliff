@@ -620,7 +620,7 @@
                 (setf
                   consumable rargs)))))
     (values
-      opts other-args)))
+      opts (reverse other-args))))
 
 
 (defun

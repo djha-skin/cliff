@@ -1,5 +1,5 @@
 (defsystem "cl-i"
-  :version "0.6.0"
+  :version "0.6.1"
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (

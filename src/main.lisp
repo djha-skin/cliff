@@ -19,6 +19,7 @@
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
     (:import-from #:uiop/stream)
+    (:import-from #:cl-i/errors)
     (:export
       generate-string
       parse-string
@@ -37,6 +38,7 @@
       consume-environment
       config-file-options
       system-environment-variables
+      default-help
       execute-program))
 (in-package #:cl-i)
 
@@ -97,26 +99,10 @@
     (helper arg repeats)))
 
 
-(defparameter *exit-codes*
-  ;; taken from /usr/include/sysexit.h
-  (alexandria:alist-hash-table
-    '((:successful . 0)
-      (:general-error . 1)
-      (:cl-usage-error . 64)
-      (:data-format-error . 65)
-      (:cannot-open-input . 66)
-      (:addressee-unknown . 67)
-      (:hostname-unknown . 68)
-      (:service-unavailable . 69)
-      (:internal-software-error . 70)
-      (:system-error . 71)
-      (:os-file-missing . 72)
-      (:cant-create-uof . 73)
-      (:input-output-error . 74)
-      (:temporary-failure . 75)
-      (:remote-error-in-protocol . 76)
-      (:permission-denied . 77)
-      (:configuration-error . 78))))
+
+
+
+
 
 
 (defun url-to-pathname
@@ -249,11 +235,11 @@
   if `:resource` is a url, download the contents according to the following
   rules:
   - if it is of the form `http(s)://user:pw@url`,
-  it uses basic auth;
+    it uses basic auth;
   - if it is of the form `http(s)://header=val@url`,
-  a header is set;
+    a header is set;
   - if it is of the form `http(s)://tok@url`,
-  a bearer token is used;
+    a bearer token is used;
   - if it is of the form `file://loc`, it is loaded as a normal file;
   - if it is of the form `-`, the nrdl is loaded from standard input;
   - otherwise, the nrdl is loaded from the string or pathname as if it named
@@ -346,6 +332,10 @@
       (function
         #+windows make-windows-path
         #-windows make-unix-path))
+
+(defparameter *dirsep*
+  #+windows "\\"
+  #-windows "/")
 
 (define-condition necessary-env-var-absent (error)
   ((env-var :initarg :env-var
@@ -860,16 +850,19 @@
              :type
              "nrdl"))
          (marked-config-path
-           (if (null reference-file)
+           (or
+             (when reference-file
+               (let ((marked-file (find-file
+                                    effective-root
+                                    reference-file)))
+                 (when marked-file
+                   (merge-pathnames
+                     marked-config-file-name
+                     (uiop/pathname:pathname-parent-directory-pathname
+                       marked-file)))))
              (find-file
                effective-root
-               marked-config-file-name)
-             (merge-pathnames
-               marked-config-file-name
-               (uiop/pathname:pathname-parent-directory-pathname
-                 (find-file
-                   effective-root
-                   reference-file))))))
+               marked-config-file-name))))
     (when (uiop/filesystem:file-exists-p home-config-path)
       (update-hash result (parse-string (data-slurp home-config-path-file))))
     (when (uiop/filesystem:file-exists-p marked-config-path)
@@ -914,6 +907,137 @@
 ; (alexandria:hash-table-alist
 ;  (system-environment-variables))
 
+(defun default-help
+    (strm
+      program-name
+      options
+      other-args
+      reference-file
+      found-config-files
+      cli-aliases
+      cli-arguments
+      defaults
+      root-path)
+  (declare (type (or stream boolean) strm)
+           (type hash-table options)
+           (type list other-args)
+           (type list cli-aliases)
+           (type list cli-arguments)
+           (type hash-table defaults)
+           (type (or null pathname) root-path))
+  (format strm "~&Usage: ~A!~%" program-name)
+  (format
+    strm "~@{~@?~}"
+    "~&Welcome to `~A`!~%" program-name
+    "~%"
+    "This is a CL-I program.~%"
+    "~%"
+    "It uses NRDL to communicate with the calling program. Its config files~%"
+    "and, optionally, environment variables can be set using NRDL, and its~%"
+    "output will be a NRDL document. More information about~%"
+    "NRDL can be found here:~%"
+    "~%"
+    "https://git.sr.ht/~skin/nrdl~%"
+    "~%"
+    "Options can be given via:~%"
+    "  - Config file, as in `{ <option> <value> }`~%"
+    "  - Environment variable, as in `~A_<KIND>_<OPTION>`~%" (string-upcase
+                                                               (cl-ppcre:regex-replace-all
+                                                                 "\\W" program-name "_"))
+    "  - Command line, as in `--<action>-<option>`~%"
+    "~%"
+    "Config files are consulted first, then environment variables, then~%"
+    "the command line, with later values overriding earlier ones.~%")
+  ; Config files section
+  (format strm "Config files can be in the the following locations:~%")
+  (if reference-file
+      (format strm
+              "  - A config file named `.~A.nrdl` found in the same directory~%"
+              program-name
+              "    as `~A`, which is searched for in the current directory~%"
+              (namestring reference-file)
+              "    (or any of its parents)~%")
+      (format strm "~@{~@?~}"
+              "  - A config file named `.~A.nrdl` in the current directory~%"
+              program-name
+              "    (or any of its parents)~%")
+    )
+  (format
+    strm "~@{~@?~}"
+    "  - A home-directory config file in an OS-specific location:~%"
+    "      - On Linux: `${XDG_CONFIG_HOME}/~A/config.nrdl`~%" program-name
+    "        (by default ~/.config/~A/config.nrdl)` ~%" program-name
+    "      - On Mac:   `~/Library/Preferences/~A/.config.nrdl`~%" program-name
+    "      - On Windows: %LOCALAPPDATA%\\~A\\config.nrdl`~%" program-name
+    "        (by default `%USERPROFILE%\\AppData\\Local\\~A\\config.nrdl)`~%"
+    program-name)
+  ; Environment variables section
+  (format
+    strm "~@{~@?~}"
+          "Options can be set via environment variable as follows:~%"
+          "~%"
+          "  - `~A_FLAG_<OPTION>=1` to enable a boolean flag" program-name
+                program-name
+          "  - `~A_ITEM_<OPTION>=<VALUE>` to set a string value" program-name
+                program-name
+          "  - `~A_LIST_<OPTION>=<VAL1>~A<VAL2>~A...` to set a list option~%"
+                program-name list-sep list-sep
+          "  - `~A_TABLE_<OPTION>=<KEY1>~A<VAL1>~A<KEY2>~A<VAL2>~A...` to set~%"
+          "     a key/value table option~%"
+                program-name list-sep map-sep list-sep map-sep
+          "  - `~A_NRDL_<OPTION>=<NRDL_STRING>` to set a value using~%"
+                program-name
+          "     a NRDL string~%"
+          "~%")
+  (format
+    strm
+    "~@{~@?~}"
+    "Options can be changed or set on the command line in the following ways:~%"
+    "  - To enable a flag, use `--enable-<option>`.~%"
+    "  - To disable a flag, use `--disable-<option>`.~%"
+    "  - To reset any value, use `--reset-<option>`.~%"
+    "  - To add to a list, use `--add-<option> <value>`.~%"
+    "  - To set a string value, use `--set-<option> <value>`.~%"
+    "  - To set using a NRDL string, use `--nrdl-<option> <value>`.~%"
+    "  - To set using NRDL contents from a file, use `--file-<option> <url>`.~%"
+    "    URLs can have be of the following forms:~%"
+    "      - `http(s)://user:pw@url` for basic auth~%"
+    "      - `http(s)://header=val@url` for a header~%"
+    "      - `http(s)://tok@url` for a bearer token~%"
+    "      - `file://loc` for a local file~%"
+    "      - `-` for standard input~%"
+    "    Anything else is treated as a file name.~%")
+  ; Finally, the options section
+  (format
+    strm
+    "~@{~@?~}"
+    " for this program are as follows:~%"
+    "~{  - ~A ~{~30<~A:~;~A>~}"
+
+
+
+
+
+    "To add to a list option from the CLI
+    "To set an option to a string from the CLI,"
+    "To set an option using a NRDL string from the CLI, use `--nrdl-<option> <value>.~%"
+    "To set an option using NRDL contents from a file, use `--file-<option> <url>.~%"
+
+    "~{~30<~A:~;~A>~}
+
+    )
+  (format strm "Options can be given like this:~%    ~{")
+  (
+          It can be given options using
+        a configuration file, 
+
+
+
+
+
+
+
+
 (defun
   execute-program
   (program-name
@@ -930,6 +1054,7 @@
     environment-aliases
     (list-sep ",")
     (map-sep "=")
+    (add-help t)
     (str-hash-init-args
       `(:test ,#'equal))
     kw-hash-init-args)
@@ -967,13 +1092,13 @@
                     cli-aliases
                     str-hash-init-args)
              cli-arguments)))
-      (let ((result
+    (multiple-value-bind (result found-config-files)
               (config-file-options
                 program-name
                 effective-environment
                 effective-defaults
                 reference-file
-                root-path)))
+                root-path)
         (update-hash
           result
           (consume-environment
@@ -982,23 +1107,53 @@
             :hash-init-args kw-hash-init-args
             :list-sep list-sep
             :map-sep map-sep))
-    (multiple-value-bind
-      (opts-from-args other-args)
-      (consume-arguments
-        effective-cli
-        :initial-hash result
-        :hash-init-args kw-hash-init-args
-        :map-sep map-sep)
-      (let* ((final-result
-               (funcall
-                 teardown
-                 (funcall
-                   (or
-                     (cdr (assoc other-args functions :test #'equal))
-                     (error 'invalid-subcommand
-                            :given-subcommand other-args))
-                   (funcall setup opts-from-args))))
-             (status (gethash :status final-result :successful))
-             (code (gethash status *exit-codes*)))
-        (values code final-result))))))
+        (multiple-value-bind
+            (opts-from-args other-args)
+            (consume-arguments
+              effective-cli
+              :initial-hash result
+              :hash-init-args kw-hash-init-args
+              :map-sep map-sep)
+          (when (and add-help
+                     (not
+                       (assoc '("help") functions)))
+            (setf functions (acons '("help") #'help functions)))
+          (let* ((final-result
+                   (funcall
+                           teardown
+                           (handler-case
+                               (funcall
+                                 (or
+                                   (cdr (assoc other-args functions :test #'equal))
+                                   (error 'invalid-subcommand
+                                          :given-subcommand other-args))
+                                 (funcall setup opts-from-args))
+                             (cl-i/errors:general-error (e)
+                               (alexandria:alist-hash-table
+                                 `((:status . ,(cl-i/errors:exit-code e))
+                                   (:error . ,(cl-i/errors:error-message e)))))
+                             (cl-i/errors:cl-usage-error (e)
+                               (alexandria:alist-hash-table
+                                 `((:status . ,(cl-i/errors:exit-code e))
+                                   
+                                   (:invalid-arguments ,(cl-i/errors:invalid-arguments e)))))
+                             (cl-i/errors:data-format-error (e)
+                               (alexandria:alist-hash-table
+                                 `((:status . ,(cl-i/errors:exit-code e))
+                                   (:option . ,(cl-i/errors:option e))
+                                   (:incorrect-data . ,(cl-i/errors:incorrect-data e)))))
+                                   (:reason-incorrect . ,(cl-i/errors:incorrect-data e)))))
+                             (cl-i/errors:
+
+                               
+                               
+
+                             (error (e)
+                               (alexandria:alist-hash-table
+                                 `((:status . ,(cl-i/errors:exit-code e))
+                                   (:error . ,(with-output-to-string (out)
+                                                (print-object e out)))))))))
+                       (status (gethash :status final-result :successful))
+                       (code (gethash status *exit-codes*)))
+              (values code final-result))))))
 

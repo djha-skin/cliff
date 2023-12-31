@@ -1054,7 +1054,7 @@
     environment-aliases
     (list-sep ",")
     (map-sep "=")
-    (add-help t)
+    (enable-help t)
     (str-hash-init-args
       `(:test ,#'equal))
     kw-hash-init-args)
@@ -1114,28 +1114,38 @@
               :initial-hash result
               :hash-init-args kw-hash-init-args
               :map-sep map-sep)
-          (when (and add-help
-                     (not
-                       (assoc '("help") functions)))
-            (setf functions (acons '("help") #'help functions)))
-          (let* ((final-result
-                   (funcall
-                           teardown
-                           (handler-case
-                               (funcall
-                                 (or
-                                   (cdr (assoc other-args functions :test #'equal))
-                                   (error 'invalid-subcommand
-                                          :given-subcommand other-args))
-                                 (funcall setup opts-from-args))
-                             (serious-condition (e)
-                               (alexandria:alist-hash-table
-                                 (concatenate
-                                   'list
-                                   `((:status . ,(cl-i/errors:exit-code e))
-                                     (:error-message . ,(with-output-to-string (out)
-                                                          (print-object e out))))
-                                   (exit-map-members e)))))))
-                       (status (gethash :status final-result :successful))
-                       (code (gethash status *exit-codes*)))
-              (values code final-result))))))
+
+        (handler-case
+              (let* ((setup-result (funcall setup opts-from-args))
+                     (subcommand-function
+                       (or
+                         (and enable-help
+                              (equal (first other-args) "help")
+                              (lambda (opts)
+                                (default-help
+                                  strm
+                                  program-name
+                                  opts
+                                  (cdr other-args)
+                                  reference-file
+                                  found-config-files
+                                  cli-aliases
+                                  cli-arguments
+                                  defaults
+                                  root-path)))
+                         (cdr (assoc other-args functions :test #'equal))
+                         (error 'invalid-subcommand
+                                :given-subcommand other-args)))
+                     (intermediate-result
+                       (funcall subcommand-function setup-result))
+                     (final-result
+                       (funcall
+                         teardown intermediate-result)))
+                         (values code final-result))
+          (serious-condition (e)
+            (alexandria:alist-hash-table
+              (concatenate
+                'list
+                `((:status . ,(cl-i/errors:exit-code e))
+                  (:error-message . ,(prin1-to-string e))))
+              (exit-map-members e))))))))

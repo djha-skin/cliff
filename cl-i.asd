@@ -13,7 +13,8 @@
                )
   :components ((:module "src"
           :components
-          ((:file "main"))))
+          ((:file "main"
+            :file "errors"))))
   :description "CLI library for Common Lisp. Handles args, envvars, and conf"
   :in-order-to ((test-op (test-op "cl-i/tests"))))
 

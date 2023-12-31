@@ -1128,32 +1128,14 @@
                                    (error 'invalid-subcommand
                                           :given-subcommand other-args))
                                  (funcall setup opts-from-args))
-                             (cl-i/errors:general-error (e)
+                             (serious-condition (e)
                                (alexandria:alist-hash-table
-                                 `((:status . ,(cl-i/errors:exit-code e))
-                                   (:error . ,(cl-i/errors:error-message e)))))
-                             (cl-i/errors:cl-usage-error (e)
-                               (alexandria:alist-hash-table
-                                 `((:status . ,(cl-i/errors:exit-code e))
-                                   
-                                   (:invalid-arguments ,(cl-i/errors:invalid-arguments e)))))
-                             (cl-i/errors:data-format-error (e)
-                               (alexandria:alist-hash-table
-                                 `((:status . ,(cl-i/errors:exit-code e))
-                                   (:option . ,(cl-i/errors:option e))
-                                   (:incorrect-data . ,(cl-i/errors:incorrect-data e)))))
-                                   (:reason-incorrect . ,(cl-i/errors:incorrect-data e)))))
-                             (cl-i/errors:
-
-                               
-                               
-
-                             (error (e)
-                               (alexandria:alist-hash-table
-                                 `((:status . ,(cl-i/errors:exit-code e))
-                                   (:error . ,(with-output-to-string (out)
-                                                (print-object e out)))))))))
+                                 (concatenate
+                                   'list
+                                   `((:status . ,(cl-i/errors:exit-code e))
+                                     (:error-message . ,(with-output-to-string (out)
+                                                          (print-object e out))))
+                                   (exit-map-members e)))))))
                        (status (gethash :status final-result :successful))
                        (code (gethash status *exit-codes*)))
               (values code final-result))))))
-

@@ -77,7 +77,7 @@
     (concatenate
       'list
       `((:operands . ,(mapcar #'prin1-to-string operands))
-        (:operation . ,
+        (:operation .
          ,(etypecase operation
             (list
               (mapcar #'prin1-to-string operation))
@@ -95,7 +95,7 @@
   (let ((name (cell-error-name condition)))
     (concatenate
       'list
-      `((:error-cell-name . name ,(prin1-to-string name)))
+      `((:error-cell-name . ,(prin1-to-string name)))
       (call-next-method condition))))
 
 ; Condition Type CONTROL-ERROR

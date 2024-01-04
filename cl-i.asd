@@ -12,9 +12,11 @@
                "trivial-package-local-nicknames"
                )
   :components ((:module "src"
-          :components
-          ((:file "main"
-            :file "errors"))))
+                :components
+                (
+                 (:file "errors")
+                 (:file "main")
+                 )))
   :description "CLI library for Common Lisp. Handles args, envvars, and conf"
   :in-order-to ((test-op (test-op "cl-i/tests"))))
 

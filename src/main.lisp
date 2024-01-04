@@ -98,22 +98,15 @@
                      (- on 1))))))
     (helper arg repeats)))
 
-
-
-
-
-
-
-
 (defun url-to-pathname
   (url)
-  (or
-    (cl-ppcre:register-groups-bind
-      (logical-path)
-      ("^file://(.*)$"
-       url)
-      (pathname logical-path))
-    nil))
+  (declare (type string url))
+  (multiple-value-bind
+      (match groups)
+      (cl-ppcre:scan-to-strings "^file://(.+)$" url)
+    (if match
+        (pathname (first groups))
+        url)))
 
 (defun slurp-stream (f)
   (with-output-to-string
@@ -234,35 +227,30 @@
 
   if `:resource` is a url, download the contents according to the following
   rules:
-  - if it is of the form `http(s)://user:pw@url`,
+  - if it is of the form `http(s)://user:password@url`,
     it uses basic auth;
   - if it is of the form `http(s)://header=val@url`,
     a header is set;
-  - if it is of the form `http(s)://tok@url`,
+  - if it is of the form `http(s)://<token>@url`,
     a bearer token is used;
-  - if it is of the form `file://loc`, it is loaded as a normal file;
+  - if it is of the form `file://<location>`, it is loaded as a normal file;
   - if it is of the form `-`, the nrdl is loaded from standard input;
   - otherwise, the nrdl is loaded from the string or pathname as if it named
   a file.
   "
   (declare (type (or pathname string) resource))
-  (or
-    (when
-      (equal
+  (cond (equal
         'pathname (type-of
                     resource))
       (base-slurp
-        resource))
+        resource)
     (apply
       #'http-expanded-url
       (concatenate
         'list
         (list #'dexador:get resource)
         more-args))
-    (let ((pname (url-to-pathname resource)))
-      (if pname
-        (base-slurp pname)
-        (base-slurp resource)))))
+        (base-slurp (url-to-pathname resource))))
 
 ;; TODO: TEST
 (defun extract-path (path-part-str pathsep)
@@ -284,17 +272,18 @@
                         (aref groups 0)))
               (f-type (when (not (null groups))
                         (aref groups 1))))
-          (apply #'concatenate
-                 (list 'list
-                       (list :directory
-                             (if (string= "" (car path-parts))
-                               (cons :absolute
-                                     (cdr path-parts))
-                               (cons :relative path-parts)))
-                       (when (not (null f-name))
-                         (list :name f-name))
-                       (when (not (null f-type))
-                         (list :type f-type)))))))))
+          (apply
+            #'concatenate
+            (list 'list
+                  (list :directory
+                        (if (string= "" (car path-parts))
+                            (cons :absolute
+                                  (cdr path-parts))
+                            (cons :relative path-parts)))
+                  (when (not (null f-name))
+                    (list :name f-name))
+                  (when (not (null f-type))
+                    (list :type f-type)))))))))
 ;; TODO: TEST
 (defun make-unix-path
   (pstr)
@@ -913,17 +902,12 @@
       options
       other-args
       reference-file
-      found-config-files
-      cli-aliases
-      cli-arguments
-      defaults
-      root-path)
+      root-path
+      functions
+      )
   (declare (type (or stream boolean) strm)
            (type hash-table options)
            (type list other-args)
-           (type list cli-aliases)
-           (type list cli-arguments)
-           (type hash-table defaults)
            (type (or null pathname) root-path))
   (format strm "~&Usage: ~A!~%" program-name)
   (format
@@ -949,13 +933,14 @@
     "Config files are consulted first, then environment variables, then~%"
     "the command line, with later values overriding earlier ones.~%")
   ; Config files section
-  (format strm "Config files can be in the the following locations:~%")
+  (format strm "Config files can be in the following locations:~%")
   (if reference-file
-      (format strm
+      (format strm "~@{~@?~}"
               "  - A config file named `.~A.nrdl` found in the same directory~%"
               program-name
-              "    as `~A`, which is searched for in the current directory~%"
+              "    as `~A`, which is searched for in `~A`~%"
               (namestring reference-file)
+              (namestring root-path)
               "    (or any of its parents)~%")
       (format strm "~@{~@?~}"
               "  - A config file named `.~A.nrdl` in the current directory~%"
@@ -1006,37 +991,25 @@
     "      - `http(s)://tok@url` for a bearer token~%"
     "      - `file://loc` for a local file~%"
     "      - `-` for standard input~%"
-    "    Anything else is treated as a file name.~%")
-  ; Finally, the options section
-  (format
-    strm
-    "~@{~@?~}"
-    " for this program are as follows:~%"
-    "~{  - ~A ~{~30<~A:~;~A>~}"
-
-
-
-
-
-    "To add to a list option from the CLI
-    "To set an option to a string from the CLI,"
-    "To set an option using a NRDL string from the CLI, use `--nrdl-<option> <value>.~%"
-    "To set an option using NRDL contents from a file, use `--file-<option> <url>.~%"
-
-    "~{~30<~A:~;~A>~}
-
-    )
-  (format strm "Options can be given like this:~%    ~{")
-  (
-          It can be given options using
-        a configuration file, 
-
-
-
-
-
-
-
+    "    Anything else is treated as a file name.~%"
+    "~%")
+  (format strm "The following options have been detected:~%")
+  (nrdl:generate-to strm options :pretty-indent 4)
+  (let ((function (cdr (assoc "help" functions :test #'equal))))
+    (if function
+        (let ((docstring (documentation function 'function)))
+          (if docstring
+            (format strm "Documentation for subcommand `~{~A~^ ~}`: ~%~A~%"
+                    other-args
+                    docstring)
+            (format strm "Documentation for subcommand `~{~A~^ ~}` not found.~%"
+                    other-args)))
+        (format strm "~%The subcommand `~{~A~^ ~}` does not exist.~%"
+                other-args)))
+  (alexandria:alist-hash-table
+    '(
+      (:status . :successful)
+      )))
 
 (defun
   execute-program
@@ -1099,6 +1072,7 @@
                 effective-defaults
                 reference-file
                 root-path)
+        (declare (ignore found-config-files))
         (update-hash
           result
           (consume-environment
@@ -1128,11 +1102,8 @@
                                   opts
                                   (cdr other-args)
                                   reference-file
-                                  found-config-files
-                                  cli-aliases
-                                  cli-arguments
-                                  defaults
-                                  root-path)))
+                                  root-path
+                                  functions)))
                          (cdr (assoc other-args functions :test #'equal))
                          (error 'invalid-subcommand
                                 :given-subcommand other-args)))
@@ -1140,12 +1111,16 @@
                        (funcall subcommand-function setup-result))
                      (final-result
                        (funcall
-                         teardown intermediate-result)))
+                         teardown intermediate-result))
+                     (code (gethash :status final-result 0)))
                          (values code final-result))
           (serious-condition (e)
-            (alexandria:alist-hash-table
+            (let ((exit-code (cli-errors:exit-code e)))
+            (values
+              exit-code
+              (alexandria:alist-hash-table
               (concatenate
                 'list
-                `((:status . ,(cl-i/errors:exit-code e))
+                `((:status .  ,exit-code)
                   (:error-message . ,(prin1-to-string e))))
-              (exit-map-members e))))))))
+              (exit-map-members e))))))))))

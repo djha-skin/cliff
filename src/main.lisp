@@ -228,29 +228,30 @@
   if `:resource` is a url, download the contents according to the following
   rules:
   - if it is of the form `http(s)://user:password@url`,
-    it uses basic auth;
+  it uses basic auth;
   - if it is of the form `http(s)://header=val@url`,
-    a header is set;
+  a header is set;
   - if it is of the form `http(s)://<token>@url`,
-    a bearer token is used;
+  a bearer token is used;
   - if it is of the form `file://<location>`, it is loaded as a normal file;
   - if it is of the form `-`, the nrdl is loaded from standard input;
   - otherwise, the nrdl is loaded from the string or pathname as if it named
   a file.
   "
   (declare (type (or pathname string) resource))
-  (cond (equal
-        'pathname (type-of
-                    resource))
+  (or
+    (when (equal
+            'pathname (type-of
+                        resource))
       (base-slurp
-        resource)
+        resource))
     (apply
       #'http-expanded-url
       (concatenate
         'list
         (list #'dexador:get resource)
         more-args))
-        (base-slurp (url-to-pathname resource))))
+    (base-slurp (url-to-pathname resource))))
 
 ;; TODO: TEST
 (defun extract-path (path-part-str pathsep)
@@ -414,14 +415,11 @@
               (uiop/filesystem:directory-exists-p f))) *)))
       *)))
 
-
-
 (defun
   generate-string
   (thing &optional &key (pretty 0))
   (with-output-to-string (strm)
     (nrdl:generate-to strm thing :pretty-indent pretty)))
-
 
 (defun parse-string (thing)
   (with-input-from-string (strm thing)
@@ -787,7 +785,6 @@
           value)))
     result))
 
-
 (defun update-hash
   (to from)
   (loop for key being the hash-key of from
@@ -870,6 +867,9 @@
                      (given-subcommand this)))))
 
 (defun system-environment-variables ()
+  "
+  Get the system environment variables.
+  "
   (let* ((output (uiop:run-program
                    #+windows
                    "cmd.exe /C set"
@@ -896,6 +896,25 @@
 ; (alexandria:hash-table-alist
 ;  (system-environment-variables))
 
+#+(or)
+(alexandria:hash-table-alist
+  (default-help
+  t
+  "halo"
+  (alexandria:alist-hash-table
+    '((:a . 1)
+      (:b . 2)
+      (:c . 3)))
+  '("hello" "world")
+  nil
+  (uiop/os:getcwd)
+  '(
+    (("hello" "world") . "
+This is nonsense.
+"))
+  ","
+  "="))
+  
 (defun default-help
     (strm
       program-name
@@ -903,12 +922,19 @@
       other-args
       reference-file
       root-path
-      functions
+      helps
+      list-sep
+      map-sep
       )
   (declare (type (or stream boolean) strm)
+           (type string program-name)
            (type hash-table options)
            (type list other-args)
-           (type (or null pathname) root-path))
+           (type (or null pathname) reference-file)
+           (type (or null pathname) root-path)
+           (type list helps)
+           (type string list-sep)
+           (type string list-sep))
   (format strm "~&Usage: ~A!~%" program-name)
   (format
     strm "~@{~@?~}"
@@ -921,7 +947,7 @@
     "output will be a NRDL document. More information about~%"
     "NRDL can be found here:~%"
     "~%"
-    "https://git.sr.ht/~skin/nrdl~%"
+    "https://git.sr.ht/~~skin/nrdl~%"
     "~%"
     "Options can be given via:~%"
     "  - Config file, as in `{ <option> <value> }`~%"
@@ -951,8 +977,8 @@
     strm "~@{~@?~}"
     "  - A home-directory config file in an OS-specific location:~%"
     "      - On Linux: `${XDG_CONFIG_HOME}/~A/config.nrdl`~%" program-name
-    "        (by default ~/.config/~A/config.nrdl)` ~%" program-name
-    "      - On Mac:   `~/Library/Preferences/~A/.config.nrdl`~%" program-name
+    "        (by default ~~/.config/~A/config.nrdl)` ~%" program-name
+    "      - On Mac:   `~~/Library/Preferences/~A/.config.nrdl`~%" program-name
     "      - On Windows: %LOCALAPPDATA%\\~A\\config.nrdl`~%" program-name
     "        (by default `%USERPROFILE%\\AppData\\Local\\~A\\config.nrdl)`~%"
     program-name)
@@ -986,30 +1012,73 @@
     "  - To set using a NRDL string, use `--nrdl-<option> <value>`.~%"
     "  - To set using NRDL contents from a file, use `--file-<option> <url>`.~%"
     "    URLs can have be of the following forms:~%"
-    "      - `http(s)://user:pw@url` for basic auth~%"
+    "      - `http(s)://user:password@url` for basic auth~%"
     "      - `http(s)://header=val@url` for a header~%"
-    "      - `http(s)://tok@url` for a bearer token~%"
-    "      - `file://loc` for a local file~%"
+    "      - `http(s)://token@url` for a bearer token~%"
+    "      - `file://location` for a local file~%"
     "      - `-` for standard input~%"
     "    Anything else is treated as a file name.~%"
     "~%")
   (format strm "The following options have been detected:~%")
   (nrdl:generate-to strm options :pretty-indent 4)
-  (let ((function (cdr (assoc "help" functions :test #'equal))))
-    (if function
-        (let ((docstring (documentation function 'function)))
-          (if docstring
-            (format strm "Documentation for subcommand `~{~A~^ ~}`: ~%~A~%"
-                    other-args
-                    docstring)
-            (format strm "Documentation for subcommand `~{~A~^ ~}` not found.~%"
-                    other-args)))
+  (finish-output strm)
+  (let* ((entry (assoc other-args helps :test #'equal))
+         (helpstring (cdr entry)))
+    (if helpstring
+        (format strm "~%Documentation for subcommand `~{~A~^ ~}`: ~%~A~%"
+                other-args
+                helpstring)
+        (format strm "~%Documentation for subcommand `~{~A~^ ~}` not found.~%"
+                other-args))
         (format strm "~%The subcommand `~{~A~^ ~}` does not exist.~%"
-                other-args)))
+                other-args))
   (alexandria:alist-hash-table
     '(
       (:status . :successful)
       )))
+
+#+(or)
+(multiple-value-bind (exit-code exit-map)
+  (execute-program
+    "hi"
+    (alexandria:alist-hash-table
+      '(("HOME" . "/home/skin")
+        ("HI_ITEM_FOO" . "25")
+        ("HI_LIST_BAR" . "1,2,3,4,5")
+        ("HI_TABLE_BAZ" . "a=1,b=2,c=3")
+        ("HI_FLAG_QUUX" . "1")
+        ("HI_NRDL_DISEASE" . "{he \"could\" do false it \"rightnow\"}")))
+    (list
+      (cons '("foo") (lambda (opts) (format t "foo: ~a~%" (gethash :foo opts)))))
+    :helps
+    (list
+      (cons '("foo") "This is the foo subcommand."))
+    :cli-arguments '("foo"))
+  (alexandria:hash-table-alist exit-map))
+
+#+(or)
+(multiple-value-bind (exit-code exit-map)
+  (execute-program
+    "hi"
+    (alexandria:alist-hash-table
+      '(("HOME" . "/home/skin")
+        ("HI_ITEM_FOO" . "25")
+        ("HI_LIST_BAR" . "1,2,3,4,5")
+        ("HI_TABLE_BAZ" . "a=1,b=2,c=3")
+        ("HI_FLAG_QUUX" . "1")
+        ("HI_NRDL_DISEASE" . "{he \"could\" do false it \"rightnow\"}")))
+    (list
+      (cons '("foo") (lambda (opts)
+                       (format t "foo: ~a~%" (gethash :foo opts))
+                       (alexandria:alist-hash-table
+                         '((:status . :successful)
+                           (:foo . (gethash :foo opts))))
+                       )))
+    :helps
+    (list
+      (cons '("foo") "This is the foo subcommand."))
+    :cli-arguments '("foo"))
+  (alexandria:hash-table-alist exit-map))
 
 (defun
   execute-program
@@ -1017,6 +1086,8 @@
     environment-variables
     functions
     &key
+    helps
+    (strm t)
     cli-arguments
     cli-aliases
     defaults
@@ -1103,7 +1174,9 @@
                                   (cdr other-args)
                                   reference-file
                                   root-path
-                                  functions)))
+                                  helps
+                                  list-sep
+                                  map-sep)))
                          (cdr (assoc other-args functions :test #'equal))
                          (error 'invalid-subcommand
                                 :given-subcommand other-args)))
@@ -1115,12 +1188,12 @@
                      (code (gethash :status final-result 0)))
                          (values code final-result))
           (serious-condition (e)
-            (let ((exit-code (cli-errors:exit-code e)))
+            (let ((exit-code (cl-i/errors:exit-code e)))
             (values
               exit-code
               (alexandria:alist-hash-table
               (concatenate
                 'list
                 `((:status .  ,exit-code)
-                  (:error-message . ,(prin1-to-string e))))
-              (exit-map-members e))))))))))
+                  (:error-message . ,(prin1-to-string e)))
+              (cl-i/errors:exit-map-members e)))))))))))

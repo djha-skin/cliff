@@ -19,7 +19,8 @@
   (:import-from #:nrdl)
     (:export
       *exit-codes*
-      exit-code))
+      exit-code
+      exit-map-members))
 (in-package #:cl-i/errors)
 
 (defparameter *exit-codes*
@@ -55,7 +56,8 @@
 
 ; By default, we don't add anything to the exit map.
 (defmethod exit-map-members ((condition condition))
-    `(:error-type (prin1-to-string (type-of condition))))
+    `(
+      (:error-type . ,(prin1-to-string (type-of condition)))))
 
 ;; We define exit codes for the standard CL conditions.
 ; Condition Type SERIOUS-CONDITION

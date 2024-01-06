@@ -1,5 +1,5 @@
 (defsystem "cl-i"
-  :version "0.6.1"
+  :version "0.7.0"
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (
@@ -18,7 +18,7 @@
   :in-order-to ((test-op (test-op "cl-i/tests"))))
 
 (defsystem "cl-i/tests"
-  :version "0.6.0"
+  :version "0.7.0"
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (

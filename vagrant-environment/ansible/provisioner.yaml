@@ -31,49 +31,49 @@
         state: started
         enabled: true
 
-    - name: Add Roswell COPR
-      community.general.copr:
-        host: copr.fedorainfracloud.org
-        state: enabled
-        name: shassard/roswell
-        chroot: epel-9-x86_64
+    #- name: Add Roswell COPR
+    #  community.general.copr:
+    #    host: copr.fedorainfracloud.org
+    #    state: enabled
+    #    name: shassard/roswell
+    #    chroot: epel-9-x86_64
 
-    - name: Install Roswell as well as SBCL dependencies
-      ansible.builtin.dnf:
-        name:
-          - roswell
-          - libzstd-devel
-        state: present
+    #- name: Install Roswell as well as SBCL dependencies
+    #  ansible.builtin.dnf:
+    #    name:
+    #      - roswell
+    #      - libzstd-devel
+    #    state: present
 
-    - name: Install SBCL
-      ansible.builtin.command:
-        argv:
-          - ros
-          - install
-          - sbcl/2.4.0
-        creates: /home/vagrant/.roswell/impls/x86-64/linux/sbcl/2.4.0/bin/sbcl
-      become_user: vagrant
+    #- name: Install SBCL
+    #  ansible.builtin.command:
+    #    argv:
+    #      - ros
+    #      - install
+    #      - sbcl/2.4.0
+    #    creates: /home/vagrant/.roswell/impls/x86-64/linux/sbcl/2.4.0/bin/sbcl
+    #  become_user: vagrant
 
-    - name: Install Roswell developer tools
-      ansible.builtin.command:
-        argv:
-          - ros
-          - install
-          - "{{ item }}"
-        creates: "/home/vagrant/.roswell/bin/{{ item }}"
-      loop:
-        - qlot
-        - rove
+    #- name: Install Roswell developer tools
+    #  ansible.builtin.command:
+    #    argv:
+    #      - ros
+    #      - install
+    #      - "{{ item }}"
+    #    creates: "/home/vagrant/.roswell/bin/{{ item }}"
+    #  loop:
+    #    - qlot
+    #    - rove
 
-    - name: Create the Common Lisp directory for ASDF
-      ansible.builtin.file:
-        name: /home/vagrant/common-lisp
-        state: directory
-      become_user: vagrant
+    #- name: Create the Common Lisp directory for ASDF
+    #  ansible.builtin.file:
+    #    name: /home/vagrant/common-lisp
+    #    state: directory
+    #  become_user: vagrant
 
-    - name: Symlink project into the Common Lisp directory
-      ansible.builtin.file:
-        src: /vagrant
-        dest: /home/vagrant/common-lisp/cl-i
-        state: link
-      become_user: vagrant
+    #- name: Symlink project into the Common Lisp directory
+    #  ansible.builtin.file:
+    #    src: /vagrant
+    #    dest: /home/vagrant/common-lisp/cl-i
+    #    state: link
+    #  become_user: vagrant

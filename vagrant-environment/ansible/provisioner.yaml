@@ -1,0 +1,66 @@
+---
+- name: Provision vagrant box
+  hosts: all
+  become: true
+  tasks:
+    - name: Run command to install `docker-ce` engine repo
+      ansible.builtin.command:
+        argv:
+          - dnf
+          - config-manager
+          - --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+        creates: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Install `docker-ce` and `docker-compose`
+      ansible.builtin.dnf:
+        name:
+          - docker-ce
+          - docker-compose-plugin
+
+    - name: Add Vagrant to Docker group
+      ansible.builtin.user:
+        name: vagrant
+        state: present
+        groups:
+          - vagrant
+          - docker
+
+    - name: Start Docker service
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add Roswell COPR
+      community.general.copr:
+        host: copr.fedorainfracloud.org
+        state: enabled
+        name: shassard/roswell
+        chroot: epel-9-x86_64
+
+    - name: Install Roswell as well as SBCL dependencies
+      ansible.builtin.dnf:
+        name:
+          - roswell
+          - libzstd-devel
+        state: present
+
+    - name: Install SBCL
+      ansible.builtin.command:
+        argv:
+          - ros
+          - install
+          - sbcl/2.4.0
+        creates: /home/vagrant/.roswell/impls/x86-64/linux/sbcl/2.4.0/bin/sbcl
+      become_user: vagrant
+
+    - name: Install Roswell developer tools
+      ansible.builtin.command:
+        argv:
+          - ros
+          - install
+          - "{{ item }}"
+        creates: "/home/vagrant/.roswell/bin/{{ item }}"
+      loop:
+        - qlot
+        - rove

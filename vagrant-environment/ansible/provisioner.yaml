@@ -64,3 +64,16 @@
       loop:
         - qlot
         - rove
+
+    - name: Create the Common Lisp directory for ASDF
+      ansible.builtin.file:
+        name: /home/vagrant/common-lisp
+        state: directory
+      become_user: vagrant
+
+    - name: Symlink project into the Common Lisp directory
+      ansible.builtin.file:
+        src: /vagrant
+        dest: /home/vagrant/common-lisp/cl-i
+        state: link
+      become_user: vagrant

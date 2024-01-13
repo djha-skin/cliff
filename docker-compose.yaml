@@ -9,7 +9,7 @@ services:
     environment:
       PORT: "8443"
       SERVER_NAME: "localhost"
-      SERVER_ROOT: "/code/lighttpd-environment/wwwroot"
-      CONFIG_FILE: "/code/lighttpd-environment/lighttpd/lighttpd.conf"
+      SERVER_ROOT: "/code/vagrant-environment/lighttpd/wwwroot"
+      CONFIG_FILE: "/code/vagrant-environment/lighttpd/lighttpd/lighttpd.conf"
       SKIP_HEALTHCHECK: "false"
       MAX_FDS: "1024"

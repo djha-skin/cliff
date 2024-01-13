@@ -10,6 +10,8 @@
 .*.sw[a-z]
 /.slime_paste
 /.vagrant/
+/scratch.lisp
+/*.log
 
 /lighttpd-environment/test-data
 /.repl/ros_history

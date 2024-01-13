@@ -914,7 +914,7 @@ This is nonsense.
 "))
   ","
   "="))
-  
+
 (defun default-help
     (strm
       program-name

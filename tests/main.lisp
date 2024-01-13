@@ -20,7 +20,8 @@
       :directory
       (list
         :relative
-        "common-lisp"
+        "Code"
+        "lisp"
         "cl-i"
         "tests")
       :name
@@ -300,7 +301,7 @@
                    (:COOL . :BEANS)
                    (:STATE . "virginia"))
                   (:SPICES . T))
-                 (:DOT . NRDL:FALSE)
+                 (:DOT . nil)
                  (:GARY . 3)
                  (:HAIRY . 4)
                  (:SLASH))))))
@@ -376,7 +377,148 @@
                '((:ALL-THE-THINGS) (:BARF "3" "2" "1")
                                    (:CHIVES (:LOVE . 15) (:SORE_LOSERS (:COOL . :BEANS) (:STATE . "virginia"))
                                             (:SPICES . T))
-                                   (:DEALS (:A . "jhyghyjub") (:C . "d")) (:DOT . NRDL:FALSE) (:FOUR . "square")
+                                   (:DEALS (:A . "jhyghyjub") (:C . "d")) (:DOT . nil) (:FOUR . "square")
+                                   (:GARY . "four") (:HAIRY . 4) (:LOVERS "so" "many" "lovers")
+                                   (:OF (:CONTENT-MAKERS . "too-many") (:CONTENT-PEOPLE . "few")
+                                        (:CONTENTS . "lots"))
+                                   (:SLASH)
+                                   (:STATUS . :INPUT-OUTPUT-ERROR)
+                                   )))
+    (ok (equal code 74)))))
+
+
+(defmacro write-or-check-output (thing strm file expected actual)
+  (let ((file-single-eval (gensym "write-or-check-output-file-"))
+        ;; TODO lots of single evals here
+    `(let* ((,file-single-eval ,file)
+            (,expected
+              (with-output-to-string (,strm)
+                ,thing))
+            (,actual (when (probe-file ,file-single-eval)
+                      (uiop:read-file-string ,file-single-eval))))
+       (if (not (null ,actual))
+           (ok (equal ,expected ,actual))
+           (with-open-file (,file-single-eval :direction :output :if-exists :supersede :external-format :utf-8)
+             (write-string expected out))
+
+         output))))
+
+(defmacro write-or-check-nrdl (thing strm file expected actual)
+
+
+
+
+
+
+
+
+
+
+(deftest
+  default-help
+  (testing
+    "empty cases"
+    (let ((strstrm (string-stream
+    (with-output-to-string (out)
+      (default-help
+        out 
+        "halo"
+        nil
+        nil
+        nil
+        (uiop/os:getcwd)
+        nil 
+        ","
+        "="))
+  (testing
+    "typical case"
+    (alexandria:hash-table-alist
+      (cl-i::default-help
+        t
+        "halo"
+        (alexandria:alist-hash-table
+          '((:a . 1)
+            (:b . 2)
+            (:c . 3)))
+        '("hello" "world")
+        nil
+        (uiop/os:getcwd)
+        '(
+          (("hello" "world") . "
+                             This is nonsense.
+                             "))
+                             ","
+                             "="))
+
+
+    (ok
+      (signals
+        (cl-i:execute-program
+          "Halo"
+          (make-hash-table)
+          nil)
+        'cl-i:necessary-env-var-absent)
+      "Necessary environment variables absent")
+    (ok
+      (signals
+        (cl-i:execute-program
+          "Halo"
+          (alexandria:alist-hash-table
+            #+windows
+            '(
+              ("USERPROFILE" . "C:\\Users\\djh")
+              )
+            #-windows
+            '(("HOME" . "/home/djha-skin")
+              )
+            :test #'equal)
+          nil)
+        'cl-i:invalid-subcommand)
+      "No test provided in hash table args"))
+  (testing
+    "typical invocation"
+    (multiple-value-bind (code outcome)
+      (cl-i:execute-program
+        "hi"
+        (alexandria:alist-hash-table
+          #+windows
+          '(
+            ("USERPROFILE" . "C:\\Users\\djh")
+            ("HI_ITEM_FOUR" . "square")
+            ("HI_LIST_LOVERS" . "so,many,lovers")
+            ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
+            )
+          #-windows
+          '(
+          ("HOME" . "/home/djha-skin")
+          ("HI_ITEM_FOUR" . "square")
+          ("HI_LIST_LOVERS" . "so,many,lovers")
+          ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
+          )
+        :test #'equal
+        )
+      `((nil . ,#'blank-command)
+        (("error") . ,#'error-command)
+        (("io-error") . ,#'io-error))
+      :cli-arguments
+      '(
+        "--join-deals" "a=jhyghyjub"
+        "--join-deals" "c=d"
+        "--add-barf" "1"
+        "--add-barf" "2"
+        "--add-barf" "3"
+        "--enable-gary"
+        "--reset-gary"
+        "--set-gary" "four"
+        "--disable-all-the-things"
+        "io-error"
+        ))
+    (ok (equal (nrdl:nested-to-alist outcome)
+
+               '((:ALL-THE-THINGS) (:BARF "3" "2" "1")
+                                   (:CHIVES (:LOVE . 15) (:SORE_LOSERS (:COOL . :BEANS) (:STATE . "virginia"))
+                                            (:SPICES . T))
+                                   (:DEALS (:A . "jhyghyjub") (:C . "d")) (:DOT . nil) (:FOUR . "square")
                                    (:GARY . "four") (:HAIRY . 4) (:LOVERS "so" "many" "lovers")
                                    (:OF (:CONTENT-MAKERS . "too-many") (:CONTENT-PEOPLE . "few")
                                         (:CONTENTS . "lots"))

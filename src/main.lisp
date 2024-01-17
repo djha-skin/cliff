@@ -105,7 +105,7 @@
       (match groups)
       (cl-ppcre:scan-to-strings "^file://(.+)$" url)
     (if match
-        (pathname (first groups))
+        (pathname (elt groups 0))
         url)))
 
 (defun slurp-stream (f)
@@ -1185,15 +1185,19 @@ This is nonsense.
                      (final-result
                        (funcall
                          teardown intermediate-result))
-                     (code (gethash :status final-result 0)))
+                     (code (gethash :status final-result
+                                    (gethash :successful cl-i/errors:*exit-codes*
+                                             0))))
                          (values code final-result))
           (serious-condition (e)
-            (let ((exit-code (cl-i/errors:exit-code e)))
+            (let ((exit-status (cl-i/errors:exit-status e)))
             (values
-              exit-code
+              (gethash exit-status cl-i/errors:*exit-codes*
+                       (gethash :unknown-error cl-i/errors:*exit-codes*
+                                128))
               (alexandria:alist-hash-table
               (concatenate
                 'list
-                `((:status .  ,exit-code)
+                `((:status .  ,exit-status)
                   (:error-message . ,(prin1-to-string e)))
               (cl-i/errors:exit-map-members e)))))))))))

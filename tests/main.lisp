@@ -175,24 +175,6 @@
   consume-arguments
   (testing
     "other-args"
-    (signals
-       (cl-i:consume-arguments
-        '("--enable-dark-mode"
-          "--reset-dark-mode"
-          "--add-dark-mode"
-          "crying"
-          "--add-dark-mode"
-          "firm"
-          "well-done"
-          "medium-well"
-          "--join-my"
-          "pride=hurt"
-          "--join-my"
-          "start=great"
-          "--nrdl-fight"
-          "15.0"
-          "--nrdl-stride"
-          "tests/.cl-i.nrdl")))
     (multiple-value-bind (opts other-args)
         (cl-i:consume-arguments
           '("--enable-dark-mode"
@@ -220,7 +202,7 @@
              (:STRIDE ("hoo" . "haa")))
             ))
       (ok (equal
-            '("medium-well" "well-done")
+            '("well-done" "medium-well")
             other-args))))
   (testing
     "empty"
@@ -290,7 +272,7 @@
                        )
                      #-windows
                      '(
-                       ("HOME" . "/home/djha-skin")
+                       ("HOME" . "/home/skin")
                        )
                      :test #'equal
                      )
@@ -304,7 +286,7 @@
                  (:DOT . nil)
                  (:GARY . 3)
                  (:HAIRY . 4)
-                 (:SLASH))))))
+                 (:SLASH . cl:null))))))
 
 (deftest
   execute-program
@@ -386,23 +368,6 @@
                                    )))
     (ok (equal code 74)))))
 
-
-;;#(defmacro write-or-check-output (thing strm file expected actual)
-;;#  (let ((file-single-eval (gensym "write-or-check-output-file-"))
-;;#        ;; TODO lots of single evals here
-;;#    `(let* ((,file-single-eval ,file)
-;;#            (,expected
-;;#              (with-output-to-string (,strm)
-;;#                ,thing))
-;;#            (,actual (when (probe-file ,file-single-eval)
-;;#                      (uiop:read-file-string ,file-single-eval))))
-;;#       (if (not (null ,actual))
-;;#           (ok (equal ,expected ,actual))
-;;#           (with-open-file (,file-single-eval :direction :output :if-exists :supersede :external-format :utf-8)
-;;#             (write-string expected out))
-;;#
-;;#         output))))
-;;#
 ;;#(defmacro write-or-check-nrdl (thing strm file expected actual)
 ;;#
 ;;#

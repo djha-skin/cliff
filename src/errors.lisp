@@ -19,7 +19,7 @@
   (:import-from #:nrdl)
     (:export
       *exit-codes*
-      exit-code
+      exit-status
       exit-map-members))
 (in-package #:cl-i/errors)
 
@@ -27,6 +27,8 @@
   ;; taken from /usr/include/sysexit.h
   (alexandria:alist-hash-table
     '(
+      (:unknown-error . 128)
+      (:general-error . 1)
       (:successful . 0)
       (:cl-usage-error . 64)
       (:data-format-error . 65)
@@ -46,7 +48,7 @@
 
 
 
-(defgeneric exit-code (condition)
+(defgeneric exit-status (condition)
   (:documentation
     "Return the exit code for the given condition."))
 
@@ -61,15 +63,15 @@
 
 ;; We define exit codes for the standard CL conditions.
 ; Condition Type SERIOUS-CONDITION
-(defmethod exit-code ((condition serious-condition))
-  (gethash :general-error *exit-codes*))
+(defmethod exit-status ((condition serious-condition))
+  :general-error)
 
 ; Condition Type ARITHMETIC-ERROR
 ; Condition Type DIVISION-BY-ZERO
 ; Condition Type FLOATING-POINT-INVALID-OPERATION
 ; Condition Type FLOATING-POINT-OVERFLOW
 ; Condition Type FLOATING-POINT-UNDERFLOW
-(defmethod exit-code ((condition arithmetic-error))
+(defmethod exit-status ((condition arithmetic-error))
   (gethash :internal-software-error
            *exit-codes*))
 
@@ -90,8 +92,8 @@
 ; Condition Type CELL-ERROR
 ; Condition Type UNBOUND-VARIABLE
 ; Condition Type UNDEFINED-FUNCTION
-(defmethod exit-code ((condition cell-error))
-  (gethash :internal-software-error *exit-codes*))
+(defmethod exit-status ((condition cell-error))
+  :internal-software-error)
 
 (defmethod exit-map-members ((condition cell-error))
   (let ((name (cell-error-name condition)))
@@ -101,11 +103,11 @@
       (call-next-method condition))))
 
 ; Condition Type CONTROL-ERROR
-(defmethod exit-code ((condition cell-error))
-  (gethash :internal-software-error *exit-codes*))
+(defmethod exit-status ((condition cell-error))
+  :internal-software-error)
 
 ; Condition Type FILE-ERROR
-(defmethod exit-code ((condition file-error))
+(defmethod exit-status ((condition file-error))
   (gethash :input-output-error
            *exit-codes*))
 
@@ -117,8 +119,8 @@
       (call-next-method condition))))
 
 ; Condition Type PACKAGE-ERROR
-(defmethod exit-code ((condition package-error))
-  (gethash :internal-software-error *exit-codes*))
+(defmethod exit-status ((condition package-error))
+  :internal-software-error)
 
 (defmethod exit-map-members ((condition package-error))
   (let ((package (package-error-package condition)))
@@ -129,11 +131,11 @@
 
 ; Condition Type PARSE-ERROR
 ; Condition Type READER-ERROR
-(defmethod exit-code ((condition parse-error))
-  (gethash :data-format-error *exit-codes*))
+(defmethod exit-status ((condition parse-error))
+  :data-format-error)
 
 ; Condition Type PRINT-NOT-READABLE
-(defmethod exit-code ((condition print-not-readable))
+(defmethod exit-status ((condition print-not-readable))
   ;; This one is ambiguous. Can I not print because of a bad return value?
   ;; Or because the object is not printable?
   (gethash :internal-software-error
@@ -147,12 +149,12 @@
       (call-next-method condition))))
 
 ; Condition Type PROGRAM-ERROR
-(defmethod exit-code ((condition program-error))
-  (gethash :internal-software-error *exit-codes*))
+(defmethod exit-status ((condition program-error))
+  :internal-software-error)
 
 ; Condition Type TYPE-ERROR
-(defmethod exit-code ((condition type-error))
-  (gethash :data-format-error *exit-codes*))
+(defmethod exit-status ((condition type-error))
+  :data-format-error)
 
 (defmethod exit-map-members ((condition type-error))
   (let ((datum (type-error-datum condition))
@@ -164,13 +166,13 @@
       (call-next-method condition))))
 
 ; Condition Type STORAGE-CONDITION
-(defmethod exit-code ((condition storage-condition))
-  (gethash :system-error *exit-codes*))
+(defmethod exit-status ((condition storage-condition))
+  :system-error)
 
 ; Condition Type STREAM-ERROR
 ; Condition Type END-OF-FILE
-(defmethod exit-code ((condition stream-error))
-  (gethash :input-output-error *exit-codes*))
+(defmethod exit-status ((condition stream-error))
+  :input-output-error)
 
 (defmethod exit-map-members ((condition stream-error))
   (let ((stream (stream-error-stream condition)))

@@ -328,13 +328,14 @@
   #-windows "/")
 
 (define-condition necessary-env-var-absent (error)
+   
   ((env-var :initarg :env-var
             :initform (error "Need to give argument `:env-var`.")
             :reader env-var))
   (:documentation "An required environment variable is not present.")
-  (:report (lambda (this strm)
-             (format strm "Environment variable `~A` not specified.~&"
-                     (env-var this)))))
+  (:report (lambda (condition stream)
+             (format stream "Environment variable `~A` not specified.~&"
+                     (env-var condition)))))
 
 (defun os-specific-home (getenv)
   (make-os-specific-path
@@ -863,8 +864,14 @@
     "The subcommand given was invalid; no functions were found for it.")
   (:report (lambda (this strm)
              (format strm
-                     "The subcommand `~{~A~^ ~}` has no actions defined for it.~&"
+                     "The subcommand `~{~A~^ ~}` has no actions defined for it."
                      (given-subcommand this)))))
+
+(defmethod exit-status ((this invalid-subcommand))
+  :cl-usage-error)
+
+(defmethod exit-map-members ((this invalid-subcommand))
+  (list (cons :given-subcommand (given-subcommand this))))
 
 (defun system-environment-variables ()
   "
@@ -1199,5 +1206,5 @@ This is nonsense.
               (concatenate
                 'list
                 `((:status .  ,exit-status)
-                  (:error-message . ,(prin1-to-string e)))
+                  (:error-message . ,(format nil "~A" e)))
               (cl-i/errors:exit-map-members e)))))))))))

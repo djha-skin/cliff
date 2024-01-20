@@ -203,21 +203,24 @@
             ))
       (ok (equal
             '("well-done" "medium-well")
-            other-args))))
+            other-args)
+          "Other-args handling of consume-arguments")))
   (testing
     "empty"
     (ok
       (equal (cl-i:generate-string
                (cl-i:consume-arguments
                  '()))
-             (format nil "{~%}"))))
+             (format nil "{~%}"))
+      "Empty argument parsing"))
   (testing
     "basic"
     (ok
       (equal (nrdl:nested-to-alist
                (cl-i:consume-arguments
                  '("--enable-foo" "--disable-bar" "baz" "--nrdl-force" "15" "--set-quux" "farquad")))
-             '((:BAR) (:FOO . T) (:FORCE . 15) (:QUUX . "farquad"))))))
+             '((:BAR) (:FOO . T) (:FORCE . 15) (:QUUX . "farquad")))
+      "Basic argument parsing")))
 
 (deftest
   consume-environment
@@ -300,8 +303,7 @@
           nil)
         'cl-i:necessary-env-var-absent)
       "Necessary environment variables absent")
-    (ok
-      (signals
+    (multiple-value-bind (code outcome)
         (cl-i:execute-program
           "Halo"
           (alexandria:alist-hash-table
@@ -314,8 +316,17 @@
               )
             :test #'equal)
           nil)
-        'cl-i:invalid-subcommand)
-      "No test provided in hash table args"))
+      (ok
+        ;; TODO FIX THIS
+        (break)
+        (equal
+          outcome
+      '((:ERROR-MESSAGE . "The subcommand `` has no actions defined for it.")
+       (:ERROR-TYPE . "CL-I:INVALID-SUBCOMMAND") (:STATUS . :GENERAL-ERROR))))
+      (ok
+        (equal
+          code
+          64))))
   (testing
     "typical invocation"
     (multiple-value-bind (code outcome)
@@ -365,8 +376,10 @@
                                         (:CONTENTS . "lots"))
                                    (:SLASH)
                                    (:STATUS . :INPUT-OUTPUT-ERROR)
-                                   )))
-    (ok (equal code 74)))))
+                                   ))
+        "Typical invocation hash table check")
+    (ok (equal code 74)
+        "Typical invocation exit code check"))))
 
 ;;#(defmacro write-or-check-nrdl (thing strm file expected actual)
 ;;#

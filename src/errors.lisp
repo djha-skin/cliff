@@ -46,8 +46,6 @@
       (:permission-denied . 77)
       (:configuration-error . 78))))
 
-
-
 (defgeneric exit-status (condition)
   (:documentation
     "Return the exit code for the given condition."))

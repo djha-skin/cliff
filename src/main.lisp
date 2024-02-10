@@ -867,11 +867,14 @@
                      "The subcommand `~{~A~^ ~}` has no actions defined for it."
                      (given-subcommand this)))))
 
-(defmethod exit-status ((this invalid-subcommand))
+(defmethod cl-i/errors:exit-status ((this invalid-subcommand))
   :cl-usage-error)
 
-(defmethod exit-map-members ((this invalid-subcommand))
-  (list (cons :given-subcommand (given-subcommand this))))
+(defmethod cl-i/errors:exit-map-members ((this invalid-subcommand))
+  (concatenate
+    'list
+    `((:given-subcommand . ,(given-subcommand this)))
+    (call-next-method)))
 
 (defun system-environment-variables ()
   "
@@ -1195,16 +1198,20 @@ This is nonsense.
                      (code (gethash :status final-result
                                     (gethash :successful cl-i/errors:*exit-codes*
                                              0))))
-                         (values code final-result))
+                         (values 
+                           (gethash code cl-i/errors:*exit-codes*
+                                    (gethash :unknown-error cl-i/errors:*exit-codes*
+                                             128))
+                           final-result))
           (serious-condition (e)
             (let ((exit-status (cl-i/errors:exit-status e)))
-            (values
-              (gethash exit-status cl-i/errors:*exit-codes*
-                       (gethash :unknown-error cl-i/errors:*exit-codes*
-                                128))
-              (alexandria:alist-hash-table
-              (concatenate
-                'list
-                `((:status .  ,exit-status)
-                  (:error-message . ,(format nil "~A" e)))
-              (cl-i/errors:exit-map-members e)))))))))))
+              (values
+                (gethash exit-status cl-i/errors:*exit-codes*
+                         (gethash :unknown-error cl-i/errors:*exit-codes*
+                                  128))
+                (alexandria:alist-hash-table
+                  (concatenate
+                    'list
+                    `((:status .  ,exit-status)
+                      (:error-message . ,(format nil "~A" e)))
+                    (cl-i/errors:exit-map-members e)))))))))))

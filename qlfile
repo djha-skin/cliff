@@ -1,5 +1,6 @@
-git quri git@github.com:djhaskin987/quri.git :branch djhaskin987/support-msvc-ecl
-git nrdl git@git.djha.skin:me/nrdl.git :branch main
+ql trivial-package-local-nicknames
+ql quri
+git nrdl git@git.sr.ht:~skin/nrdl :ref 0.3.0
 ql closer-mop
 ql float-features
 ql documentation-utils
@@ -9,4 +10,3 @@ ql cl-ppcre
 ql arrows
 ql dexador
 ql trivial-features
-ql trivial-package-local-nicknames

@@ -317,12 +317,11 @@
             :test #'equal)
           nil)
       (ok
-        ;; TODO FIX THIS
-        (break)
         (equal
-          outcome
-      '((:ERROR-MESSAGE . "The subcommand `` has no actions defined for it.")
-       (:ERROR-TYPE . "CL-I:INVALID-SUBCOMMAND") (:STATUS . :GENERAL-ERROR))))
+          (nrdl:nested-to-alist outcome)
+          '((:ERROR-MESSAGE . "The subcommand `` has no actions defined for it.")
+            (:ERROR-TYPE . "CL-I:INVALID-SUBCOMMAND") (:GIVEN-SUBCOMMAND)
+            (:STATUS . :CL-USAGE-ERROR))))
       (ok
         (equal
           code
@@ -365,6 +364,9 @@
         "--disable-all-the-things"
         "io-error"
         ))
+      (list
+        code
+        (nrdl:nested-to-alist outcome))
     (ok (equal (nrdl:nested-to-alist outcome)
 
                '((:ALL-THE-THINGS) (:BARF "3" "2" "1")
@@ -374,7 +376,7 @@
                                    (:GARY . "four") (:HAIRY . 4) (:LOVERS "so" "many" "lovers")
                                    (:OF (:CONTENT-MAKERS . "too-many") (:CONTENT-PEOPLE . "few")
                                         (:CONTENTS . "lots"))
-                                   (:SLASH)
+                                   (:SLASH . cl:null)
                                    (:STATUS . :INPUT-OUTPUT-ERROR)
                                    ))
         "Typical invocation hash table check")

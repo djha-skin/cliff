@@ -12,6 +12,7 @@
 /.vagrant/
 /scratch.lisp
 /*.log
+TODO
 
 /lighttpd-environment/test-data
 /.repl/ros_history

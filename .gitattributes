@@ -11,6 +11,7 @@
 *.ps1 text eol=crlf
 
 # Both OS's
+*.csv text
 *.lisp text
 *.asd text
 *.md text

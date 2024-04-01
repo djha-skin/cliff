@@ -1,12 +1,13 @@
-(defsystem "cl-i"
+(defsystem "com.djhaskin.cl-i"
   :version "0.7.0"
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (
                "quri"
                "alexandria"
-               "nrdl"
+               "com.djhaskin.nrdl"
                "cl-ppcre"
+               "arrows"
                "dexador"
                "trivial-features"
                "trivial-package-local-nicknames"
@@ -17,20 +18,24 @@
                  (:file "errors")
                  (:file "main")
                  )))
-  :description "CLI library for Common Lisp. Handles args, envvars, and conf"
-  :in-order-to ((test-op (test-op "cl-i/tests"))))
+  :description "CLI library for Common Lisp. Handles args, env vars, and conf"
+  :in-order-to (
+                (test-op (test-op "com.djhaskin.cl-i/tests"))))
 
-(defsystem "cl-i/tests"
+(defsystem "com.djhaskin.cl-i/tests"
   :version "0.7.0"
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (
-      "cl-i"
+      "com.djhaskin.cl-i"
       "alexandria"
-      "rove"
+      "parachute"
       "cl-ppcre")
   :components ((:module "tests"
                 :components
                 ((:file "main"))))
   :description "Test system for cl-i"
-  :perform (test-op (op c) (symbol-call :rove :run c)))
+  :perform (asdf:test-op (op c)
+                         (uiop:symbol-call
+                           :parachute
+                           :test :com.djhaskin.cl-i/tests)))

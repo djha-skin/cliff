@@ -14,8 +14,11 @@
 /*.log
 TODO
 
+
 /lighttpd-environment/test-data
 /.repl/ros_history
 
 /.qlot/
 /.bundle-libs/
+# ocicl
+/systems

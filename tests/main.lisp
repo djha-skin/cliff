@@ -1,18 +1,23 @@
 #+(or)
 (declaim (optimize (speed 0) (space 0) (debug 3)))
+
 (in-package #:cl-user)
 
-(defpackage #:cl-i/tests
+(defpackage #:com.djhaskin.cl-i/tests
   (:use #:cl
         #:rove)
   (:import-from
-    #:cl-i)
+    #:com.djhaskin.nrdl)
   (:import-from
-    #:nrdl)
+    #:com.djhaskin.cl-i)
   (:import-from
-    #:cl-ppcre))
+    #:cl-ppcre)
+  (:local-nicknames
+    (#:cl-i #:com.djhaskin.cl-i)
+    (#:nrdl #:com.djhaskin.nrdl)))
 
-(in-package :cl-i/tests)
+
+(in-package #:com.djhaskin.cl-i/tests)
 
 (defparameter *test-config-file*
   (merge-pathnames
@@ -34,7 +39,7 @@
   (merge-pathnames
     #P"tests/"
     (slot-value
-      (asdf:find-system "cl-i")
+      (asdf:find-system "com.djhaskin.cl-i")
       'asdf/component:absolute-pathname)))
 
 ;(def-suite cl-i-main
@@ -77,7 +82,7 @@
            (ok
              (equal
                (slot-value
-                 (asdf:find-system "cl-i")
+                 (asdf:find-system "com.djhaskin.cl-i")
                  'asdf/component:absolute-pathname)
                (cl-i:find-file
                  *tests-dir*
@@ -88,7 +93,7 @@
                  (merge-pathnames
                    #P"/leaves-of-grass"
                    (slot-value
-                     (asdf:find-system "cl-i")
+                     (asdf:find-system "com.djhaskin.cl-i")
                      'asdf/component:absolute-pathname))
                  "600dc0d36077a10ada600dd3a10fda7a")
                nil))))

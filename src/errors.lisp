@@ -2,7 +2,7 @@
 (declaim (optimize (speed 0) (space 0) (debug 3)))
 (in-package #:cl-user)
 (defpackage
-  #:cl-i/errors
+  #:com.djhaskin.cl-i/errors
   (:use #:cl)
   (:documentation
     "
@@ -16,12 +16,15 @@
 
     The exit codes are taken from the /usr/include/sysexits.h file.
     ")
-  (:import-from #:nrdl)
+  (:import-from #:com.djhaskin.nrdl)
+  (:local-nicknames
+    (#:nrdl #:com.djhaskin.nrdl))
     (:export
       *exit-codes*
       exit-status
       exit-map-members))
-(in-package #:cl-i/errors)
+
+(in-package #:com.djhaskin.cl-i/errors)
 
 (defparameter *exit-codes*
   ;; taken from /usr/include/sysexit.h

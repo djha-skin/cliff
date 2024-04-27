@@ -1,25 +1,29 @@
 #+(or)
 (declaim (optimize (speed 0) (space 0) (debug 3)))
+
 (in-package #:cl-user)
+
 (defpackage
-  #:cl-i (:use #:cl)
+  #:com.djhaskin.cl-i (:use #:cl)
   (:documentation
     "
     package that has a function, `execute-program`, which does the following:
-
     - registers functions mapped to specific subcommands
     - reads configuration files in standard locations
     - reads environment variables
-
     according to spefic rules and from these rules constructs a hash table
     which is then passed to the subcommands.
     ")
-    (:import-from #:nrdl)
+    (:import-from #:com.djhaskin.nrdl)
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
     (:import-from #:uiop/stream)
-    (:import-from #:cl-i/errors)
+    (:import-from #:com.djhaskin.cl-i/errors)
+    (:local-nicknames
+      (#:cl-i/errors #:com.djhaskin.cl-i/errors)
+      (#:cl-i #:com.djhaskin.cl-i)
+      (#:nrdl #:com.djhaskin.nrdl))
     (:export
       generate-string
       parse-string
@@ -40,7 +44,8 @@
       system-environment-variables
       default-help
       execute-program))
-(in-package #:cl-i)
+
+(in-package #:com.djhaskin.cl-i)
 
 (defun repeatedly-eq
   (func
@@ -508,7 +513,7 @@
            (when (not (gethash kopt opts))
              (setf (gethash kopt opts)
                    (apply #'make-hash-table hash-init-args)))
-           (setf (gethash (nrdl:string-keyword k) (gethash kopt opts)) v))
+           (setf (gethash (nrdl:string-symbol k) (gethash kopt opts)) v))
          (error "not a k/v pair, check map sep pattern: ~a" value))))
     ((eql kact :nrdl)
      (setf (gethash kopt opts)
@@ -565,9 +570,9 @@
              (rargs (rest consumable)))
             (or
               (cl-ppcre:register-groups-bind
-                ((#'nrdl:string-keyword
+                ((#'nrdl:string-symbol
                   kact)
-                 (#'nrdl:string-keyword
+                 (#'nrdl:string-symbol
                   kopt))
                 (+find-tag+
                   arg)
@@ -772,8 +777,8 @@
               value)
       do
       (cl-ppcre:register-groups-bind
-        ((#'nrdl:string-keyword ktag)
-         (#'nrdl:string-keyword kopt))
+        ((#'nrdl:string-symbol ktag)
+         (#'nrdl:string-symbol kopt))
         (var-pattern key)
         (ingest-var
           result

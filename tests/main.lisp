@@ -16,7 +16,6 @@
     (#:cl-i #:com.djhaskin.cl-i)
     (#:nrdl #:com.djhaskin.nrdl)))
 
-
 (in-package #:com.djhaskin.cl-i/tests)
 
 (defparameter *test-config-file*

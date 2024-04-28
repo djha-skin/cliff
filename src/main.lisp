@@ -333,7 +333,7 @@
   #-windows "/")
 
 (define-condition necessary-env-var-absent (error)
-   
+
   ((env-var :initarg :env-var
             :initform (error "Need to give argument `:env-var`.")
             :reader env-var))
@@ -938,6 +938,7 @@ This is nonsense.
       reference-file
       root-path
       helps
+      functions
       list-sep
       map-sep
       )
@@ -950,7 +951,6 @@ This is nonsense.
            (type list helps)
            (type string list-sep)
            (type string list-sep))
-  (format strm "~&Usage: ~A!~%" program-name)
   (format
     strm "~@{~@?~}"
     "~&Welcome to `~A`!~%" program-name
@@ -972,7 +972,7 @@ This is nonsense.
     "  - Command line, as in `--<action>-<option>`~%"
     "~%"
     "Config files are consulted first, then environment variables, then~%"
-    "the command line, with later values overriding earlier ones.~%")
+    "the command line, with later values overriding earlier ones.~%~%")
   ; Config files section
   (format strm "Config files can be in the following locations:~%")
   (if reference-file
@@ -995,26 +995,29 @@ This is nonsense.
     "        (by default ~~/.config/~A/config.nrdl)` ~%" program-name
     "      - On Mac:   `~~/Library/Preferences/~A/.config.nrdl`~%" program-name
     "      - On Windows: %LOCALAPPDATA%\\~A\\config.nrdl`~%" program-name
-    "        (by default `%USERPROFILE%\\AppData\\Local\\~A\\config.nrdl)`~%"
+    "        (by default `%USERPROFILE%\\AppData\\Local\\~A\\config.nrdl)`~%~%"
     program-name)
   ; Environment variables section
-  (format
-    strm "~@{~@?~}"
-          "Options can be set via environment variable as follows:~%"
-          "~%"
-          "  - `~A_FLAG_<OPTION>=1` to enable a boolean flag" program-name
-                program-name
-          "  - `~A_ITEM_<OPTION>=<VALUE>` to set a string value" program-name
-                program-name
+  (let ((clean-program-name
+          (string-upcase
+            (cl-ppcre:regex-replace-all
+              "\\W" program-name "_"))))
+    (format
+      strm "~@{~@?~}"
+      "Options can be set via environment variable as follows:~%"
+      "  - `~A_FLAG_<OPTION>=1` to enable a boolean flag~%"
+      clean-program-name
+          "  - `~A_ITEM_<OPTION>=<VALUE>` to set a string value~%"
+          clean-program-name
           "  - `~A_LIST_<OPTION>=<VAL1>~A<VAL2>~A...` to set a list option~%"
-                program-name list-sep list-sep
+          clean-program-name list-sep list-sep
           "  - `~A_TABLE_<OPTION>=<KEY1>~A<VAL1>~A<KEY2>~A<VAL2>~A...` to set~%"
+          clean-program-name list-sep map-sep list-sep map-sep
           "     a key/value table option~%"
-                program-name list-sep map-sep list-sep map-sep
           "  - `~A_NRDL_<OPTION>=<NRDL_STRING>` to set a value using~%"
-                program-name
+          clean-program-name
           "     a NRDL string~%"
-          "~%")
+          "~%"))
   (format
     strm
     "~@{~@?~}"
@@ -1038,15 +1041,31 @@ This is nonsense.
   (nrdl:generate-to strm options :pretty-indent 4)
   (finish-output strm)
   (let* ((entry (assoc other-args helps :test #'equal))
-         (helpstring (cdr entry)))
-    (if helpstring
-        (format strm "~%Documentation for subcommand `~{~A~^ ~}`: ~%~A~%"
+         (helpstring (cdr entry))
+         (callable-function (assoc other-args functions :test #'equal)))
+
+
+    (format strm "~%~%Available subcommands:~%")
+
+    (loop for (key . _) in functions
+          if (not (null key))
+          do
+          (format strm "  - `~{~A~^ ~}`~%" key))
+
+    (when (assoc nil functions)
+      (format strm "~%The bare command `~A` (with no subcommands) performs an ~
+              action as well.~%" program-name))
+
+    (if (not (null helpstring))
+        (format strm "~%Documentation~@[ for subcommand `~{~A~^ ~}`~]: ~%~%~A~%~%"
                 other-args
                 helpstring)
-        (format strm "~%Documentation for subcommand `~{~A~^ ~}` not found.~%"
+        (format strm "~%Documentation~@[ for subcommand `~{~A~^ ~}`~] not found.~%~%"
                 other-args))
-        (format strm "~%The subcommand `~{~A~^ ~}` does not exist.~%"
-                other-args))
+    (unless callable-function
+        (format strm "~v[No action exists for the command.~:;The subcommand `~{~A~^ ~}` does not exist.~]~%~%"
+                (length other-args)
+                other-args)))
   (alexandria:alist-hash-table
     '(
       (:status . :successful)
@@ -1102,7 +1121,8 @@ This is nonsense.
     functions
     &key
     helps
-    (strm t)
+    (strm *standard-output*)
+    (err-strm *error-output*)
     cli-arguments
     cli-aliases
     defaults
@@ -1174,7 +1194,6 @@ This is nonsense.
               :initial-hash result
               :hash-init-args kw-hash-init-args
               :map-sep map-sep)
-
         (handler-case
               (let* ((setup-result (funcall setup opts-from-args))
                      (subcommand-function
@@ -1183,13 +1202,14 @@ This is nonsense.
                               (equal (first other-args) "help")
                               (lambda (opts)
                                 (default-help
-                                  strm
+                                  err-strm
                                   program-name
                                   opts
                                   (cdr other-args)
                                   reference-file
                                   root-path
                                   helps
+                                  functions
                                   list-sep
                                   map-sep)))
                          (cdr (assoc other-args functions :test #'equal))
@@ -1201,22 +1221,32 @@ This is nonsense.
                        (funcall
                          teardown intermediate-result))
                      (code (gethash :status final-result
-                                    (gethash :successful cl-i/errors:*exit-codes*
-                                             0))))
-                         (values 
+                                    (gethash
+                                      :successful
+                                      cl-i/errors:*exit-codes*
+                                      0))))
+                         (nrdl:generate-to strm final-result :pretty-indent 4)
+                         (terpri strm)
+                         (values
                            (gethash code cl-i/errors:*exit-codes*
-                                    (gethash :unknown-error cl-i/errors:*exit-codes*
-                                             128))
+                                    (gethash
+                                      :unknown-error
+                                      cl-i/errors:*exit-codes*
+                                      128))
                            final-result))
           (serious-condition (e)
-            (let ((exit-status (cl-i/errors:exit-status e)))
+            (let* ((exit-status (cl-i/errors:exit-status e))
+                   (final-result
+                     (alexandria:alist-hash-table
+                       (concatenate
+                         'list
+                         `((:status .  ,exit-status)
+                           (:error-message . ,(format nil "~A" e)))
+                         (cl-i/errors:exit-map-members e)))))
+              (nrdl:generate-to strm final-result :pretty-indent 4)
+              (terpri strm)
               (values
                 (gethash exit-status cl-i/errors:*exit-codes*
                          (gethash :unknown-error cl-i/errors:*exit-codes*
                                   128))
-                (alexandria:alist-hash-table
-                  (concatenate
-                    'list
-                    `((:status .  ,exit-status)
-                      (:error-message . ,(format nil "~A" e)))
-                    (cl-i/errors:exit-map-members e)))))))))))
+                final-result))))))))

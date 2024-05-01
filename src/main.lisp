@@ -18,6 +18,7 @@
     (:import-from #:dexador)
     (:import-from #:uiop/pathname)
     (:import-from #:quri)
+    (:import-from #:cl-reexport)
     (:import-from #:uiop/stream)
     (:import-from #:com.djhaskin.cl-i/errors)
     (:local-nicknames
@@ -37,15 +38,16 @@
       os-specific-home
       os-specific-config-dir
       find-file
-      exit-error
       consume-arguments
       consume-environment
       config-file-options
       system-environment-variables
       default-help
-      execute-program))
+      execute-program
+      ensure-option-exists))
 
 (in-package #:com.djhaskin.cl-i)
+(cl-reexport:reexport-from '#:com.djhaskin.cl-i/errors)
 
 (defun repeatedly-eq
   (func
@@ -430,13 +432,6 @@
 (defun parse-string (thing)
   (with-input-from-string (strm thing)
     (nrdl:parse-from strm)))
-
-(defun exit-error
-  (status
-    msg &optional (destination
-                    *standard-output*))
-  (format destination "~a~%" msg)
-  status)
 
 (defparameter
   +find-tag+
@@ -1220,33 +1215,49 @@ This is nonsense.
                      (final-result
                        (funcall
                          teardown intermediate-result))
-                     (code (gethash :status final-result
-                                    (gethash
-                                      :successful
-                                      cl-i/errors:*exit-codes*
-                                      0))))
+                     (status (gethash :status final-result :successful)))
                          (nrdl:generate-to strm final-result :pretty-indent 4)
                          (terpri strm)
                          (values
-                           (gethash code cl-i/errors:*exit-codes*
+                           (gethash status cl-i/errors:*exit-codes*
                                     (gethash
                                       :unknown-error
                                       cl-i/errors:*exit-codes*
                                       128))
                            final-result))
           (serious-condition (e)
-            (let* ((exit-status (cl-i/errors:exit-status e))
+            (let* ((status (cl-i/errors:exit-status e))
                    (final-result
                      (alexandria:alist-hash-table
                        (concatenate
                          'list
-                         `((:status .  ,exit-status)
+                         `((:status .  ,status)
                            (:error-message . ,(format nil "~A" e)))
                          (cl-i/errors:exit-map-members e)))))
               (nrdl:generate-to strm final-result :pretty-indent 4)
               (terpri strm)
               (values
-                (gethash exit-status cl-i/errors:*exit-codes*
+                (gethash status cl-i/errors:*exit-codes*
                          (gethash :unknown-error cl-i/errors:*exit-codes*
                                   128))
                 final-result))))))))
+
+(defun ensure-option-exists (key options)
+  (restart-case
+      (progn
+        (let ((value (gethash key options)))
+          (unless value
+            (error 'cl-i/errors:exit-error
+                   :status :cl-usage-error
+                   :map-members `((:missing-option . ,key)))
+            value)))
+    (continue ()
+      :report "Continue with the option set to nil."
+      nil)
+    (use-value (value)
+      :report "Use a value provided."
+      :interactive (lambda ()
+                     (format *query-io*
+                             "Enter a value for ~A: " key)
+                     (read *query-io*))
+      value)))

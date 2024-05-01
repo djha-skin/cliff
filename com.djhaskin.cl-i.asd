@@ -7,6 +7,7 @@
                "alexandria"
                "com.djhaskin.nrdl"
                "cl-ppcre"
+               "cl-reexport"
                "arrows"
                "dexador"
                "trivial-features"

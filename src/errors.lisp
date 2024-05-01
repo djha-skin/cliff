@@ -1,3 +1,6 @@
+;;;; errors.lisp -- Deal with errors
+;;; Daniel Haskin
+
 #+(or)
 (declaim (optimize (speed 0) (space 0) (debug 3)))
 (in-package #:cl-user)
@@ -22,7 +25,8 @@
     (:export
       *exit-codes*
       exit-status
-      exit-map-members))
+      exit-map-members
+      exit-error))
 
 (in-package #:com.djhaskin.cl-i/errors)
 
@@ -57,24 +61,42 @@
   (:documentation
     "Return an alist of items to be added to the exit map of CL-I."))
 
-; By default, we don't add anything to the exit map.
+(define-condition exit-error (error)
+  ((exit-error-status :initarg :status
+                      :reader exit-error-status :initform :unknown-error)
+   (exit-error-map-members :initarg :map-members
+                           :reader exit-error-map-members :initform nil))
+  (:documentation
+    "An ad-hoc error with which the user can specify exit code and any output
+    map members.")
+  (:report
+    (lambda (condition stream)
+      (declare (ignore condition))
+      (format stream "Abnormal exit error~%"))))
+
+(defmethod exit-status ((condition exit-error))
+  (exit-error-status condition))
+
+(defmethod exit-map-members ((condition exit-error))
+  (exit-error-map-members condition))
+
+;;; By default, we don't add anything to the exit map.
 (defmethod exit-map-members ((condition condition))
     `(
       (:error-type . ,(prin1-to-string (type-of condition)))))
 
-;; We define exit codes for the standard CL conditions.
-; Condition Type SERIOUS-CONDITION
+;;; We define exit codes for the standard CL conditions.
+;;; Condition Type SERIOUS-CONDITION
 (defmethod exit-status ((condition serious-condition))
   :general-error)
 
-; Condition Type ARITHMETIC-ERROR
-; Condition Type DIVISION-BY-ZERO
-; Condition Type FLOATING-POINT-INVALID-OPERATION
-; Condition Type FLOATING-POINT-OVERFLOW
-; Condition Type FLOATING-POINT-UNDERFLOW
+;;; Condition Type ARITHMETIC-ERROR
+;;; Condition Type DIVISION-BY-ZERO
+;;; Condition Type FLOATING-POINT-INVALID-OPERATION
+;;; Condition Type FLOATING-POINT-OVERFLOW
+;;; Condition Type FLOATING-POINT-UNDERFLOW
 (defmethod exit-status ((condition arithmetic-error))
-  (gethash :internal-software-error
-           *exit-codes*))
+  :internal-software-error)
 
 (defmethod exit-map-members ((condition arithmetic-error))
   (let ((operands (arithmetic-error-operands condition))
@@ -90,9 +112,9 @@
               (prin1-to-string operation)))))
       (call-next-method condition))))
 
-; Condition Type CELL-ERROR
-; Condition Type UNBOUND-VARIABLE
-; Condition Type UNDEFINED-FUNCTION
+;;; Condition Type CELL-ERROR
+;;; Condition Type UNBOUND-VARIABLE
+;;; Condition Type UNDEFINED-FUNCTION
 (defmethod exit-status ((condition cell-error))
   :internal-software-error)
 
@@ -103,14 +125,13 @@
       `((:error-cell-name . ,(prin1-to-string name)))
       (call-next-method condition))))
 
-; Condition Type CONTROL-ERROR
+;;; Condition Type CONTROL-ERROR
 (defmethod exit-status ((condition cell-error))
   :internal-software-error)
 
-; Condition Type FILE-ERROR
+;;; Condition Type FILE-ERROR
 (defmethod exit-status ((condition file-error))
-  (gethash :input-output-error
-           *exit-codes*))
+  :input-output-error)
 
 (defmethod exit-map-members ((condition file-error))
   (let ((pathname (file-error-pathname condition)))
@@ -119,7 +140,7 @@
       `((:error-pathname . ,(namestring pathname)))
       (call-next-method condition))))
 
-; Condition Type PACKAGE-ERROR
+;;; Condition Type PACKAGE-ERROR
 (defmethod exit-status ((condition package-error))
   :internal-software-error)
 
@@ -130,17 +151,16 @@
       `((:error-package . ,(package-name package)))
       (call-next-method condition))))
 
-; Condition Type PARSE-ERROR
-; Condition Type READER-ERROR
+;;; Condition Type PARSE-ERROR
+;;; Condition Type READER-ERROR
 (defmethod exit-status ((condition parse-error))
   :data-format-error)
 
-; Condition Type PRINT-NOT-READABLE
+;;; Condition Type PRINT-NOT-READABLE
 (defmethod exit-status ((condition print-not-readable))
   ;; This one is ambiguous. Can I not print because of a bad return value?
   ;; Or because the object is not printable?
-  (gethash :internal-software-error
-           *exit-codes*))
+  :internal-software-error)
 
 (defmethod exit-map-members ((condition print-not-readable))
   (let ((object (print-not-readable-object condition)))
@@ -149,11 +169,11 @@
       `((:error-object . ,(prin1-to-string object)))
       (call-next-method condition))))
 
-; Condition Type PROGRAM-ERROR
+;;; Condition Type PROGRAM-ERROR
 (defmethod exit-status ((condition program-error))
   :internal-software-error)
 
-; Condition Type TYPE-ERROR
+;;; Condition Type TYPE-ERROR
 (defmethod exit-status ((condition type-error))
   :data-format-error)
 
@@ -166,12 +186,12 @@
         (:error-expected-type . ,(prin1-to-string expected-type)))
       (call-next-method condition))))
 
-; Condition Type STORAGE-CONDITION
+;;; Condition Type STORAGE-CONDITION
 (defmethod exit-status ((condition storage-condition))
   :system-error)
 
-; Condition Type STREAM-ERROR
-; Condition Type END-OF-FILE
+;;; Condition Type STREAM-ERROR
+;;; Condition Type END-OF-FILE
 (defmethod exit-status ((condition stream-error))
   :input-output-error)
 

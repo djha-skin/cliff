@@ -11,7 +11,7 @@
     - registers functions mapped to specific subcommands
     - reads configuration files in standard locations
     - reads environment variables
-    according to spefic rules and from these rules constructs a hash table
+    according to specific rules and from these rules constructs a hash table
     which is then passed to the subcommands.
     ")
     (:import-from #:com.djhaskin.nrdl)
@@ -344,6 +344,12 @@
              (format stream "Environment variable `~A` not specified.~&"
                      (env-var condition)))))
 
+(defmethod cl-i/errors:exit-status ((this necessary-env-var-absent))
+  :configuration-error)
+
+(defmethod cl-i/errors:exit-map-members ((this necessary-env-var-absent))
+  `((:env-var . ,(env-var this))))
+
 (defun os-specific-home (getenv)
   (make-os-specific-path
     #+windows (concatenate
@@ -446,6 +452,7 @@
     :join
     :nrdl
     :file
+    :raw
     )
   "actions that consume additional argument."
   )
@@ -462,8 +469,8 @@
 
 (define-condition unknown-directive (error)
   ((context :initarg :context
-                     :initform (error "Please specify context.")
-                     :reader context)
+            :initform (error "Please specify context.")
+            :reader context)
    (directive :initarg :directive
               :initform (error "Please specify directive.")
               :reader directive)
@@ -471,13 +478,22 @@
            :initform (error "Please specify an option.")
            :reader option))
   (:documentation
-    "The directive given was not valid.")
+   "The directive given was not valid.")
   (:report (lambda (this strm)
              (format strm
                      "Directive `~A` for option `~A` invalid in ~A.~&"
                      (directive this)
                      (option this)
                      (context this)))))
+
+(defmethod cl-i/errors:exit-status ((this unknown-directive))
+  :cl-usage-error)
+
+(defmethod cl-i/errors:exit-map-members ((this unknown-directive))
+    `((:context . ,(context this))
+      (:directive . ,(directive this))
+      (:option . ,(option this))))
+
 
 (defun ingest-option
   (opts
@@ -516,6 +532,9 @@
     ((eql kact :file)
      (setf (gethash kopt opts)
            (parse-string (data-slurp value))))
+    ((eql kact :raw)
+     (setf (gethash kopt opts)
+           (data-slurp value)))
     (:else
       (error "uknown action ~a" kact))))
 
@@ -533,7 +552,7 @@
   the keyword named `argument` is associated with `t` or `nil` in the resulting
   hash-table, respectively.
 
-  If the argument is of the form `--(?P<act>set|add|join|nrdl)-(?P<argument>[^
+  If the argument is of the form `--(?P<act>set|add|join|nrdl|file|raw)-(?P<argument>[^
   ]*)`, the next argument is consumed as the value.
 
   If the first part (`act`) is `set`, associate the value as a string to the
@@ -551,6 +570,12 @@
   If the `act` is `nrdl`, parse the value string as if it were a nrdl string.
   Set the value as found to the `argument` keyword in the resulting options
   hash-table.
+
+  If the `act` is `file`, read the file found at the given location and parse
+  it as a nrdl document. Set the option to the contents of that nrdl document.
+
+  If the `act` is `raw`, read the file found at the given location and
+  use the raw bytes as the value of the option.
   "
   (let ((map-sep-pat (cl-ppcre:create-scanner map-sep))
         (consumable (copy-list args))
@@ -637,6 +662,20 @@
                     map-sep-pat
                     hash-init-args
                     ktag
+                    kopt
+                    value))
+    ((eql ktag :file)
+     (ingest-option opts
+                    map-sep-pat
+                    hash-init-args
+                    :file
+                    kopt
+                    value))
+    ((eql ktag :raw)
+     (ingest-option opts
+                    map-sep-pat
+                    hash-init-args
+                    :raw
                     kopt
                     value))
     (t
@@ -871,10 +910,7 @@
   :cl-usage-error)
 
 (defmethod cl-i/errors:exit-map-members ((this invalid-subcommand))
-  (concatenate
-    'list
-    `((:given-subcommand . ,(given-subcommand this)))
-    (call-next-method)))
+  `((:given-subcommand . ,(given-subcommand this))))
 
 (defun system-environment-variables ()
   "
@@ -1012,6 +1048,10 @@ This is nonsense.
           "  - `~A_NRDL_<OPTION>=<NRDL_STRING>` to set a value using~%"
           clean-program-name
           "     a NRDL string~%"
+          "  - `~A_FILE_<OPTION>=<FILE_PATH>` to set a value using the contents~%"
+          "     of a NRDL document from a file as if by the `--file-*` flag~%"
+          "  - `~A_RAW_<OPTION>=<FILE_PATH>` to set a value using the raw bytes~%"
+          "    of a file as if by the `--raw-*` flag~%"
           "~%"))
   (format
     strm
@@ -1023,8 +1063,11 @@ This is nonsense.
     "  - To add to a list, use `--add-<option> <value>`.~%"
     "  - To set a string value, use `--set-<option> <value>`.~%"
     "  - To set using a NRDL string, use `--nrdl-<option> <value>`.~%"
-    "  - To set using NRDL contents from a file, use `--file-<option> <url>`.~%"
-    "    URLs can have be of the following forms:~%"
+    "  - To set using NRDL contents from a nrdl document from file,~%"
+    "    use `--file-<option> <url>`.~%"
+    "  - To set using the raw bytes of a file, use `--raw-<option> <url>`.~%"
+    "~%"
+    "  - For `--file-<option>` and `--raw-<option>`, URLs are also supported:~%"
     "      - `http(s)://user:password@url` for basic auth~%"
     "      - `http(s)://header=val@url` for a header~%"
     "      - `http(s)://token@url` for a bearer token~%"
@@ -1118,6 +1161,7 @@ This is nonsense.
     helps
     (strm *standard-output*)
     (err-strm *error-output*)
+    (suppress-final-output nil)
     cli-arguments
     cli-aliases
     defaults
@@ -1147,35 +1191,35 @@ This is nonsense.
            (type string map-sep)
            (type function setup)
            (type function teardown))
-
-  (let ((effective-defaults (if (null defaults)
-                               (apply #'make-hash-table kw-hash-init-args)
-                               (apply #'alexandria:alist-hash-table
-                                      defaults
-                                      kw-hash-init-args)))
-         (effective-environment
-           (expand-env-aliases
-             (apply #'alexandria:alist-hash-table
-                    environment-aliases
-                    str-hash-init-args)
-               environment-variables
-             :hash-init-args str-hash-init-args))
-         (effective-cli
-           (expand-cli-aliases
-             (apply #'alexandria:alist-hash-table
-                    cli-aliases
-                    str-hash-init-args)
-             cli-arguments)))
-    (multiple-value-bind (result found-config-files)
-              (config-file-options
-                program-name
-                effective-environment
-                effective-defaults
-                reference-file
-                root-path)
-        (declare (ignore found-config-files))
-        (update-hash
-          result
+  (handler-case
+      (let ((effective-defaults (if (null defaults)
+                                    (apply #'make-hash-table kw-hash-init-args)
+                                    (apply #'alexandria:alist-hash-table
+                                           defaults
+                                           kw-hash-init-args)))
+            (effective-environment
+              (expand-env-aliases
+                (apply #'alexandria:alist-hash-table
+                       environment-aliases
+                       str-hash-init-args)
+                environment-variables
+                :hash-init-args str-hash-init-args))
+            (effective-cli
+              (expand-cli-aliases
+                (apply #'alexandria:alist-hash-table
+                       cli-aliases
+                       str-hash-init-args)
+                cli-arguments)))
+        (multiple-value-bind (result found-config-files)
+            (config-file-options
+              program-name
+              effective-environment
+              effective-defaults
+              reference-file
+              root-path)
+          (declare (ignore found-config-files))
+          (update-hash
+            result
           (consume-environment
             program-name
             effective-environment
@@ -1189,7 +1233,6 @@ This is nonsense.
               :initial-hash result
               :hash-init-args kw-hash-init-args
               :map-sep map-sep)
-        (handler-case
               (let* ((setup-result (funcall setup opts-from-args))
                      (subcommand-function
                        (or
@@ -1216,15 +1259,16 @@ This is nonsense.
                        (funcall
                          teardown intermediate-result))
                      (status (gethash :status final-result :successful)))
-                         (nrdl:generate-to strm final-result :pretty-indent 4)
-                         (terpri strm)
+                        (unless suppress-final-output
+                          (nrdl:generate-to strm final-result :pretty-indent 4)
+                          (terpri strm))
                          (values
                            (gethash status cl-i/errors:*exit-codes*
                                     (gethash
                                       :unknown-error
                                       cl-i/errors:*exit-codes*
                                       128))
-                           final-result))
+                           final-result)))))
           (serious-condition (e)
             (let* ((status (cl-i/errors:exit-status e))
                    (final-result
@@ -1234,13 +1278,13 @@ This is nonsense.
                          `((:status .  ,status)
                            (:error-message . ,(format nil "~A" e)))
                          (cl-i/errors:exit-map-members e)))))
-              (nrdl:generate-to strm final-result :pretty-indent 4)
-              (terpri strm)
+              (nrdl:generate-to err-strm final-result :pretty-indent 4)
+              (terpri err-strm)
               (values
                 (gethash status cl-i/errors:*exit-codes*
                          (gethash :unknown-error cl-i/errors:*exit-codes*
                                   128))
-                final-result))))))))
+                final-result)))))
 
 (defun ensure-option-exists (key options)
   (restart-case
@@ -1249,8 +1293,8 @@ This is nonsense.
           (unless value
             (error 'cl-i/errors:exit-error
                    :status :cl-usage-error
-                   :map-members `((:missing-option . ,key)))
-            value)))
+                   :map-members `((:missing-option . ,key))))
+            value))
     (continue ()
       :report "Continue with the option set to nil."
       nil)

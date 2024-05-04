@@ -101,16 +101,13 @@
 (defmethod exit-map-members ((condition arithmetic-error))
   (let ((operands (arithmetic-error-operands condition))
         (operation (arithmetic-error-operation condition)))
-    (concatenate
-      'list
       `((:operands . ,(mapcar #'prin1-to-string operands))
         (:operation .
          ,(etypecase operation
             (list
               (mapcar #'prin1-to-string operation))
             (t
-              (prin1-to-string operation)))))
-      (call-next-method condition))))
+              (prin1-to-string operation)))))))
 
 ;;; Condition Type CELL-ERROR
 ;;; Condition Type UNBOUND-VARIABLE
@@ -120,14 +117,7 @@
 
 (defmethod exit-map-members ((condition cell-error))
   (let ((name (cell-error-name condition)))
-    (concatenate
-      'list
-      `((:error-cell-name . ,(prin1-to-string name)))
-      (call-next-method condition))))
-
-;;; Condition Type CONTROL-ERROR
-(defmethod exit-status ((condition cell-error))
-  :internal-software-error)
+      `((:error-cell-name . ,(prin1-to-string name)))))
 
 ;;; Condition Type FILE-ERROR
 (defmethod exit-status ((condition file-error))
@@ -135,10 +125,7 @@
 
 (defmethod exit-map-members ((condition file-error))
   (let ((pathname (file-error-pathname condition)))
-    (concatenate
-      'list
-      `((:error-pathname . ,(namestring pathname)))
-      (call-next-method condition))))
+      `((:error-pathname . ,(namestring pathname)))))
 
 ;;; Condition Type PACKAGE-ERROR
 (defmethod exit-status ((condition package-error))
@@ -146,10 +133,7 @@
 
 (defmethod exit-map-members ((condition package-error))
   (let ((package (package-error-package condition)))
-    (concatenate
-      'list
-      `((:error-package . ,(package-name package)))
-      (call-next-method condition))))
+      `((:error-package . ,(package-name package)))))
 
 ;;; Condition Type PARSE-ERROR
 ;;; Condition Type READER-ERROR
@@ -164,14 +148,13 @@
 
 (defmethod exit-map-members ((condition print-not-readable))
   (let ((object (print-not-readable-object condition)))
-    (concatenate
-      'list
-      `((:error-object . ,(prin1-to-string object)))
-      (call-next-method condition))))
+      `((:error-object . ,(prin1-to-string object)))))
 
 ;;; Condition Type PROGRAM-ERROR
 (defmethod exit-status ((condition program-error))
   :internal-software-error)
+
+
 
 ;;; Condition Type TYPE-ERROR
 (defmethod exit-status ((condition type-error))
@@ -180,11 +163,8 @@
 (defmethod exit-map-members ((condition type-error))
   (let ((datum (type-error-datum condition))
         (expected-type (type-error-expected-type condition)))
-    (concatenate
-      'list
       `((:error-datum . ,(prin1-to-string datum))
-        (:error-expected-type . ,(prin1-to-string expected-type)))
-      (call-next-method condition))))
+        (:error-expected-type . ,(prin1-to-string expected-type)))))
 
 ;;; Condition Type STORAGE-CONDITION
 (defmethod exit-status ((condition storage-condition))
@@ -197,7 +177,4 @@
 
 (defmethod exit-map-members ((condition stream-error))
   (let ((stream (stream-error-stream condition)))
-    (concatenate
-      'list
-      `((:error-stream . ,(prin1-to-string stream)))
-      (call-next-method condition))))
+      `((:error-stream . ,(prin1-to-string stream)))))

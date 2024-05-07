@@ -5,7 +5,7 @@
 (declaim (optimize (speed 0) (space 0) (debug 3)))
 (in-package #:cl-user)
 (defpackage
-  #:com.djhaskin.cl-i/errors
+  #:com.djhaskin.cliff/errors
   (:use #:cl)
   (:documentation
     "
@@ -28,7 +28,7 @@
       exit-map-members
       exit-error))
 
-(in-package #:com.djhaskin.cl-i/errors)
+(in-package #:com.djhaskin.cliff/errors)
 
 (defparameter *exit-codes*
   ;; taken from /usr/include/sysexit.h

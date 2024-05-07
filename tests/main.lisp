@@ -3,48 +3,38 @@
 
 (in-package #:cl-user)
 
-(defpackage #:com.djhaskin.cl-i/tests
+(defpackage #:com.djhaskin.cliff/tests
   (:use #:cl
         #:rove)
   (:import-from
     #:com.djhaskin.nrdl)
   (:import-from
-    #:com.djhaskin.cl-i)
+    #:com.djhaskin.cliff)
   (:import-from
     #:cl-ppcre)
   (:local-nicknames
-    (#:cl-i #:com.djhaskin.cl-i)
+    (#:cliff #:com.djhaskin.cliff)
     (#:nrdl #:com.djhaskin.nrdl)))
 
-(in-package #:com.djhaskin.cl-i/tests)
+(in-package #:com.djhaskin.cliff/tests)
 
-(defparameter *test-config-file*
-  (merge-pathnames
-    (make-pathname
-      :directory
-      (list
-        :relative
-        "Code"
-        "lisp"
-        "cl-i"
-        "tests")
-      :name
-      ".cl-i"
-      :type
-      "nrdl")
-    (cl-i:os-specific-home #'uiop/os:getenv)))
 
 (defparameter *tests-dir*
   (merge-pathnames
     #P"tests/"
     (slot-value
-      (asdf:find-system "com.djhaskin.cl-i")
+      (asdf:find-system "com.djhaskin.cliff")
       'asdf/component:absolute-pathname)))
 
-;(def-suite cl-i-main
+(defparameter *test-config-file*
+  (merge-pathnames
+    *tests-dir*
+    #P"./.cliff.nrdl"))
+
+;(def-suite cliff-main
 ;           :description "Main functions in test suite."
-;           :in cl-i/tests:cl-i)
-;(in-suite cl-i-main)
+;           :in cliff/tests:cliff)
+;(in-suite cliff-main)
 
 ; For the REPL:
 ;(setf fiveam:*run-test-when-defined* t)
@@ -56,18 +46,18 @@
 (deftest
   repeatedly-eq
   (testing "repeatedly-eq"
-  (signals (cl-i::repeatedly-eq #'broken-dec 3))
-  (ok (equal (cl-i::repeatedly-eq #'positive-dec 3) '(3 2 1 0)))))
+  (signals (cliff::repeatedly-eq #'broken-dec 3))
+  (ok (equal (cliff::repeatedly-eq #'positive-dec 3) '(3 2 1 0)))))
 
 (deftest
   repeatedly
   (testing "repeatedly"
   (signals
-    (cl-i::repeatedly
+    (cliff::repeatedly
                           #'positive-dec
                           3
                           (lambda (thing) (< thing 0))))
-  (ok (equal (cl-i::repeatedly
+  (ok (equal (cliff::repeatedly
                #'positive-dec
                3
                (lambda (item)
@@ -81,18 +71,18 @@
            (ok
              (equal
                (slot-value
-                 (asdf:find-system "com.djhaskin.cl-i")
+                 (asdf:find-system "com.djhaskin.cliff")
                  'asdf/component:absolute-pathname)
-               (cl-i:find-file
+               (cliff:find-file
                  *tests-dir*
-                 "cl-i")))
+                 "cliff")))
            (ok
              (equal
-               (cl-i:find-file
+               (cliff:find-file
                  (merge-pathnames
                    #P"/leaves-of-grass"
                    (slot-value
-                     (asdf:find-system "com.djhaskin.cl-i")
+                     (asdf:find-system "com.djhaskin.cliff")
                      'asdf/component:absolute-pathname))
                  "600dc0d36077a10ada600dd3a10fda7a")
                nil))))
@@ -105,11 +95,11 @@
                (with-open-file
                  (f
                    (merge-pathnames
-                     #P".cl-i.nrdl"
+                     #P".cliff.nrdl"
                      *tests-dir*)
                    :direction :input
                    :external-format :utf-8)
-                 (cl-i:slurp-stream f))
+                 (cliff:slurp-stream f))
                "{ \"hoo\" \"haa\" }"))))
 
 
@@ -118,7 +108,7 @@
   (testing "base-slurp"
            (ok
              (equal
-               (cl-i::base-slurp
+               (cliff::base-slurp
                  *test-config-file*)
                "{ \"hoo\" \"haa\" }"))))
 
@@ -128,14 +118,14 @@
     "paths"
     (ok
       (equal
-        (cl-i:data-slurp
+        (cliff:data-slurp
           *test-config-file*)
         "{ \"hoo\" \"haa\" }")))
   (testing
     "file URL"
     (ok
       (equal
-        (cl-i:data-slurp
+        (cliff:data-slurp
           (concatenate 'string
                        "file://"
                        (namestring *test-config-file*)))
@@ -144,7 +134,7 @@
     "noauth"
     (ok
       (equal
-        (cl-i:data-slurp
+        (cliff:data-slurp
           "https://localhost:8443/noauth/complete.txt"
           :insecure t)
         (format nil "noauth complete"))))
@@ -153,7 +143,7 @@
     "basic"
     (ok
       (equal
-        (cl-i:data-slurp
+        (cliff:data-slurp
           "https://mode:code@localhost:8443/basic/complete.txt"
           :insecure t)
         (format nil "basic complete"))))
@@ -161,7 +151,7 @@
     "header"
     (ok
       (equal
-        (cl-i:data-slurp
+        (cliff:data-slurp
           "https://Authorization=Bearer%20600dc0de6077a10ada600ddea10fda7a@localhost:8443/token/complete.txt"
           :insecure t)
         (format nil "token complete"))))
@@ -169,7 +159,7 @@
     "token"
     (ok
       (equal
-        (cl-i:data-slurp
+        (cliff:data-slurp
           "https://600dc0de6077a10ada600ddea10fda7a@localhost:8443/token/complete.txt"
           :insecure t)
         (format nil "token complete")))))
@@ -180,7 +170,7 @@
   (testing
     "other-args"
     (multiple-value-bind (opts other-args)
-        (cl-i:consume-arguments
+        (cliff:consume-arguments
           '("--enable-dark-mode"
             "--reset-dark-mode"
             "--add-dark-mode"
@@ -196,7 +186,7 @@
             "--nrdl-fight"
             "15.0"
             "--file-stride"
-            "tests/.cl-i.nrdl"))
+            "tests/.cliff.nrdl"))
       (ok (equal
             (nrdl:nested-to-alist opts)
             '((:DARK-MODE "firm" "crying")
@@ -212,8 +202,8 @@
   (testing
     "empty"
     (ok
-      (equal (cl-i:generate-string
-               (cl-i:consume-arguments
+      (equal (cliff:generate-string
+               (cliff:consume-arguments
                  '()))
              (format nil "{~%}"))
       "Empty argument parsing"))
@@ -221,7 +211,7 @@
     "basic"
     (ok
       (equal (nrdl:nested-to-alist
-               (cl-i:consume-arguments
+               (cliff:consume-arguments
                  '("--enable-foo" "--disable-bar" "baz" "--nrdl-force" "15" "--set-quux" "farquad")))
              '((:BAR) (:FOO . T) (:FORCE . 15) (:QUUX . "farquad")))
       "Basic argument parsing")))
@@ -237,7 +227,7 @@
           (:FORKS . "whenceandwhither")
           (:MAPLE "1" "2" "3" "4" "5"))
         (nrdl:nested-to-alist
-          (cl-i:consume-environment
+          (cliff:consume-environment
             "hello"
             (alexandria:alist-hash-table
               '(("HELLO_LIST_MAPLE" . "1,2,3,4,5")
@@ -270,7 +260,7 @@
            (ok
              (equal
                (nrdl:nested-to-alist
-                 (cl-i:config-file-options
+                 (cliff:config-file-options
                    "hi"
                    (alexandria:alist-hash-table
                      #+windows
@@ -300,15 +290,18 @@
   (testing
     "empty cases"
     (ok
-      (signals
-        (cl-i:execute-program
+      (equal
+        (cliff:execute-program
           "Halo"
           (make-hash-table)
           nil)
-        'cl-i:necessary-env-var-absent)
+        (alexandria:alist-hash-table
+          '((:status . :cl-usage-error)
+            (:error-message . "The subcommand `` has no actions defined for it.")
+            (:given-subcommand . nil))))
       "Necessary environment variables absent")
     (multiple-value-bind (code outcome)
-        (cl-i:execute-program
+        (cliff:execute-program
           "Halo"
           (alexandria:alist-hash-table
             #+windows
@@ -323,9 +316,8 @@
       (ok
         (equal
           (nrdl:nested-to-alist outcome)
-          '((:ERROR-MESSAGE . "The subcommand `` has no actions defined for it.")
-            (:ERROR-TYPE . "CL-I:INVALID-SUBCOMMAND") (:GIVEN-SUBCOMMAND)
-            (:STATUS . :CL-USAGE-ERROR))))
+ '((:ERROR-MESSAGE . "The subcommand `` has no actions defined for it.")
+(:GIVEN-SUBCOMMAND) (:STATUS . :CL-USAGE-ERROR))))
       (ok
         (equal
           code
@@ -333,7 +325,7 @@
   (testing
     "typical invocation"
     (multiple-value-bind (code outcome)
-      (cl-i:execute-program
+      (cliff:execute-program
         "hi"
         (alexandria:alist-hash-table
           #+windows
@@ -417,7 +409,7 @@
 ;;#  (testing
 ;;#    "typical case"
 ;;#    (alexandria:hash-table-alist
-;;#      (cl-i::default-help
+;;#      (cliff::default-help
 ;;#        t
 ;;#        "halo"
 ;;#        (alexandria:alist-hash-table
@@ -437,15 +429,15 @@
 ;;#
 ;;#    (ok
 ;;#      (signals
-;;#        (cl-i:execute-program
+;;#        (cliff:execute-program
 ;;#          "Halo"
 ;;#          (make-hash-table)
 ;;#          nil)
-;;#        'cl-i:necessary-env-var-absent)
+;;#        'cliff:necessary-env-var-absent)
 ;;#      "Necessary environment variables absent")
 ;;#    (ok
 ;;#      (signals
-;;#        (cl-i:execute-program
+;;#        (cliff:execute-program
 ;;#          "Halo"
 ;;#          (alexandria:alist-hash-table
 ;;#            #+windows
@@ -457,12 +449,12 @@
 ;;#              )
 ;;#            :test #'equal)
 ;;#          nil)
-;;#        'cl-i:invalid-subcommand)
+;;#        'cliff:invalid-subcommand)
 ;;#      "No test provided in hash table args"))
 ;;#  (testing
 ;;#    "typical invocation"
 ;;#    (multiple-value-bind (code outcome)
-;;#      (cl-i:execute-program
+;;#      (cliff:execute-program
 ;;#        "hi"
 ;;#        (alexandria:alist-hash-table
 ;;#          #+windows

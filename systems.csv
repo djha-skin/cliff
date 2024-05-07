@@ -1,3 +1,6 @@
 asdf-package-system, ghcr.io/ocicl/asdf-package-system@sha256:bafeb9d6e67cb280100080a2382f24558964ecf37029ff904b932c6c7d0e9c33, asdf-package-system-20230809-61776f2/asdf-package-system.asd
 arrows, ghcr.io/ocicl/arrows@sha256:dccd5efba34f1c5233324d13e8b4272395e01292092d30b7568fa68a2653a13f, arrows-20230809-df7cf00/arrows.asd
 trivial-package-local-nicknames, ghcr.io/ocicl/trivial-package-local-nicknames@sha256:a92fc3a6d5c78817478a5f9f6221b309ab2812b7876df649f2ce10a64736c3a9, trivial-package-local-nicknames-20230808-8a4d09c/trivial-package-local-nicknames.asd
+cl-reexport, ghcr.io/ocicl/cl-reexport@sha256:c795feb3e3727a19e61797187eb31bac1e855b1332335d26752200a28e9b9da8, cl-reexport-20240503-03ad7a0/cl-reexport.asd
+cl-reexport-test, ghcr.io/ocicl/cl-reexport@sha256:c795feb3e3727a19e61797187eb31bac1e855b1332335d26752200a28e9b9da8, cl-reexport-20240503-03ad7a0/cl-reexport-test.asd
+alexandria, ghcr.io/ocicl/alexandria@sha256:e433c2e076ed3bcf8641b97b00192680db2201d305efac9293539dee88c7fbf7, alexandria-20240503-8514d8e/alexandria.asd

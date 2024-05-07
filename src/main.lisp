@@ -4,7 +4,7 @@
 (in-package #:cl-user)
 
 (defpackage
-  #:com.djhaskin.cl-i (:use #:cl)
+  #:com.djhaskin.cliff (:use #:cl)
   (:documentation
     "
     package that has a function, `execute-program`, which does the following:
@@ -20,10 +20,10 @@
     (:import-from #:quri)
     (:import-from #:cl-reexport)
     (:import-from #:uiop/stream)
-    (:import-from #:com.djhaskin.cl-i/errors)
+    (:import-from #:com.djhaskin.cliff/errors)
     (:local-nicknames
-      (#:cl-i/errors #:com.djhaskin.cl-i/errors)
-      (#:cl-i #:com.djhaskin.cl-i)
+      (#:cliff/errors #:com.djhaskin.cliff/errors)
+      (#:cliff #:com.djhaskin.cliff)
       (#:nrdl #:com.djhaskin.nrdl))
     (:export
       generate-string
@@ -46,8 +46,8 @@
       execute-program
       ensure-option-exists))
 
-(in-package #:com.djhaskin.cl-i)
-(cl-reexport:reexport-from '#:com.djhaskin.cl-i/errors)
+(in-package #:com.djhaskin.cliff)
+(cl-reexport:reexport-from '#:com.djhaskin.cliff/errors)
 
 (defun repeatedly-eq
   (func
@@ -344,10 +344,10 @@
              (format stream "Environment variable `~A` not specified.~&"
                      (env-var condition)))))
 
-(defmethod cl-i/errors:exit-status ((this necessary-env-var-absent))
+(defmethod cliff/errors:exit-status ((this necessary-env-var-absent))
   :configuration-error)
 
-(defmethod cl-i/errors:exit-map-members ((this necessary-env-var-absent))
+(defmethod cliff/errors:exit-map-members ((this necessary-env-var-absent))
   `((:env-var . ,(env-var this))))
 
 (defun os-specific-home (getenv)
@@ -486,10 +486,10 @@
                      (option this)
                      (context this)))))
 
-(defmethod cl-i/errors:exit-status ((this unknown-directive))
+(defmethod cliff/errors:exit-status ((this unknown-directive))
   :cl-usage-error)
 
-(defmethod cl-i/errors:exit-map-members ((this unknown-directive))
+(defmethod cliff/errors:exit-map-members ((this unknown-directive))
     `((:context . ,(context this))
       (:directive . ,(directive this))
       (:option . ,(option this))))
@@ -906,10 +906,10 @@
                      "The subcommand `~{~A~^ ~}` has no actions defined for it."
                      (given-subcommand this)))))
 
-(defmethod cl-i/errors:exit-status ((this invalid-subcommand))
+(defmethod cliff/errors:exit-status ((this invalid-subcommand))
   :cl-usage-error)
 
-(defmethod cl-i/errors:exit-map-members ((this invalid-subcommand))
+(defmethod cliff/errors:exit-map-members ((this invalid-subcommand))
   `((:given-subcommand . ,(given-subcommand this))))
 
 (defun system-environment-variables ()
@@ -1263,26 +1263,26 @@ This is nonsense.
                           (nrdl:generate-to strm final-result :pretty-indent 4)
                           (terpri strm))
                          (values
-                           (gethash status cl-i/errors:*exit-codes*
+                           (gethash status cliff/errors:*exit-codes*
                                     (gethash
                                       :unknown-error
-                                      cl-i/errors:*exit-codes*
+                                      cliff/errors:*exit-codes*
                                       128))
                            final-result)))))
           (serious-condition (e)
-            (let* ((status (cl-i/errors:exit-status e))
+            (let* ((status (cliff/errors:exit-status e))
                    (final-result
                      (alexandria:alist-hash-table
                        (concatenate
                          'list
                          `((:status .  ,status)
                            (:error-message . ,(format nil "~A" e)))
-                         (cl-i/errors:exit-map-members e)))))
+                         (cliff/errors:exit-map-members e)))))
               (nrdl:generate-to err-strm final-result :pretty-indent 4)
               (terpri err-strm)
               (values
-                (gethash status cl-i/errors:*exit-codes*
-                         (gethash :unknown-error cl-i/errors:*exit-codes*
+                (gethash status cliff/errors:*exit-codes*
+                         (gethash :unknown-error cliff/errors:*exit-codes*
                                   128))
                 final-result)))))
 
@@ -1291,7 +1291,7 @@ This is nonsense.
       (progn
         (let ((value (gethash key options)))
           (unless value
-            (error 'cl-i/errors:exit-error
+            (error 'cliff/errors:exit-error
                    :status :cl-usage-error
                    :map-members `((:missing-option . ,key))))
             value))

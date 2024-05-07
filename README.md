@@ -1,4 +1,4 @@
-# Cl-I
+# Command Line Interface Framework for Functions (CLIFF)
 
 ## Usage
 

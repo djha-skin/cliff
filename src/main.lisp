@@ -8,7 +8,7 @@
   (:documentation
     "
     package that has a function, `execute-program`, which does the following:
-    - registers functions mapped to specific subcommands
+    - registers subcommand-functions mapped to specific subcommands
     - reads configuration files in standard locations
     - reads environment variables
     according to specific rules and from these rules constructs a hash table
@@ -900,7 +900,7 @@
                      :initform nil
                      :reader given-subcommand))
   (:documentation
-    "The subcommand given was invalid; no functions were found for it.")
+    "The subcommand given was invalid; no subcommand-functions were found for it.")
   (:report (lambda (this strm)
              (format strm
                      "The subcommand `~{~A~^ ~}` has no actions defined for it."
@@ -969,7 +969,7 @@ This is nonsense.
       reference-file
       root-path
       helps
-      functions
+      subcommand-functions
       list-sep
       map-sep
       )
@@ -1080,17 +1080,17 @@ This is nonsense.
   (finish-output strm)
   (let* ((entry (assoc other-args helps :test #'equal))
          (helpstring (cdr entry))
-         (callable-function (assoc other-args functions :test #'equal)))
+         (callable-function (assoc other-args subcommand-functions :test #'equal)))
 
 
     (format strm "~%~%Available subcommands:~%")
 
-    (loop for (key . _) in functions
+    (loop for (key . _) in subcommand-functions
           if (not (null key))
           do
           (format strm "  - `~{~A~^ ~}`~%" key))
 
-    (when (assoc nil functions)
+    (when (assoc nil subcommand-functions)
       (format strm "~%The bare command `~A` (with no subcommands) performs an ~
               action as well.~%" program-name))
 
@@ -1156,8 +1156,8 @@ This is nonsense.
   execute-program
   (program-name
     environment-variables
-    functions
     &key
+    subcommand-functions
     helps
     (strm *standard-output*)
     (err-strm *error-output*)
@@ -1167,6 +1167,7 @@ This is nonsense.
     defaults
     (setup #'identity)
     (teardown #'identity)
+    default-function
     root-path
     reference-file
     environment-aliases
@@ -1178,7 +1179,8 @@ This is nonsense.
     kw-hash-init-args)
   (declare (type string program-name)
            (type hash-table environment-variables)
-           (type list functions)
+           (type list subcommand-functions)
+           (type (or null function) default-function)
            (type list cli-arguments)
            (type list cli-aliases)
            (type list environment-aliases)
@@ -1233,12 +1235,8 @@ This is nonsense.
               :initial-hash result
               :hash-init-args kw-hash-init-args
               :map-sep map-sep)
-              (let* ((setup-result (funcall setup opts-from-args))
-                     (subcommand-function
-                       (or
-                         (and enable-help
-                              (equal (first other-args) "help")
-                              (lambda (opts)
+          (let* ((help-function
+                  (lambda (opts)
                                 (default-help
                                   err-strm
                                   program-name
@@ -1247,12 +1245,21 @@ This is nonsense.
                                   reference-file
                                   root-path
                                   helps
-                                  functions
+                                  subcommand-functions
                                   list-sep
                                   map-sep)))
-                         (cdr (assoc other-args functions :test #'equal))
-                         (error 'invalid-subcommand
-                                :given-subcommand other-args)))
+                 (effective-functions
+                   (cons
+                     (cons '() (or
+                               default-function help-function)) subcommand-functions))
+                 (setup-result (funcall setup opts-from-args))
+                     (subcommand-function
+                       (or (and enable-help
+                                (equal (first other-args) "help")
+                                help-function)
+                           (cdr (assoc other-args effective-functions :test #'equal))
+                           (error 'invalid-subcommand
+                                  :given-subcommand other-args)))
                      (intermediate-result
                        (funcall subcommand-function setup-result))
                      (final-result

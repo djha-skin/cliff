@@ -986,14 +986,14 @@ This is nonsense.
     strm "~@{~@?~}"
     "~&Welcome to `~A`!~%" program-name
     "~%"
-    "This is a CL-I program.~%"
+    "This is a CLIFF-powered program.~%"
     "~%"
-    "It uses NRDL to communicate with the calling program. Its config files~%"
+    "CLIFF uses NRDL to communicate with the calling program. Its config files~%"
     "and, optionally, environment variables can be set using NRDL, and its~%"
     "output will be a NRDL document. More information about~%"
     "NRDL can be found here:~%"
     "~%"
-    "https://git.sr.ht/~~skin/nrdl~%"
+    "https://github.com/djha-skin/nrdl~%"
     "~%"
     "Options can be given via:~%"
     "  - Config file, as in `{ <option> <value> }`~%"
@@ -1082,17 +1082,21 @@ This is nonsense.
          (helpstring (cdr entry))
          (callable-function (assoc other-args subcommand-functions :test #'equal)))
 
-
-    (format strm "~%~%Available subcommands:~%")
-
-    (loop for (key . _) in subcommand-functions
-          if (not (null key))
-          do
-          (format strm "  - `~{~A~^ ~}`~%" key))
-
     (when (assoc nil subcommand-functions)
-      (format strm "~%The bare command `~A` (with no subcommands) performs an ~
-              action as well.~%" program-name))
+        (progn
+          (format strm "~%The bare command `~A` (with no subcommands) performs an ~
+                  action.~%" program-name)))
+
+    (when (> (length subcommand-functions)
+             (if (assoc nil subcommand-functions)
+              1
+              0))
+          (format strm "~%~%Available subcommands:~%")
+          (loop for (key . _) in subcommand-functions
+                if (not (null key))
+                do
+                (format strm "  - `~{~A~^ ~}`~%" key)))
+
 
     (if (not (null helpstring))
         (format strm "~%Documentation~@[ for subcommand `~{~A~^ ~}`~]: ~%~%~A~%~%"

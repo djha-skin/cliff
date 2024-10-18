@@ -1,0 +1,8 @@
+("quicklisp" .
+ (:class qlot/source/dist:source-dist
+  :initargs (:distribution "https://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
+  :version "2024-10-12"))
+("nrdl" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "djha-skin/nrdl" :ref nil :branch nil :tag nil)
+  :version "github-5b174290830a9899db51003e9415b9a94a7ac09a"))

@@ -984,38 +984,38 @@ This is nonsense.
            (type string list-sep))
   (format
     strm "~@{~@?~}"
+
     "~&Welcome to `~A`!~%" program-name
     "~%"
     "This is a CLIFF-powered program.~%"
     "~%"
-    "CLIFF uses NRDL to communicate with the calling program. Its config files~%"
-    "and, optionally, environment variables can be set using NRDL, and its~%"
-    "output will be a NRDL document. More information about~%"
+    "Configuration files and, optionally, environment variables can be set~%"
+    "using NRDL, and output will be a NRDL document. More information about~%"
     "NRDL can be found here:~%"
     "~%"
     "https://github.com/djha-skin/nrdl~%"
     "~%"
     "Options can be given via:~%"
-    "  - Config file, as in `{ <option> <value> }`~%"
+    "  - Configuration file, as in `{ <option> <value> }`~%"
     "  - Environment variable, as in `~A_<KIND>_<OPTION>`~%" (string-upcase
                                                                (cl-ppcre:regex-replace-all
                                                                  "\\W" program-name "_"))
     "  - Command line, as in `--<action>-<option>`~%"
     "~%"
-    "Config files are consulted first, then environment variables, then~%"
+    "Configuration files are consulted first, then environment variables, then~%"
     "the command line, with later values overriding earlier ones.~%~%")
   ; Config files section
-  (format strm "Config files can be in the following locations:~%")
+  (format strm "Configuration files can be in the following locations:~%")
   (if reference-file
       (format strm "~@{~@?~}"
-              "  - A config file named `.~A.nrdl` found in the same directory~%"
+              "  - A file named `.~A.nrdl` found in the same directory~%"
               program-name
               "    as `~A`, which is searched for in `~A`~%"
               (namestring reference-file)
               (namestring root-path)
               "    (or any of its parents)~%")
       (format strm "~@{~@?~}"
-              "  - A config file named `.~A.nrdl` in the current directory~%"
+              "  - A file named `.~A.nrdl` in the current directory~%"
               program-name
               "    (or any of its parents)~%")
     )
@@ -1085,7 +1085,7 @@ This is nonsense.
     (when (assoc nil subcommand-functions)
         (progn
           (format strm "~%The bare command `~A` (with no subcommands) performs an ~
-                  action.~%" program-name)))
+                  action (rather than just printing a help page).~%" program-name)))
 
     (when (> (length subcommand-functions)
              (if (assoc nil subcommand-functions)
@@ -1096,7 +1096,6 @@ This is nonsense.
                 if (not (null key))
                 do
                 (format strm "  - `~{~A~^ ~}`~%" key)))
-
 
     (if (not (null helpstring))
         (format strm "~%Documentation~@[ for subcommand `~{~A~^ ~}`~]: ~%~%~A~%~%"

@@ -990,8 +990,8 @@ This is nonsense.
     "This is a CLIFF-powered program.~%"
     "~%"
     "Configuration files and, optionally, environment variables can be set~%"
-    "using NRDL, and output will be a NRDL document. More information about~%"
-    "NRDL can be found here:~%"
+    "using NRDL, a JSON superset language. Output will be a NRDL document.~%"
+    "More information about NRDL can be found here:~%"
     "~%"
     "https://github.com/djha-skin/nrdl~%"
     "~%"
@@ -1024,9 +1024,9 @@ This is nonsense.
     "  - A home-directory config file in an OS-specific location:~%"
     "      - On Linux: `${XDG_CONFIG_HOME}/~A/config.nrdl`~%" program-name
     "        (by default ~~/.config/~A/config.nrdl)` ~%" program-name
-    "      - On Mac:   `~~/Library/Preferences/~A/.config.nrdl`~%" program-name
-    "      - On Windows: %LOCALAPPDATA%\\~A\\config.nrdl`~%" program-name
-    "        (by default `%USERPROFILE%\\AppData\\Local\\~A\\config.nrdl)`~%~%"
+    "      - On Mac:   `~~/Library/Preferences/~A/config.nrdl`~%" program-name
+    "      - On Windows: `%LOCALAPPDATA%\\~A\\config.nrdl`~%" program-name
+    "        (by default `%USERPROFILE%\\AppData\\Local\\~A\\config.nrdl`)~%~%"
     program-name)
   ; Environment variables section
   (let ((clean-program-name
@@ -1036,7 +1036,7 @@ This is nonsense.
     (format
       strm "~@{~@?~}"
       "Options can be set via environment variable as follows:~%"
-      "  - `~A_FLAG_<OPTION>=1` to enable a boolean flag~%"
+      "  - `~A_FLAG_<OPTION>=1` to enable a flag~%"
       clean-program-name
           "  - `~A_ITEM_<OPTION>=<VALUE>` to set a string value~%"
           clean-program-name
@@ -1049,8 +1049,10 @@ This is nonsense.
           clean-program-name
           "     a NRDL string~%"
           "  - `~A_FILE_<OPTION>=<FILE_PATH>` to set a value using the contents~%"
+          clean-program-name
           "     of a NRDL document from a file as if by the `--file-*` flag~%"
           "  - `~A_RAW_<OPTION>=<FILE_PATH>` to set a value using the raw bytes~%"
+          clean-program-name
           "    of a file as if by the `--raw-*` flag~%"
           "~%"))
   (format
@@ -1088,7 +1090,7 @@ This is nonsense.
                   action (rather than just printing a help page).~%" program-name)))
 
     (when (> (length subcommand-functions)
-             (if (assoc nil subcommand-functions)
+             (if (assoc nil subcommand-functions :test #'equal)
               1
               0))
           (format strm "~%~%Available subcommands:~%")
@@ -1238,23 +1240,25 @@ This is nonsense.
               :initial-hash result
               :hash-init-args kw-hash-init-args
               :map-sep map-sep)
-          (let* ((help-function
-                  (lambda (opts)
-                                (default-help
-                                  err-strm
-                                  program-name
-                                  opts
-                                  (cdr other-args)
-                                  reference-file
-                                  root-path
-                                  helps
-                                  subcommand-functions
-                                  list-sep
-                                  map-sep)))
-                 (effective-functions
-                   (cons
-                     (cons '() (or
-                               default-function help-function)) subcommand-functions))
+          (let* ((effective-functions
+                   (acons
+                     '()
+                     (or
+                       default-function help-function)
+                     subcommand-functions))
+                 (help-function
+                   (lambda (opts)
+                     (default-help
+                       err-strm
+                       program-name
+                       opts
+                       (cdr other-args)
+                       reference-file
+                       root-path
+                       helps
+                       effective-functions
+                       list-sep
+                       map-sep)))
                  (setup-result (funcall setup opts-from-args))
                      (subcommand-function
                        (or (and enable-help

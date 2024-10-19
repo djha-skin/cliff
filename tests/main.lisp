@@ -18,7 +18,6 @@
 
 (in-package #:com.djhaskin.cliff/tests)
 
-
 (defparameter *tests-dir*
   (merge-pathnames
     #P"tests/"
@@ -293,8 +292,7 @@
       (equal
         (cliff:execute-program
           "Halo"
-          (make-hash-table)
-          nil)
+          :environment-variables nil)
         (alexandria:alist-hash-table
           '((:status . :cl-usage-error)
             (:error-message . "The subcommand `` has no actions defined for it.")
@@ -303,16 +301,14 @@
     (multiple-value-bind (code outcome)
         (cliff:execute-program
           "Halo"
-          (alexandria:alist-hash-table
-            #+windows
-            '(
-              ("USERPROFILE" . "C:\\Users\\djh")
-              )
-            #-windows
-            '(("HOME" . "/home/djha-skin")
-              )
-            :test #'equal)
-          nil)
+          :environment-variables
+          #+windows
+          '(
+            ("USERPROFILE" . "C:\\Users\\djh")
+            )
+          #-windows
+          '(("HOME" . "/home/djha-skin")
+            ))
       (ok
         (equal
           (nrdl:nested-to-alist outcome)
@@ -327,7 +323,7 @@
     (multiple-value-bind (code outcome)
       (cliff:execute-program
         "hi"
-        (alexandria:alist-hash-table
+          :environment-variables
           #+windows
           '(
             ("USERPROFILE" . "C:\\Users\\djh")
@@ -337,29 +333,29 @@
             )
           #-windows
           '(
-          ("HOME" . "/home/djha-skin")
-          ("HI_ITEM_FOUR" . "square")
-          ("HI_LIST_LOVERS" . "so,many,lovers")
-          ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
-          )
-        :test #'equal
-        )
-      `((nil . ,#'blank-command)
-        (("error") . ,#'error-command)
-        (("io-error") . ,#'io-error))
-      :cli-arguments
-      '(
-        "--join-deals" "a=jhyghyjub"
-        "--join-deals" "c=d"
-        "--add-barf" "1"
-        "--add-barf" "2"
-        "--add-barf" "3"
-        "--enable-gary"
-        "--reset-gary"
-        "--set-gary" "four"
-        "--disable-all-the-things"
-        "io-error"
-        ))
+            ("HOME" . "/home/djha-skin")
+            ("HI_ITEM_FOUR" . "square")
+            ("HI_LIST_LOVERS" . "so,many,lovers")
+            ("HI_TABLE_OF" . "contents=lots,content-people=few,content-makers=too-many")
+            )
+          :subcommand-functions
+          `(
+            (("error") . ,#'error-command)
+            (("io-error") . ,#'io-error))
+          :default-function #'blank-command
+          :cli-arguments
+          '(
+            "--join-deals" "a=jhyghyjub"
+            "--join-deals" "c=d"
+            "--add-barf" "1"
+            "--add-barf" "2"
+            "--add-barf" "3"
+            "--enable-gary"
+            "--reset-gary"
+            "--set-gary" "four"
+            "--disable-all-the-things"
+            "io-error"
+            ))
       (list
         code
         (nrdl:nested-to-alist outcome))

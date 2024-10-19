@@ -49,6 +49,11 @@
 (in-package #:com.djhaskin.cliff)
 (cl-reexport:reexport-from '#:com.djhaskin.cliff/errors)
 
+(defparameter *str-hash-init-args*
+  (list :test #'equal))
+
+(defparameter *kw-hash-init-args* nil)
+
 (defun repeatedly-eq
   (func
     arg
@@ -497,7 +502,7 @@
 
 (defun ingest-option
   (opts
-    map-sep-pat hash-init-args kact kopt &optional value)
+    map-sep-pat kact kopt &optional value)
   (cond
     ((eql kact :enable)
      (setf (gethash kopt opts) t))
@@ -523,7 +528,7 @@
            (coerce sresults 'list)
            (when (not (gethash kopt opts))
              (setf (gethash kopt opts)
-                   (apply #'make-hash-table hash-init-args)))
+                   (apply #'make-hash-table *kv-hash-init-args*)))
            (setf (gethash (nrdl:string-symbol k) (gethash kopt opts)) v))
          (error "not a k/v pair, check map sep pattern: ~a" value))))
     ((eql kact :nrdl)
@@ -540,7 +545,7 @@
 
 (defun
   consume-arguments
-  (args &optional &key initial-hash hash-init-args (map-sep "="))
+  (args &optional &key initial-hash (map-sep "="))
   "
   Consume arguments, presumably collected from the command line. Assumes any
   aliases have already been expanded (that is, it uses the arguments as-is,
@@ -581,7 +586,7 @@
         (consumable (copy-list args))
         (other-args nil)
         (opts (if (null initial-hash)
-                (apply #'make-hash-table hash-init-args)
+                (apply #'make-hash-table *kv-hash-init-args*)
                 initial-hash))
         (context "CLI arguments"))
     (loop while consumable do
@@ -599,7 +604,7 @@
                 (cond
                   ((some (lambda (x) (eql kact x)) +single-arg-actions+)
                    (ingest-option
-                     opts map-sep-pat hash-init-args kact kopt)
+                     opts map-sep-pat kact kopt)
                    (setf consumable rargs))
                   ((some (lambda (x) (eql kact x)) +multiple-arg-actions+)
                    (when (not rargs)
@@ -609,7 +614,7 @@
                            (first rargs))
                          (rrargs (rest rargs)))
                      (ingest-option
-                       opts map-sep-pat hash-init-args kact kopt value)
+                       opts map-sep-pat kact kopt value)
                      (setf consumable rrargs)))
                   (:else
                    (error 'unknown-directive
@@ -629,23 +634,22 @@
 (defun
   ingest-var
   (opts
-    map-sep-pat list-sep-pat hash-init-args ktag kopt context value)
+    map-sep-pat list-sep-pat ktag kopt context value)
   (cond
     ((eql ktag :flag)
      (if (some
            (lambda (v)
              (eql value v))
            '("0" "false" "False" "FALSE" "no" "NO" "No"))
-       (ingest-option opts map-sep-pat hash-init-args :disable kopt)
-       (ingest-option opts map-sep-pat hash-init-args :enable kopt)))
+       (ingest-option opts map-sep-pat :disable kopt)
+       (ingest-option opts map-sep-pat :enable kopt)))
     ((eql ktag :item)
-     (ingest-option opts map-sep-pat hash-init-args :set kopt value))
+     (ingest-option opts map-sep-pat :set kopt value))
     ((eql ktag :list)
      (loop for piece in (reverse (cl-ppcre:split list-sep-pat value)) do
            (ingest-option
              opts
              map-sep-pat
-             hash-init-args
              :add
              kopt
              piece)))
@@ -653,28 +657,24 @@
      (loop for piece in (cl-ppcre:split list-sep-pat value) do
            (ingest-option opts
                           map-sep-pat
-                          hash-init-args
                           :join
                           kopt
                           piece)))
     ((eql ktag :nrdl)
      (ingest-option opts
                     map-sep-pat
-                    hash-init-args
                     ktag
                     kopt
                     value))
     ((eql ktag :file)
      (ingest-option opts
                     map-sep-pat
-                    hash-init-args
                     :file
                     kopt
                     value))
     ((eql ktag :raw)
      (ingest-option opts
                     map-sep-pat
-                    hash-init-args
                     :raw
                     kopt
                     value))
@@ -699,7 +699,7 @@
     args))
 
 ;; TODO: TEST THIS
-(defun expand-env-aliases (aliases env &key hash-init-args)
+(defun expand-env-aliases (aliases env)
   "
   Replace the names of environment variables according to the map
   found in `aliases`. The keys of the `aliases` hash table are matched
@@ -709,7 +709,7 @@
   associating it with the value of the old removed key.
   "
   (declare (type hash-table aliases env))
-  (let ((result (apply #'make-hash-table hash-init-args)))
+  (let ((result (apply #'make-hash-table *str-hash-init-args*)))
     (loop
       for key being the hash-key of env
       using (hash-value value)
@@ -734,7 +734,6 @@
     env
     &optional
     &key
-    hash-init-args
     (list-sep ",")
     (map-sep "="))
   "
@@ -766,13 +765,12 @@
   "
   (declare (type hash-table env)
            (type string program-name)
-           (type list hash-init-args)
            (type string list-sep)
            (type string map-sep))
   (let*
     ((result
        (apply
-         #'make-hash-table hash-init-args))
+         #'make-hash-table *kv-hash-init-args*))
      (clean-name
        (string-upcase
          (cl-ppcre:regex-replace-all
@@ -818,7 +816,6 @@
           result
           map-sep-pat
           list-sep-pat
-          hash-init-args
           ktag
           kopt
           "environment"
@@ -845,9 +842,6 @@
            (type (or null pathname) reference-file)
            (type (or null pathname) root-path))
   (let* ((result (alexandria:copy-hash-table defaults))
-         (effective-root (if (null root-path)
-                           (uiop/os:getcwd)
-                           root-path))
          (home-config-path (os-specific-config-dir
                              program-name
                              (lambda (var &optional default)
@@ -879,7 +873,7 @@
            (or
              (when reference-file
                (let ((marked-file (find-file
-                                    effective-root
+                                    root-path
                                     reference-file)))
                  (when marked-file
                    (merge-pathnames
@@ -887,7 +881,7 @@
                      (uiop/pathname:pathname-parent-directory-pathname
                        marked-file)))))
              (find-file
-               effective-root
+               root-path
                marked-config-file-name))))
     (when (uiop/filesystem:file-exists-p home-config-path)
       (update-hash result (parse-string (data-slurp home-config-path-file))))
@@ -978,7 +972,7 @@ This is nonsense.
            (type hash-table options)
            (type list other-args)
            (type (or null pathname) reference-file)
-           (type (or null pathname) root-path)
+           (type pathname root-path)
            (type list helps)
            (type string list-sep)
            (type string list-sep))
@@ -1015,8 +1009,9 @@ This is nonsense.
               (namestring root-path)
               "    (or any of its parents)~%")
       (format strm "~@{~@?~}"
-              "  - A file named `.~A.nrdl` in the current directory~%"
+              "  - A file named `.~A.nrdl` in the directory `~A`~%"
               program-name
+              (namestring root-path)
               "    (or any of its parents)~%")
     )
   (format
@@ -1160,8 +1155,8 @@ This is nonsense.
 (defun
   execute-program
   (program-name
-    environment-variables
     &key
+    environment-variables
     subcommand-functions
     helps
     (strm *standard-output*)
@@ -1178,19 +1173,14 @@ This is nonsense.
     environment-aliases
     (list-sep ",")
     (map-sep "=")
-    (enable-help t)
-    (str-hash-init-args
-      `(:test ,#'equal))
-    kw-hash-init-args)
+    (enable-help t))
   (declare (type string program-name)
-           (type hash-table environment-variables)
+           (type (or null list) environment-variables)
            (type list subcommand-functions)
            (type (or null function) default-function)
            (type list cli-arguments)
            (type list cli-aliases)
            (type list environment-aliases)
-           (type list str-hash-init-args)
-           (type list kw-hash-init-args)
            (type (or null pathname) root-path)
            (type (or null pathname) reference-file)
            (type list defaults)
@@ -1200,37 +1190,42 @@ This is nonsense.
            (type function teardown))
   (handler-case
       (let ((effective-defaults (if (null defaults)
-                                    (apply #'make-hash-table kw-hash-init-args)
+                                    (apply #'make-hash-table *kw-hash-init-args*)
                                     (apply #'alexandria:alist-hash-table
                                            defaults
-                                           kw-hash-init-args)))
+                                           *kw-hash-init-args*)))
+            (effective-environment-variables
+              (if environment-variables
+                  (apply
+                    #'alexandria:alist-hash-table environment-variables
+                                               *str-hash-init-args*)
+                  (system-environment-variables)))
             (effective-environment
               (expand-env-aliases
                 (apply #'alexandria:alist-hash-table
                        environment-aliases
-                       str-hash-init-args)
-                environment-variables
-                :hash-init-args str-hash-init-args))
+                       *str-hash-init-args*)
+                effective-environment-variables))
             (effective-cli
               (expand-cli-aliases
                 (apply #'alexandria:alist-hash-table
                        cli-aliases
-                       str-hash-init-args)
-                cli-arguments)))
+                       *str-hash-init-args*)
+                cli-arguments))
+            (effective-root (or root-path (uiop/os:getcwd))))
         (multiple-value-bind (result found-config-files)
             (config-file-options
               program-name
               effective-environment
               effective-defaults
               reference-file
-              root-path)
+              effective-root)
           (declare (ignore found-config-files))
           (update-hash
             result
           (consume-environment
             program-name
             effective-environment
-            :hash-init-args kw-hash-init-args
             :list-sep list-sep
             :map-sep map-sep))
         (multiple-value-bind
@@ -1238,7 +1233,6 @@ This is nonsense.
             (consume-arguments
               effective-cli
               :initial-hash result
-              :hash-init-args kw-hash-init-args
               :map-sep map-sep)
           (let* ((effective-functions
                    (acons
@@ -1254,7 +1248,7 @@ This is nonsense.
                        opts
                        (cdr other-args)
                        reference-file
-                       root-path
+                       effective-root
                        helps
                        effective-functions
                        list-sep

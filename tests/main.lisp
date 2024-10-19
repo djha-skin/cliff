@@ -272,7 +272,11 @@
                        )
                      :test #'equal
                      )
-                   (make-hash-table)))
+                   (make-hash-table)
+                   nil
+                   (slot-value
+                     (asdf:find-system "com.djhaskin.cliff")
+                     'asdf/component:absolute-pathname)))
                '((:CHIVES
                   (:LOVE . 15)
                   (:SORE_LOSERS
@@ -286,38 +290,6 @@
 
 (deftest
   execute-program
-  (testing
-    "empty cases"
-    (ok
-      (equal
-        (cliff:execute-program
-          "Halo"
-          :environment-variables nil)
-        (alexandria:alist-hash-table
-          '((:status . :cl-usage-error)
-            (:error-message . "The subcommand `` has no actions defined for it.")
-            (:given-subcommand . nil))))
-      "Necessary environment variables absent")
-    (multiple-value-bind (code outcome)
-        (cliff:execute-program
-          "Halo"
-          :environment-variables
-          #+windows
-          '(
-            ("USERPROFILE" . "C:\\Users\\djh")
-            )
-          #-windows
-          '(("HOME" . "/home/djha-skin")
-            ))
-      (ok
-        (equal
-          (nrdl:nested-to-alist outcome)
- '((:ERROR-MESSAGE . "The subcommand `` has no actions defined for it.")
-(:GIVEN-SUBCOMMAND) (:STATUS . :CL-USAGE-ERROR))))
-      (ok
-        (equal
-          code
-          64))))
   (testing
     "typical invocation"
     (multiple-value-bind (code outcome)

@@ -52,7 +52,7 @@
 (defparameter *str-hash-init-args*
   (list :test #'equal))
 
-(defparameter *kw-hash-init-args* nil)
+(defparameter *kv-hash-init-args* nil)
 
 (defun repeatedly-eq
   (func
@@ -880,12 +880,15 @@
                      marked-config-file-name
                      (uiop/pathname:pathname-parent-directory-pathname
                        marked-file)))))
-             (find-file
-               root-path
-               marked-config-file-name))))
+             (when root-path
+               (find-file
+                 root-path
+                 marked-config-file-name)))))
     (when (uiop/filesystem:file-exists-p home-config-path)
       (update-hash result (parse-string (data-slurp home-config-path-file))))
-    (when (uiop/filesystem:file-exists-p marked-config-path)
+    (when (and
+            marked-config-path
+            (uiop/filesystem:file-exists-p marked-config-path))
       (update-hash result (parse-string (data-slurp marked-config-path))))
   result))
 
@@ -965,8 +968,7 @@ This is nonsense.
       helps
       subcommand-functions
       list-sep
-      map-sep
-      )
+      map-sep)
   (declare (type (or stream boolean) strm)
            (type string program-name)
            (type hash-table options)
@@ -1132,13 +1134,13 @@ This is nonsense.
 (multiple-value-bind (exit-code exit-map)
   (execute-program
     "hi"
-    (alexandria:alist-hash-table
+    :environment-variables
       '(("HOME" . "/home/skin")
         ("HI_ITEM_FOO" . "25")
         ("HI_LIST_BAR" . "1,2,3,4,5")
         ("HI_TABLE_BAZ" . "a=1,b=2,c=3")
         ("HI_FLAG_QUUX" . "1")
-        ("HI_NRDL_DISEASE" . "{he \"could\" do false it \"rightnow\"}")))
+        ("HI_NRDL_DISEASE" . "{he \"could\" do false it \"rightnow\"}"))
     (list
       (cons '("foo") (lambda (opts)
                        (format t "foo: ~a~%" (gethash :foo opts))
@@ -1153,27 +1155,27 @@ This is nonsense.
   (alexandria:hash-table-alist exit-map))
 
 (defun
-  execute-program
-  (program-name
-    &key
-    environment-variables
-    subcommand-functions
-    helps
-    (strm *standard-output*)
-    (err-strm *error-output*)
-    (suppress-final-output nil)
-    cli-arguments
-    cli-aliases
-    defaults
-    (setup #'identity)
-    (teardown #'identity)
-    default-function
-    root-path
-    reference-file
-    environment-aliases
-    (list-sep ",")
-    (map-sep "=")
-    (enable-help t))
+    execute-program
+    (program-name
+      &key
+      environment-variables
+      subcommand-functions
+      helps
+      (strm *standard-output*)
+      (err-strm *error-output*)
+      suppress-final-output
+      cli-arguments
+      cli-aliases
+      defaults
+      (setup #'identity)
+      (teardown #'identity)
+      default-function
+      root-path
+      reference-file
+      environment-aliases
+      (list-sep ",")
+      (map-sep "=")
+      (enable-help t))
   (declare (type string program-name)
            (type (or null list) environment-variables)
            (type list subcommand-functions)
@@ -1189,30 +1191,30 @@ This is nonsense.
            (type function setup)
            (type function teardown))
   (handler-case
-      (let ((effective-defaults (if (null defaults)
-                                    (apply #'make-hash-table *kw-hash-init-args*)
-                                    (apply #'alexandria:alist-hash-table
-                                           defaults
-                                           *kw-hash-init-args*)))
-            (effective-environment-variables
-              (if environment-variables
-                  (apply
-                    #'alexandria:alist-hash-table environment-variables
-                                               *str-hash-init-args*)
-                  (system-environment-variables)))
-            (effective-environment
-              (expand-env-aliases
-                (apply #'alexandria:alist-hash-table
-                       environment-aliases
-                       *str-hash-init-args*)
-                effective-environment-variables))
-            (effective-cli
-              (expand-cli-aliases
-                (apply #'alexandria:alist-hash-table
-                       cli-aliases
-                       *str-hash-init-args*)
-                cli-arguments))
-            (effective-root (or root-path (uiop/os:getcwd))))
+    (let* ((effective-defaults (if (null defaults)
+                                   (apply #'make-hash-table *kv-hash-init-args*)
+                                         (apply #'alexandria:alist-hash-table
+                                                defaults
+                                                *kv-hash-init-args*)))
+                 (effective-environment-variables
+                   (if environment-variables
+                       (apply
+                         #'alexandria:alist-hash-table environment-variables
+                         *str-hash-init-args*)
+                       (system-environment-variables)))
+                 (effective-environment
+                   (expand-env-aliases
+                     (apply #'alexandria:alist-hash-table
+                            environment-aliases
+                            *str-hash-init-args*)
+                     effective-environment-variables))
+                 (effective-cli
+                   (expand-cli-aliases
+                     (apply #'alexandria:alist-hash-table
+                            cli-aliases
+                            *str-hash-init-args*)
+                     cli-arguments))
+                 (effective-root (or root-path (uiop/os:getcwd))))
         (multiple-value-bind (result found-config-files)
             (config-file-options
               program-name
@@ -1234,13 +1236,7 @@ This is nonsense.
               effective-cli
               :initial-hash result
               :map-sep map-sep)
-          (let* ((effective-functions
-                   (acons
-                     '()
-                     (or
-                       default-function help-function)
-                     subcommand-functions))
-                 (help-function
+          (let* ((help-function
                    (lambda (opts)
                      (default-help
                        err-strm
@@ -1250,9 +1246,17 @@ This is nonsense.
                        reference-file
                        effective-root
                        helps
-                       effective-functions
+                       (if default-function
+                           (acons '() default-function subcommand-functions)
+                           subcommand-functions)
                        list-sep
                        map-sep)))
+                 (effective-functions
+                   (acons
+                     '()
+                     (or
+                       default-function help-function)
+                     subcommand-functions))
                  (setup-result (funcall setup opts-from-args))
                      (subcommand-function
                        (or (and enable-help

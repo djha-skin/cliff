@@ -1164,7 +1164,7 @@ This is nonsense.
       (strm *standard-output*)
       (err-strm *error-output*)
       suppress-final-output
-      cli-arguments
+      (cli-arguments t)
       cli-aliases
       defaults
       (setup #'identity)
@@ -1180,7 +1180,7 @@ This is nonsense.
            (type (or null list) environment-variables)
            (type list subcommand-functions)
            (type (or null function) default-function)
-           (type list cli-arguments)
+           (type (or boolean list) cli-arguments)
            (type list cli-aliases)
            (type list environment-aliases)
            (type (or null pathname) root-path)
@@ -1208,12 +1208,16 @@ This is nonsense.
                             environment-aliases
                             *str-hash-init-args*)
                      effective-environment-variables))
+                 (effective-arguments
+                   (if (eq cli-arguments t)
+                       (uiop:command-line-arguments)
+                       cli-arguments))
                  (effective-cli
                    (expand-cli-aliases
                      (apply #'alexandria:alist-hash-table
                             cli-aliases
                             *str-hash-init-args*)
-                     cli-arguments))
+                     effective-arguments))
                  (effective-root (or root-path (uiop/os:getcwd))))
         (multiple-value-bind (result found-config-files)
             (config-file-options

@@ -171,9 +171,9 @@ When we run this, CLIFF's help page prints this at the bottom:
 ```
 
 It's printing out that big nested hash table of options it finds, but in
-[NRDL](https://github.com/djha-skin/nrdl), a JSON superset language designed to
-be good for config files and command line output for programs written in lisp.
-It was specially built to power CLIFF.
+[NRDL](https://github.com/djha-skin/nrdl), a JSON superset data language
+designed to work well for configuration files and as well as command line output for
+programs written in lisp. It was specially built to power CLIFF.
 
 The equivalent alist might be
 
@@ -208,6 +208,22 @@ The help page now shows this:
     ]
 }
 ```
+
+Notice that the `operands` are added as strings. This is true of most options
+added to the options hash table via command line arguments or environment
+variables. However, there is a workaround: using `--nrdl-*` on the CLI or the
+`CALC_NRDL_<thing>` environment variable. Thus, this:
+
+```
+TODO
+export CALC_NRDL_OPERANDS=[1,2,3,4,5]
+./calc --nrdl-divisors '{"one": 1,
+```
+
+Yields these options printed to the help page:
+
+
+
 
 The user can specify any option in this way, even if the program doesn't use it.
 This way, the command can take some options verbatim and pass it on, print it

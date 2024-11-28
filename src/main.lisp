@@ -883,8 +883,9 @@
              (when root-path
                (find-file
                  root-path
-                 marked-config-file-name)))))
-    (when (uiop/filesystem:file-exists-p home-config-path)
+                 marked-config-file-name
+                 )))))
+    (when (uiop/filesystem:file-exists-p home-config-path-file)
       (update-hash result (parse-string (data-slurp home-config-path-file))))
     (when (and
             marked-config-path

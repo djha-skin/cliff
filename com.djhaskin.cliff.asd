@@ -15,8 +15,7 @@
                )
   :components ((:module "src"
                 :components
-                (
-                 (:file "errors")
+                ((:file "errors")
                  (:file "main"))))
   :description "CLI library for Common Lisp. Handles args, env vars, and conf"
   :in-order-to ((test-op (test-op "com.djhaskin.cliff/tests"))))

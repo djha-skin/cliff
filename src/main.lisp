@@ -7,11 +7,13 @@
   #:com.djhaskin.cliff (:use #:cl)
   (:documentation
     "
-    package that has a function, `execute-program`, which does the following:
-    - registers subcommand-functions mapped to specific subcommands
-    - reads configuration files in standard locations
-    - reads environment variables
-    according to specific rules and from these rules constructs a hash table
+    Package that has a function, `execute-program`, which does the following:
+
+    - Registers subcommand-functions mapped to specific subcommands
+    - Reads configuration files in standard locations
+    - Reads environment variables
+
+    According to specific rules and from these rules constructs a hash table
     which is then passed to the subcommands.
     ")
     (:import-from #:com.djhaskin.nrdl)

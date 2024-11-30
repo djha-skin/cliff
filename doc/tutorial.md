@@ -417,6 +417,7 @@ out a help page when the command line tool is called. Change the lisp file which
 ;;;; SPDX-FileCopyrightText: 2024 Daniel Jay Haskin
 ;;;; SPDX-License-Identifier: MIT
 ;;;;
+;;;;
 
 (in-package #:cl-user)
 
@@ -436,10 +437,10 @@ out a help page when the command line tool is called. Change the lisp file which
 
 
 (defparameter operators
-    '(("+" . #'+)
-      ("-" . #'-)
-      ("*" . #'*)
-      ("/" . #'/)))
+    `(("+" . ,#'+)
+      ("-" . ,#'-)
+      ("*" . ,#'*)
+      ("/" . ,#'/)))
 
 (defun calc (options)
   (let* ((result (make-hash-table :test #'equal))
@@ -448,13 +449,16 @@ out a help page when the command line tool is called. Change the lisp file which
          (operator (cliff:ensure-option-exists :operator options))
          (func (cdr (assoc "+" operators :test #'equal))))
     (setf (gethash :result result) (apply func operands))
-    (setf (gethash :status result) :successful)))
+    (setf (gethash :status result) :successful)
+    result))
 
 
 (defun main ()
-  (cliff:execute-program
-    "calc"
-    :default-function #'calc))
+  (sb-ext:exit
+    :code
+    (cliff:execute-program
+      "calc"
+      :default-function #'calc)))
 ```
 
 We have some changes here in `calculator.lisp` from our original listing.
@@ -468,6 +472,9 @@ hash table, and if it doesn't, it signals an error.
 
 We then set it as the `:default-function` when we call `cliff:execute-program`.
 
+We also add `sb-ext:exit` and set `:code` as the return value of
+`cliff:execute-program` to ensure the exit code is propogated to the OS.
+
 Now we compile and run our program:
 
 ```
@@ -480,60 +487,349 @@ $ ./calc
     missing-option operands
     status cl-usage-error
 }
+$ echo $?
+64
 ```
 
-We see that a `cl-usage-error` has been 
+We see that a `cl-usage-error` error has been signaled and that the command
+returned a non-zero status code corresponding to the type of error signaled. The
+error is printed to standard output in the form of a NRDL document.
 
+In fact, by default, everything CLIFF prints out will be in the form of a NRDL
+document, though as we'll see, this can be turned off. This default is to enable
+CLIFF to fulfill its mission: just plug a few functions into CLIFF, and it'll
+handle the rest. I/O is all taken care of by default, in a human-friendly
+machine readable format.
+
+Let's call `./calc` again, with operands and an operator.
+
+Because CLIFF doesn't care where it gets its options, we can mix and match where
+they come from. In our example, we'll say that we pretty much always want `calc`
+to use `+` as an operator, unless we want to override it. We'll put that in our
+configuration file, and specify the operands on the CLI.
+
+We put this in our `.calc.nrdl` in the current directory:
+
+```
+{
+    operator "+"
+}
+```
+
+And then we call `./calc`:
+
+```
+$ ./calc --nrdl-operands '[1,2,3,4]'
+{
+   result 10
+   status successful
+}
+```
+
+## Use Roswell with CLIFF
+
+Now that we have a semi-working example, it's time to get it cleaned up and put
+into a proper ASDF package. We'll also add a roswell endpoint.
+
+We make a new directory called `calc`, change directory into it with a terminal,
+and run `ros init calc`.
+
+We then put this in the file `com.djhaskin.calc.asd`:
+
+```lisp
+(defsystem "com.djhaskin.calc"
+  :version "0.8.0"
+  :author "Daniel Jay Haskin"
+  :license "MIT"
+  :depends-on ("com.djhaskin.cliff")
+  :components ((:module "src"
+                :components
+                ((:file "calculator"))))
+  :description "CLI calculator, a demonstration project for Common Lisp CLIFF")
+```
+
+We then create a `src` directory inside of the `calc` directory and move
+`calculator.lisp` into it.
+
+Editing our `calc.ros` file, we make sure it calls our `main` function and that
+it loads our system in the init forms:
+
+```lisp
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  (asdf:load-system "com.djhaskin.calc"))
+
+(defpackage :ros.script.calc.3941919262
+  (:use :cl)
+  (:import-from #:com.djhaskin.calc)
+  (:local-nicknames
+    (#:calc #:com.djhaskin.calc)))
+
+(in-package :ros.script.calc.3941919262)
+
+(defun main (&rest argv)
+  (declare (ignorable argv))
+  (calc:main argv))
+
+;;; vim: set ft=lisp lisp:
+```
+
+We change our `main` function in `calculator.lisp` to accept an `argv` argument,
+passing it into CLIFF with the optional `:cli-arguments` option. We also get rid
+of `sb-ext:exit`, since ros will take care of the exit code for us:
+
+```lisp
+(defun main (argv)
+    (cliff:execute-program
+      "calc"
+      :default-function #'calc
+      :cli-arguments argv))
+```
+
+Now we can run `ros build calc.ros` from the `calc` directory.
+
+## Ergonomics
+
+Our `calc` program is shaping up, but there's some cosmetic/ergonomic changes we
+can make to make the user's experience a bit better.
+
+
+### Defaults
+
+First, we can decide that, as a sensible default, `calc` should just assume that
+the operator will be `+`.
+
+Let's set that as a default by adding it to the `:defaults` option to
+`cliff:execute-program`:
+
+```lisp
+(defun main (argv)
+    (cliff:execute-program
+      "calc"
+      :default-function #'calc
+      :cli-arguments argv
+      :defaults '((:operator "+"))))
+```
+
+The option `:defaults` takes an alist mapping options to values because it is
+easier to type in an alist than a hash table.
+
+Now we run again, this time we remove the `.calc.nrdl` that has that default
+operator in it.
+
+```
+$ ./calc --nrdl-operands '[1,2,3,4]'
+{
+    result 10
+    status successful
+}
+```
+
+It works as before since the option now has a default.
+
+### String Conversion
+
+Next, we observe that specifying operands might be more convenient if they were
+specified one at a time, like this:
 
 
 ```
-kill: SIGUSR1: invalid signal specification
-kill: SIGUSR1: invalid signal specification
-
-
-
-
-
-
+./calc --add-operands 1 --add-operands 2 --add-operands 3 --add-operands 4
 ```
 
+If we run that though, we get an error:
 
-<do something>
+```
+$ ./calc --add-operands 1 --add-operands 2 --add-operands 3 --add-operands 4
+{
+    error-datum "\"4\""
+    error-expected-type "NUMBER"
+    error-message
+        |The value
+        |  "4"
+        |is not of type
+        |  NUMBER
+        ^
+    status data-format-error
+}
+```
 
-Ope, an error happened. It got printed out for us.
+Calc doesn't know what "type" arguments are when they are specified on the
+command line, so it assumes they are a string. We can see this when we run
 
-<do something>
+```
+./calc help --add-operands 1 --add-operands 2
+```
 
-We did something but it didn't get printed.
+The help page shows what `calc` actually sees:
 
-<return something>
+```
+The following options have been detected:
+{
+    operands [
+        "2"
+        "1"
+    ]
+    operator [
+        "+"
+    ]
+}
+```
 
-K, but we are going to be piping this to a different program.
+It shows our default operator, but it also shows our operands as a list of
+strings.
 
-<change output to JSON>
+If we expect that our operands will always be specified on the command line
+rather than the environment or via config file, we may wish to check for strings
+and convert them to non-strings if possible.
 
-But also
+To allow for this, CLIFF provides `:setup` and `:teardown` optional arguments to
+`execute-program`. The `:setup` function takes an options map and return a modified
+version. This is the version which the main logic functions will see. The `:teardown`
+function takes the map that the main logic functions create, changes or creates
+a new version based on it, and returns that. This modified map will be what
+CLIFF sees when it starts to try to wrap up the program.
 
-<hide normal output and just print what I want>
+These functions provide a lot of power in terms of what we can do or how we can
+interact with CLIFF.
 
-Cool. Now let's suppose that we don't like hash tables much. We'll return one,
-but we want to _work_ with alists.
+To accomplish the string to number transformation, we add a `:setup` lambda:
 
-<setup/teardown>
 
-Let's make things easier on our user.
+```lisp
+(defun main (argv)
+  (cliff:execute-program
+    "calc"
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator "+"))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))))
+```
 
-<CLI-aliases, ENV-var aliases>
+Then we recompile using `ros` and run again:
 
-Let's change our program to have subcommands.
+```
+$ ./calc --add-operands 1 --add-operands 2
+{
+    result 3
+    status successful
+}
+```
 
-<subcommands>
+The downside is that operands would need to be specified as strings if there
+ever were a need to put them in a configuration file, but if the target audience
+typically uses the command line to specify the arguments, then maybe this is a
+good trade-off.
 
-Here's our final calling function:
+### Provide Command-Line Aliases
 
-<polished function>
+It feels bad to make the user punch in `--add-operands` for every operands. We
+would like to enable a single letter for that option, so we will add a CLI alias
+for it using `execute-program`'s optional `:cli-aliases` option:
 
-Let's write some unit tests for our program.
+```
+(defun main (argv)
+  (cliff:execute-program
+    "calc"
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator "+"))
+    :cli-aliases
+    '(("-h" . "help")
+      ("--help" . "help")
+      ("-o" . "--add-operands"))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))))
+```
 
-<show dep injection features>
+Note, we also added `--help` and `-h` aliases.
+
+CLI Aliases are simple substitutions. If CLIFF sees what is specified as a key
+in the alist on the command line, it will replace it with the value.
+
+CLIFF provides a `help` subcommand, but not a `--help` or `-h` option. Providing
+these aliases will help the user if they don't know what to do.
+
+We also added the `-o` alias to mean `--add-operands`.
+
+Now we can recompile and run with the new, nice shorter arguments:
+
+```
+$ ./calc -o 1 -o 2 -o 3
+{
+    result 6
+    status successful
+}
+```
+
+### Override Default Output
+
+The main mission of CLIFF is to enable users to write potentially pure
+functions, and hook them up to the command-line, configuration files, and the
+environment using `execute-program` so that the function can just do what
+functions do betst: compute. However, if more control over output is desired, it
+is easy to take back control.
+
+We first add `:suppress-final-output t` to the call to `execute-program`:
+
+```lisp
+(defun main (argv)
+  (cliff:execute-program
+    "calc"
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator "+"))
+    :cli-aliases
+    '(("-h" . "help")
+      ("--help" . "help")
+      ("-o" . "--add-operands"))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))
+    :suppress-final-output t))
+```
+
+We also add a `format` call to our `calc` function:
+
+```lisp
+(defun calc (options)
+  (let* ((result (make-hash-table :test #'equal))
+         (operands (cliff:ensure-option-exists :operands options))
+         (operator (cliff:ensure-option-exists :operator options))
+         (func (cdr (assoc "+" operators :test #'equal)))
+         (out (apply func operands)))
+    (format t "~A~%" out)
+    (setf (gethash :result result) out)
+    (setf (gethash :status result) :successful)
+    result))
+```
+
+Now our output is much simpler:
+
+```
+$ ./calc -o 1 -o 2 -o 3
+6
+```
+
+### Add Subcommands
+
+### Add More Help Documentation
+
+CLIFF is pretty good at adding general documentation around the option tower,
+but not really around each individual function.
+
 

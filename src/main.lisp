@@ -1173,6 +1173,7 @@ This is nonsense.
       (setup #'identity)
       (teardown #'identity)
       default-function
+      default-func-help
       root-path
       reference-file
       environment-aliases
@@ -1252,7 +1253,9 @@ This is nonsense.
                        (cdr other-args)
                        reference-file
                        effective-root
-                       helps
+                       (if default-func-help
+                           (acons '() default-func-help helps)
+                           helps)
                        (if default-function
                            (acons '() default-function subcommand-functions)
                            subcommand-functions)

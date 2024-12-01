@@ -1,4 +1,4 @@
-#+(or)
+(or)
 (declaim (optimize (speed 0) (space 0) (debug 3)))
 
 (in-package #:cl-user)
@@ -970,6 +970,7 @@ This is nonsense.
       root-path
       helps
       subcommand-functions
+      cli-aliases
       list-sep
       map-sep)
   (declare (type (or stream boolean) strm)
@@ -1038,23 +1039,23 @@ This is nonsense.
       "Options can be set via environment variable as follows:~%"
       "  - `~A_FLAG_<OPTION>=1` to enable a flag~%"
       clean-program-name
-          "  - `~A_ITEM_<OPTION>=<VALUE>` to set a string value~%"
-          clean-program-name
-          "  - `~A_LIST_<OPTION>=<VAL1>~A<VAL2>~A...` to set a list option~%"
-          clean-program-name list-sep list-sep
-          "  - `~A_TABLE_<OPTION>=<KEY1>~A<VAL1>~A<KEY2>~A<VAL2>~A...` to set~%"
-          clean-program-name list-sep map-sep list-sep map-sep
-          "     a key/value table option~%"
-          "  - `~A_NRDL_<OPTION>=<NRDL_STRING>` to set a value using~%"
-          clean-program-name
-          "     a NRDL string~%"
-          "  - `~A_FILE_<OPTION>=<FILE_PATH>` to set a value using the contents~%"
-          clean-program-name
-          "     of a NRDL document from a file as if by the `--file-*` flag~%"
-          "  - `~A_RAW_<OPTION>=<FILE_PATH>` to set a value using the raw bytes~%"
-          clean-program-name
-          "    of a file as if by the `--raw-*` flag~%"
-          "~%"))
+      "  - `~A_ITEM_<OPTION>=<VALUE>` to set a string value~%"
+      clean-program-name
+      "  - `~A_LIST_<OPTION>=<VAL1>~A<VAL2>~A...` to set a list option~%"
+      clean-program-name list-sep list-sep
+      "  - `~A_TABLE_<OPTION>=<KEY1>~A<VAL1>~A<KEY2>~A<VAL2>~A...` to set~%"
+      clean-program-name list-sep map-sep list-sep map-sep
+      "     a key/value table option~%"
+      "  - `~A_NRDL_<OPTION>=<NRDL_STRING>` to set a value using~%"
+      clean-program-name
+      "     a NRDL string~%"
+      "  - `~A_FILE_<OPTION>=<FILE_PATH>` to set a value using the contents~%"
+      clean-program-name
+      "     of a NRDL document from a file as if by the `--file-*` flag~%"
+      "  - `~A_RAW_<OPTION>=<FILE_PATH>` to set a value using the raw bytes~%"
+      clean-program-name
+      "    of a file as if by the `--raw-*` flag~%"
+      "~%"))
   (format
     strm
     "~@{~@?~}"
@@ -1077,6 +1078,21 @@ This is nonsense.
     "      - `-` for standard input~%"
     "    Anything else is treated as a file name.~%"
     "~%")
+
+(when cli-aliases
+    (format
+      strm
+      "~@{~@?~}"
+      "The following command line aliases have been defined:~%"
+      "~%"
+      "~10@A ~49@A~%" "This" "Translates To")
+
+    (loop for ( this . that ) in cli-aliases
+          do
+          (format strm "~10@A ~49@A~%" this that)
+          finally
+          (format strm "~%")))
+
   (format strm "The following options have been detected:~%")
   (nrdl:generate-to strm options :pretty-indent 4)
   (finish-output strm)
@@ -1085,19 +1101,19 @@ This is nonsense.
          (callable-function (assoc other-args subcommand-functions :test #'equal)))
 
     (when (assoc nil subcommand-functions)
-        (progn
-          (format strm "~%The bare command `~A` (with no subcommands) performs an ~
-                  action (rather than just printing a help page).~%" program-name)))
+      (progn
+        (format strm "~%The bare command `~A` (with no subcommands) performs an ~
+                action (rather than just printing a help page).~%" program-name)))
 
     (when (> (length subcommand-functions)
              (if (assoc nil subcommand-functions :test #'equal)
-              1
-              0))
-          (format strm "~%~%Available subcommands:~%")
-          (loop for (key . _) in subcommand-functions
-                if (not (null key))
-                do
-                (format strm "  - `~{~A~^ ~}`~%" key)))
+                 1
+                 0))
+      (format strm "~%~%Available subcommands:~%")
+      (loop for (key . _) in subcommand-functions
+            if (not (null key))
+            do
+            (format strm "  - `~{~A~^ ~}`~%" key)))
 
     (if (not (null helpstring))
         (format strm "~%Documentation~@[ for subcommand `~{~A~^ ~}`~]: ~%~%~A~%~%"
@@ -1106,9 +1122,9 @@ This is nonsense.
         (format strm "~%Documentation~@[ for subcommand `~{~A~^ ~}`~] not found.~%~%"
                 other-args))
     (unless callable-function
-        (format strm "~v[No action exists for the command.~:;The subcommand `~{~A~^ ~}` does not exist.~]~%~%"
-                (length other-args)
-                other-args)))
+      (format strm "~v[No action exists for the command.~:;The subcommand `~{~A~^ ~}` does not exist.~]~%~%"
+              (length other-args)
+              other-args)))
   (alexandria:alist-hash-table
     '(
       (:status . :successful)
@@ -1163,7 +1179,7 @@ This is nonsense.
       &key
       environment-variables
       subcommand-functions
-      helps
+      subcommand-helps
       (strm *standard-output*)
       (err-strm *error-output*)
       suppress-final-output
@@ -1254,11 +1270,12 @@ This is nonsense.
                        reference-file
                        effective-root
                        (if default-func-help
-                           (acons '() default-func-help helps)
-                           helps)
+                           (acons '() default-func-help subcommand-helps)
+                           subcommand-helps)
                        (if default-function
                            (acons '() default-function subcommand-functions)
                            subcommand-functions)
+                       cli-aliases
                        list-sep
                        map-sep)))
                  (effective-functions

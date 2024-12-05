@@ -10,7 +10,7 @@ Then CLIFF is for you!
 
 It's on OCICL and Quicklisp.
 
-# # CLIFF Tutorial
+## CLIFF Tutorial
 
 The code discussed in this tutorial can be found
 [here](https://github.com/djha-skin/calc).

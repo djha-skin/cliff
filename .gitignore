@@ -22,4 +22,5 @@ TODO
 /.bundle-libs/
 # ocicl
 /systems
+/docs/build/
 .qlot/

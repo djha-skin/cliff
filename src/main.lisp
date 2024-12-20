@@ -33,8 +33,6 @@
       slurp-stream
       data-slurp
       invalid-subcommand
-      make-windows-path
-      make-unix-path
       make-os-specific-path
       necessary-env-var-absent
       os-specific-home
@@ -79,38 +77,6 @@
         arg
         (repeatedly-eq
           func next eeq (- repeats 1))))))
-
-(defun repeatedly
-    (func
-      arg
-      &optional (check-p (lambda (arg) (equal arg nil)))
-      (repeats 256))
-  "
-  list consisting of calls to func on arg, then calling func on that result,
-  etc.
-  doesn't stop until check-p returns t when given `arg`.
-  "
-  (declare (type integer repeats))
-  (labels
-      ((helper
-           (arg
-             on)
-         (when
-             (<= on 0)
-           (error
-             (concatenate
-               'string
-               "ran ~a times without terminating.~%"
-               "  final iteration arg: ~a~%")
-             repeats
-             arg))
-         (if  (funcall check-p arg)
-             nil
-             (cons
-               arg (helper
-                     (funcall func arg)
-                     (- on 1))))))
-    (helper arg repeats)))
 
 (defun url-to-pathname
   (url)
@@ -357,9 +323,8 @@
 (defmethod cliff/errors:exit-map-members ((this necessary-env-var-absent))
   `((:env-var . ,(env-var this))))
 
-(defun os-specific-home (getenv)
-  (make-os-specific-path
-    #+windows (concatenate
+(defun os-specific-home (#+windows
+    make-os-specific-path (concatenate
                 'string
                 (funcall
                   getenv
@@ -368,11 +333,38 @@
     #-windows (concatenate
                 'string
                 (funcall getenv "HOME")
-                "/")))
+                "/"))
+  (getenv))
 
 #+(or)
 (os-specific-config-dir "halo" (lambda (x &optional y)
                                  (or (uiop/os:getenv x) y)))
+
+
+(defun os-specific-system-config-dir (program-name getenv)
+  "
+  Determines the OS-specific system configuration folder base.
+  "
+  (make-os-specific-path
+    #+windows (concatenate
+                'string
+                (funcall getenv "PROGRAMDATA"
+                         "C:\\ProgramData")
+                "\\"
+                program-name
+                "\\")
+    #+darwin (concatenate
+               'string
+               "/Library/Preferences/"
+               program-name
+               "/")
+    #-(or darwin windows)
+    (concatenate
+      'string
+      "/etc/"
+      program-name
+      "/")))
+
 (defun os-specific-config-dir (program-name getenv)
   "
   Deteremines the OS-specific configuration folder base.
@@ -731,19 +723,21 @@
 ; (:IRON_MAN "5" "4" "3" "2" "1"))
 
 (defun
-  consume-environment
-  (program-name
-    env
-    &optional
-    &key
-    (list-sep ",")
-    (map-sep "="))
+    consume-environment
+    (program-name
+      env
+      &optional
+      &key
+      (list-sep ",")
+      (map-sep "="))
   "
   Consume variables, presumably collected from the OS.
   Assumes any aliases have already been expanded (that is,
-                                                       it uses the variables as-is, with no transformation).
+  it uses the variables as-is, with no transformation).
 
-  Assumes an open-world. For each environment variable, it examines its form.
+  Assumes an open-world configuration.
+
+  For each environment variable, it examines its form.
 
   If the variable is of the form
   `^(<PROGRAM_NAME>)_(?P<opt>LIST|TABLE|ITEM|FLAG|NRDL)_(?P<arg>.*)$`, then the
@@ -834,66 +828,76 @@
 (defun config-file-options
   (program-name
     environment
-    defaults
-    &optional
-    reference-file
-    root-path)
+      defaults
+      &optional
+      reference-file
+      root-path)
   (declare (type string program-name)
            (type hash-table environment)
            (type hash-table defaults)
            (type (or null pathname) reference-file)
            (type (or null pathname) root-path))
-  (let* ((result (alexandria:copy-hash-table defaults))
-         (home-config-path (os-specific-config-dir
-                             program-name
-                             (lambda (var &optional default)
-                               (let ((result (gethash var environment default)))
-                                 (if (null result)
-                                   (if (null default)
-                                     (error 'necessary-env-var-absent
-                                            :env-var var)
-                                     default)
-                                   result)))))
-         (home-config-path-file
-           (merge-pathnames
+  (flet ((envvar (var &optional default)
+           (let ((result (gethash var environment default)))
+             (if (null result)
+                 (if (null default)
+                     (error 'necessary-env-var-absent
+                            :env-var var)
+                     default)
+                 result))))
+    (let* ((result (alexandria:copy-hash-table defaults))
+           (system-config-path (os-specific-system-config-dir
+                                 program-name envvar))
+           (system-config-path-file
+             (merge-pathnames
+               (make-pathname
+                 :name
+                 "config"
+                 :type
+                 "nrdl")
+               system-config-path))
+           (home-config-path (os-specific-config-dir program-name envvar))
+           (home-config-path-file
+             (merge-pathnames
+               (make-pathname
+                 :name
+                 "config"
+                 :type
+                 "nrdl")
+               home-config-path))
+           (marked-config-file-name
              (make-pathname
                :name
-               "config"
+               (concatenate
+                 'string
+                 "."
+                 program-name)
                :type
-               "nrdl")
-             home-config-path))
-         (marked-config-file-name
-           (make-pathname
-             :name
-             (concatenate
-               'string
-               "."
-               program-name)
-             :type
-             "nrdl"))
-         (marked-config-path
-           (or
-             (when reference-file
-               (let ((marked-file (find-file
-                                    root-path
-                                    reference-file)))
-                 (when marked-file
-                   (merge-pathnames
-                     marked-config-file-name
-                     (uiop/pathname:pathname-parent-directory-pathname
-                       marked-file)))))
-             (when root-path
-               (find-file
-                 root-path
-                 marked-config-file-name
-                 )))))
-    (when (uiop/filesystem:file-exists-p home-config-path-file)
-      (update-hash result (parse-string (data-slurp home-config-path-file))))
-    (when (and
-            marked-config-path
-            (uiop/filesystem:file-exists-p marked-config-path))
-      (update-hash result (parse-string (data-slurp marked-config-path))))
-  result))
+               "nrdl"))
+           (marked-config-path
+             (or
+               (when reference-file
+                 (let ((marked-file (find-file
+                                      root-path
+                                      reference-file)))
+                   (when marked-file
+                     (merge-pathnames
+                       marked-config-file-name
+                       (uiop/pathname:pathname-parent-directory-pathname
+                         marked-file)))))
+               (when root-path
+                 (find-file
+                   root-path
+                   marked-config-file-name)))))
+      (when (uiop/filesystem:file-exists-p system-config-path-file)
+        (update-hash result (parse-string (data-slurp system-config-path-file))))
+      (when (uiop/filesystem:file-exists-p home-config-path-file)
+        (update-hash result (parse-string (data-slurp home-config-path-file))))
+      (when (and
+              marked-config-path
+              (uiop/filesystem:file-exists-p marked-config-path))
+        (update-hash result (parse-string (data-slurp marked-config-path))))
+      result)))
 
 (define-condition invalid-subcommand (error)
   ((given-subcommand :initarg :given-subcommand
@@ -1006,6 +1010,21 @@ This is nonsense.
     "the command line, with later values overriding earlier ones.~%~%")
   ; Config files section
   (format strm "Configuration files can be in the following locations:~%")
+  (format
+    strm "~@{~@?~}"
+    "  - A system-wide config file in an OS-specific location:~%"
+    "      - On Windows: `%PROGRAMDATA%\\~A\\config.nrdl`~%" program-name
+    "        (by default `C:\\ProgramData\\~A\\config.nrdl`)~%~%"
+    "      - On Mac:   `/Library/Preferences/~A/config.nrdl`~%" program-name
+    "      - On Linux/POSIX: `/etc/~A/config.nrdl`~%" program-name
+    "        (by default ~~/.config/~A/config.nrdl)` ~%" program-name
+    "  - A home-directory config file in an OS-specific location:~%"
+    "      - On Windows: `%LOCALAPPDATA%\\~A\\config.nrdl`~%" program-name
+    "        (by default `%USERPROFILE%\\AppData\\Local\\~A\\config.nrdl`)~%~%"
+    program-name
+    "      - On Mac:   `~~/Library/Preferences/~A/config.nrdl`~%" program-name
+    "      - On Linux/POSIX: `${XDG_CONFIG_HOME}/~A/config.nrdl`~%" program-name
+    "        (by default ~~/.config/~A/config.nrdl)` ~%" program-name)
   (if reference-file
       (format strm "~@{~@?~}"
               "  - A file named `.~A.nrdl` found in the same directory~%"
@@ -1020,15 +1039,6 @@ This is nonsense.
               (namestring root-path)
               "    (or any of its parents)~%")
     )
-  (format
-    strm "~@{~@?~}"
-    "  - A home-directory config file in an OS-specific location:~%"
-    "      - On Linux: `${XDG_CONFIG_HOME}/~A/config.nrdl`~%" program-name
-    "        (by default ~~/.config/~A/config.nrdl)` ~%" program-name
-    "      - On Mac:   `~~/Library/Preferences/~A/config.nrdl`~%" program-name
-    "      - On Windows: `%LOCALAPPDATA%\\~A\\config.nrdl`~%" program-name
-    "        (by default `%USERPROFILE%\\AppData\\Local\\~A\\config.nrdl`)~%~%"
-    program-name)
   ; Environment variables section
   (let ((clean-program-name
           (string-upcase
@@ -1126,9 +1136,7 @@ This is nonsense.
               (length other-args)
               other-args)))
   (alexandria:alist-hash-table
-    '(
-      (:status . :successful)
-      )))
+    '((:status . :successful))))
 
 #+(or)
 (multiple-value-bind (exit-code exit-map)
@@ -1200,8 +1208,28 @@ This is nonsense.
   Gathers options from the Option Tower out of configuration files, environment
   variables, and the command line arguments into an options map. Calls a
   user-defined function based on what subcommands were specified; either the
-  @c(default-function) if no subcommands were given, or the function
-  corresponding to the subcommand as given in @c(subcommand-functions).
+  @cl:param(default-function) if no subcommands were given, or the function
+  corresponding to the subcommand as given in @cl:param(subcommand-functions).
+
+  First, the function examines the given @cl:param(environment-variables),
+  which should be given as an alist with keys as variable names and values as
+  their values. for the value of the HOME variable. No such variable present
+  results in an errorhk.
+
+
+
+
+  A more comprehensive description of each parameter is as follows:
+
+  @begin(list)
+  @item(@cl:param(program-name): The program name. This parameter is used in
+      the default help page (\"Welcome to X!\"), the environment variables
+      capture (seeking for @c(PROGRAM_NAME_XXX) environment variables), and the
+      configuration files capture (seeking for e.g.
+      @c(~/.config/program-name/config.nrdl) files).)
+  @item(@cl;param(environment-variables): The en
+  @end(list)
+
   "
 
   (declare (type string program-name)

@@ -951,6 +951,18 @@ Sets the operator to `&`
 
 @end(section)
 
+@begin(section)
+
+@title(Wrap-up)
+
+We have created a fully-functional CLI tool. It is a 12 factor app that looks in
+config files, the environment, and the command line for its options and merges
+them together. We have easily been able to add commands, subcommands, and
+documentation for them. We have also shown how we can have simpler arguments on
+the command line.
+
+@end(section)
+
 @end(section)
 
 @begin(section)
@@ -961,13 +973,17 @@ This section details the use of the actual API presented by CLIFF.
 @begin(section)
 @title(@c(com.djhaskin.cliff))
 
+This package's main export is the function @c(execute-program), but it also
+exports other convenience functions listed below, as well as re-exporting all
+the public symbols of the @c(com.djhaskin.cliff/errors) package.
+
 @cl:with-package[name="com.djhaskin.cliff"](
 @cl:doc[ref=anchor-execute-program](function execute-program)
 )
 
 @end(section)
-@begin(section)
 
+@begin(section)
 @title(@c(com.djhaskin.cliff/errors))
 
 @cl:with-package[name="com.djhaskin.cliff/errors"](
@@ -979,15 +995,3 @@ This section details the use of the actual API presented by CLIFF.
 @end(section)
 
 @end(section)
-
-@begin(section)
-@title(Wrap-up)
-
-We have created a fully-functional CLI tool. It is a 12 factor app that looks in
-config files, the environment, and the command line for its options and merges
-them together. We have easily been able to add commands, subcommands, and
-documentation for them. We have also shown how we can have simpler arguments on
-the command line.
-
-@end(section)
-

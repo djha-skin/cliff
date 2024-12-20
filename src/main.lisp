@@ -1196,6 +1196,14 @@ This is nonsense.
       (list-sep ",")
       (map-sep "=")
       (enable-help t))
+  "
+  Gathers options from the Option Tower out of configuration files, environment
+  variables, and the command line arguments into an options map. Calls a
+  user-defined function based on what subcommands were specified; either the
+  @c(default-function) if no subcommands were given, or the function
+  corresponding to the subcommand as given in @c(subcommand-functions).
+  "
+
   (declare (type string program-name)
            (type (or null list) environment-variables)
            (type list subcommand-functions)

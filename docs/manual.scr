@@ -15,13 +15,14 @@ Then CLIFF is for you!
 @title(Tutorial)
 
 The code discussed in this tutorial can be found
-[here](https://github.com/djha-skin/calc).
+@link[uri="htps://github.com/djha-skin/calc"](here).
 
 @begin(section)
 @title(Install)
 
 CLIFF is on @link[uri="https://github.com/ocicl/ocicl"](OCICL) and
-@link[uri="https://github.com/quicklisp/quicklisp-projects/issues/2458"](I'm trying to get it added on Quicklisp).
+@link[uri="https://github.com/quicklisp/quicklisp-projects/issues/2458"](I'm
+trying to get it added on Quicklisp).
 
 @end(section)
 
@@ -168,7 +169,6 @@ We get the same output as before.
 
 @end(section)
 
-
 @begin(section)
 @title(Open World Configuration)
 
@@ -207,9 +207,10 @@ When we run this, CLIFF's help page prints this at the bottom:
 @end(code)
 
 It's printing out that big nested hash table of options it finds, but in
-[NRDL](https://github.com/djha-skin/nrdl), a JSON superset data language
-designed to work well for configuration files and as well as command line output for
-programs written in lisp. It was specially built to power CLIFF.
+@link[uri="https://github.com/djha-skin/nrdl"](NRDL), a JSON superset data
+language designed to work well for configuration files and as well as command
+line output for programs written in lisp. It was specially built to power
+CLIFF.
 
 The equivalent alist might be
 
@@ -224,8 +225,6 @@ export CALC_LIST_OPERANDS=1,2,3,4,5
 export CALC_TABLE_NAMES=plus=+,minus=-,times=*
 ./calc
 @end(code)
-
-@end(section)
 
 The help page now shows this:
 
@@ -277,6 +276,7 @@ print it out, return it, or change it in arbitrary ways. This open-world
 assumption of options allows the program to compose better with libraries and
 other programs.
 
+@end(section)
 
 @begin(section)
 @title(The Option Tower)
@@ -285,6 +285,7 @@ CLIFF gathers options for the calling code tool (in this case @c(calc)) from
 configuration files, environment variables, and command-line flags. It merges
 what it finds from various sources into one single, nested hash table. The
 various sources comprise what we will call the Option Tower.
+
 
 Let's add something from a configuration file now. CLIFF looks in the present
 working directory, as well as an OS-dependent, home-based location, which is
@@ -441,7 +442,11 @@ Sweet. We have a bunch of options. Our app observes 12-factor goodness by
 default, checking for config files, environment variables, and even harvesting
 options for us from the command line, all without us having to write much.
 
-### Add a Default Function
+
+@end(section)
+
+@begin(section)
+@title(Add a Default Function)
 
 Now let's do something with this information. Right now the command just prints
 out a help page when the command line tool is called. Change the lisp file
@@ -565,5 +570,424 @@ $ ./calc --nrdl-operands '[1,2,3,4]'
 
 @end(section)
 
+@begin(section)
+@title(String Conversion)
+
+Next, we observe that specifying operands might be more convenient if they were
+specified one at a time, like this:
+
+@begin(code)
+./calc --add-operands 1 --add-operands 2 --add-operands 3 --add-operands 4
+@end(code)
+
+If we run that though, we get an error:
+
+@begin(code)
+$ ./calc --add-operands 1 --add-operands 2 --add-operands 3 --add-operands 4
+{
+    error-datum "\"4\""
+    error-expected-type "NUMBER"
+    error-message
+        |The value
+        |  "4"
+        |is not of type
+        |  NUMBER
+        ^
+
+    status data-format-error
+}
+@end(code)
+
+Calc doesn't know what "type" arguments are when they are specified on the
+command line, so it assumes they are a string. We can see this when we run
+
+@begin(code)
+./calc help --add-operands 1 --add-operands 2
+@end(code)
+
+The help page shows what @c(calc) actually sees:
+
+@begin(code)
+The following options have been detected:
+{
+    operands [
+        "2"
+        "1"
+    ]
+    operator [
+        "+"
+    ]
+}
+@end(code)
+
+It shows our default operator, but it also shows our operands as a list of
+strings.
+
+If we expect that our operands will always be specified on the command line
+rather than the environment or via config file, we may wish to check for strings
+and convert them to non-strings if possible.
+
+To allow for this, CLIFF provides @c(:setup) and @c(:teardown) optional arguments to
+@c(execute-program). The @c(:setup) function takes an options map and return a modified
+version. This is the version which the main logic functions will see. The @c(:teardown)
+function takes the map that the main logic functions create, changes or creates
+a new version based on it, and returns that. This modified map will be what
+CLIFF sees when it starts to try to wrap up the program.
+
+These functions provide a lot of power in terms of what we can do or how we can
+interact with CLIFF.
+
+To accomplish the string to number transformation, we add a @c(:setup) lambda:
+
+@begin[lang=lisp](code)
+(defun main (argv)
+  (cliff:execute-program
+    "calc"
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator "+"))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))))
+@end(code)
+
+Then we recompile and run again:
+
+@begin(code)
+$ ./calc --add-operands 1 --add-operands 2
+{
+    result 3
+    status successful
+}
+@end(code)
+
+The downside is that operands would need to be specified as strings if there
+ever were a need to put them in a configuration file, but if the target audience
+typically uses the command line to specify the arguments, then maybe this is a
+good trade-off.
 
 @end(section)
+
+@begin(section)
+@title(Provide Command-Line Aliases)
+
+It feels bad to make the user punch in @c(--add-operands) for every operand. We
+would like to enable a single letter for that option, so we will add a CLI alias
+for it using @c(execute-program)'s optional @c(:cli-aliases) option:
+
+@begin[lang=lisp](code)
+(defun main (argv)
+  (cliff:execute-program
+    "calc"
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator "+"))
+    :cli-aliases
+    '(("-h" . "help")
+      ("--help" . "help")
+      ("-o" . "--add-operands"))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))))
+@end(code)
+
+Note, we also added @c(--help) and @c(-h) aliases.
+
+CLI Aliases are simple substitutions. If CLIFF sees what is specified as a key
+in the alist on the command line, it will replace it with the value.
+
+CLIFF provides a `help` subcommand, but not a `--help` or `-h` option. Providing
+these aliases will help the user if they don't know what to do.
+
+We also added the `-o` alias to mean `--add-operands`.
+
+Now we can recompile and run with the new, nice shorter arguments:
+
+@begin(code)
+$ ./calc -o 1 -o 2 -o 3
+{
+    result 6
+    status successful
+}
+@end(code)
+
+@end(section)
+
+@begin(section)
+@title(Override Default Output)
+
+The main mission of CLIFF is to enable users to write potentially pure
+functions, and hook them up to the command-line, configuration files, and the
+environment using @c(execute-program) so that the function can just do what
+functions do best: compute. In order to fulfill its mission, it provides
+default output, which is simply printing the result hash table returned by the
+command function in NRDL format.
+
+However, if more control over output is desired, it
+is easy to take back control.
+
+We first add @c(:suppress-final-output t) to the call to @c(execute-program):
+
+@begin[lang=lisp](code)
+(defun main (argv)
+  (cliff:execute-program
+    "calc"
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator "+"))
+    :cli-aliases
+    '(("-h" . "help")
+      ("--help" . "help")
+      ("-o" . "--add-operands"))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))
+    :suppress-final-output t))
+@end(code)
+
+We also add a @c(format) call to our @c(calc) function:
+
+@begin[lang=lisp](code)
+(defun calc (options)
+  (let* ((result (make-hash-table :test #'equal))
+         (operands (cliff:ensure-option-exists :operands options))
+         (operator (cliff:ensure-option-exists :operator options))
+         (func (cdr (assoc "+" operators :test #'equal)))
+         (out (apply func operands)))
+    (format t "~A~%" out)
+    (setf (gethash :result result) out)
+    (setf (gethash :status result) :successful)
+    result))
+@end(code)
+
+Now our output is much simpler:
+
+@begin(code)
+$ ./calc -o 1 -o 2 -o 3
+6
+@end(code)
+
+Also, the CLI aliases we defined were added automatically to the help page:
+
+@begin(code)
+$ ./calc help
+...
+The following command line aliases have been defined:
+
+      This                                     Translates To
+        -h                                              help
+    --help                                              help
+        -o                                    --add-operands
+...
+@end(code)
+
+@end(section)
+
+@begin(section)
+@title(Add Subcommands)
+
+As a means of demonstration, we will add different calculation operators
+(multiply, divide, add, subtract) as subcommands and get rid of the default
+action, ensuring the command run with no subcommands will print the help page.
+
+All we need to do is provide an alist mapping different collections of
+subcommands with different functions, where the functions expect an option table
+and return a result table.
+
+First, we'll add some additional operators:
+
+@begin[lang=lisp](code)
+(defparameter operators
+    `(("+" . ,#'+)
+      ("-" . ,#'-)
+      ("*" . ,#'*)
+      ("/" . ,#'/)
+      ("&" . ,#'logand)
+      ("%" . ,(lambda (&rest args)
+                (multiple-value-bind
+                    (quotient remainder)
+                    (apply #'truncate args)
+                  remainder)))))
+@end(code)
+
+For demonstration purposes, we'll create some functions that just set the
+operator and then pass execution into our previously created @c(calc) function:
+
+@begin[lang=lisp](code)
+(defun programmer-and (options)
+  (setf (gethash :operator options) "&")
+  (calc options))
+
+(defun modulus (options)
+  (setf (gethash :operator options) "%")
+  (calc options))
+@end(code)
+
+
+Then we just add these new functions as subcommands:
+
+@begin[lang=lisp](code)
+(defun main (argv)
+  (cliff:execute-program
+    "calc"
+    :subcommand-functions
+    `((("programmer" "and") . ,#'programmer-and)
+      (("modulus") . ,#'modulus))
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator "+"))
+    :cli-aliases
+    '(("-h" . "help")
+      ("--help" . "help")
+      ("-o" . "--add-operands"))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))
+    :suppress-final-output t))
+@end(code)
+
+Not the @c(:subcommand-functions) argument above. It maps collections of
+subcommands to the function that should be called when that subcommand is
+specified.
+
+After compiling again, we can now do this:
+
+@begin(code)
+$ ./calc programmer and -o 1 -o 3
+1
+$ ./calc modulus -o 3 -o 5
+2
+@end(code)
+
+@end(section)
+
+@begin(section)
+@title(Add More Help Documentation)
+
+CLIFF is pretty good at adding general documentation around the option tower,
+but not really around each individual function.
+
+Specifying the default function's help is pretty easy, just give a string
+argument to the @c(:default-func-help) option. Specifying help strings for the
+different subcommands are likewise easy; just give an alist that map subcommand
+strings to help strings in the @c(:subcommand-helps) option:
+
+@begin[lang=lisp](code)
+(defun main (argv)
+  (cliff:execute-program
+    "calc"
+    :subcommand-functions
+    `((("programmer" "and") . ,#'programmer-and)
+      (("modulus") . ,#'modulus))
+    :subcommand-helps
+    @c(((("programmer" "and") . "Sets the operator to )&`")
+      (("modulus") . "Sets the operator to @c(%)"))
+    :default-function #'calc
+    :default-func-help
+    (format
+      nil
+      "~@{~@?~}"
+      "Welcome to calc.~%"
+      "~%"
+      "This is a calculator CLI.~%"
+      "~%"
+      "The default action expects these options:~%"
+      "  operand           Specify operand~%"
+      "                    (may be specified multiple times)~%"
+      "  operator (string) Specify operator~%")
+    :cli-arguments argv
+    :defaults '((:operator "+"))
+    :cli-aliases
+    '(("-h" . "help")
+      ("--help" . "help")
+      ("-o" . "--add-operands"))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))
+    :suppress-final-output t))
+@end(code)
+
+Now running @c(./calc help) shows the default function help:
+
+@begin(code)
+$ ./calc help
+...
+Documentation:
+
+Welcome to calc.
+
+This is a calculator CLI.
+
+The default action expects these options:
+  operand           Specify operand
+                    (may be specified multiple times)
+  operator (string) Specify operator
+@end(code)
+
+Likewise, running @c(./calc help modulus) and @c(./calc help programmer and) return
+their respective helps at the bottom of the help page:
+
+@begin(code)
+Documentation for subcommand `modulus`:
+
+Sets the operator to `%`
+@end(code)
+
+@begin(code)
+Documentation for subcommand `programmer and`:
+
+Sets the operator to `&`
+@end(code)
+
+@end(section)
+
+@end(section)
+
+@begin(section)
+@title(API Reference)
+
+This section details the use of the actual API presented by CLIFF.
+
+@begin(section)
+@title(@c(com.djhaskin.cliff))
+
+@cl:with-package[name="com.djhaskin.cliff"](
+@cl:doc[ref=anchor-execute-program](function execute-program)
+)
+
+@end(section)
+@begin(section)
+
+@title(@c(com.djhaskin.cliff/errors))
+
+@cl:with-package[name="com.djhaskin.cliff/errors"](
+@cl:doc(variable *exit-codes*)
+@cl:doc(generic exit-status)
+@cl:doc(generic exit-map-members)
+)
+
+@end(section)
+
+@end(section)
+
+@begin(section)
+@title(Wrap-up)
+
+We have created a fully-functional CLI tool. It is a 12 factor app that looks in
+config files, the environment, and the command line for its options and merges
+them together. We have easily been able to add commands, subcommands, and
+documentation for them. We have also shown how we can have simpler arguments on
+the command line.
+
+@end(section)
+

@@ -1344,24 +1344,114 @@ This is nonsense.
 
   In addition, any environment variables whose names match any keys in the
   @cl:param(environment-aliases) alist will be treated as if their names were
-  actually the value of that entry.
+  actually the value of that key's entry.
 
   @end(section)
 
   @begin(section)
   @title(Command Line Arguments)
-    - Help function
-    - subcommands
-    - CLI aliases
-  @end(section)
+
+  Finally, @c(execute-program) turns its attention to the command line.
+
+  It examines each argument in turn. It looks for options of the form
+  @c(--<action>-<option-key>), though this is configurable via @c(*find-tag*).
+  It deals with options of this form according to the following rules:
+
+  @begin(list)
+
+    @item(If the argument's action is @c(enable) or @c(disable) the keyword
+      named) after the option key is associated with @c(t) or @c(nil) in the
+      resulting hash table, respectively.)
+
+    @item(If the argument's action is @c(set), the succeeding argument is taken
+      as the string value of the key corresponding to the option key given in
+      the argument, overriding any previously set value within the option
+      table.)
+
+    @item(If the argument's action is @c(add), the succeeding argument is taken
+      as a string value which must be appended to the value of the option key
+      within the option table, assuming that the value of such is already a
+      list.)
+
+    @item(If the argument's action is @c(join), the succeeding argument must be
+      of the form @c(<key><map-sep><value>), where @c(map-sep) is the value of
+      the parameter @cl:param(map-sep). The key specified becomes a keyword,
+      and the value a string, set as a hash table entry of the hash table found
+      under the option key within the parent option table, assuming the value
+      of such is already a hash table.)
+
+    @item(If the argument's action is @c(nrdl), the succeeding argument must be
+      a valid NRDL document, specified as a string. This argument's deserialized
+      value will be taken as the value of the option key within the option map,
+      overriding any previously set value within the option table.)
+
+    @item(If the argument's action is @c(file), it will be assumed that the
+      succeeding argument names a resource consumable via @c(data-slurp). That
+      resource will be slurped in via that function, then deserialized from NRDL.
+      The resulting data will be taken as the value of the option key within the
+      option table, overriding any previously set value within that table.)
+
+    @item(If the argument's action is @c(raw), it will be assumed that the
+      succeeding argument names a resource consumable via @c(data-slurp). That
+      resource will be slurped in via that function, as a raw string. That
+      string will be taken as the value of the option key within the option
+      table, overriding any previously set value within that table.)
+
+  @end(list)
+
+  In addition, any argument of any form whose string value @cl:spec(equal)'s
+  any keys in the @cl:param(cli-aliases) alist will be treated as if their
+  string value were actually the value of that key's entry.
 
   @end(section)
 
   @begin(section)
-  @title(Function Interaction)
-    - Setup
-    - Teardown
-    - Catching errors
+  @title(The Setup Function)
+
+  Finally, if a setup function is specified via @cl:param(setup), it is called
+  with one argument: the options table so far. This function is expected to
+  add or remove elements from the options table and return it.
+
+  @end(section)
+
+  Having done all this, @c(execute-program) considers the option table is
+  complete and prepares to feed it to the user-specified function.
+
+  @end(section)
+
+  @begin(section)
+  @title(Determining the User Specified Function)
+
+  Any other arguments which CLIFF finds on the command line other than those
+  recognized either as @cl:param(cli-aliases) or as options of the form matched
+  by @c(*find-tag*) will be taken as subcommands.
+
+  CLIFF finds all subcommands and puts them in a list in the order in which
+  they were found. It attempts to find this list (using @cl:spec(equal)) in the
+  alist @cl:param(subcommand-functions). If such a list exists as a key in that
+  alist, the value corresponding to that key is taken to be a function of one
+  argument. This function expects a hash table, the options map previously
+  constructed.
+
+  If no subcommands were given, it calls @cl:param(default-function) instead.
+
+  @end(section)
+
+  @begin(section)
+  @title(The Help Page)
+
+
+
+  @end(section)
+
+  @begin(section)
+  @title(Termination)
+  - teardown
+  - results map
+  - output
+  @end(section)
+  @title(Error Handling)
+  - catching errors
   @end(section)
   "
 

@@ -32,17 +32,10 @@
       parse-string
       slurp-stream
       data-slurp
+      *find-tag*
       invalid-subcommand
-      make-os-specific-path
       necessary-env-var-absent
-      os-specific-home
-      os-specific-config-dir
       find-file
-      consume-arguments
-      consume-environment
-      config-file-options
-      system-environment-variables
-      default-help
       execute-program
       ensure-option-exists))
 
@@ -203,19 +196,26 @@
 
 (defun data-slurp (resource &rest more-args)
   "
-  Slurp config, using specified options.
+  Slurp a resource, using specified options. Return the contents of the
+  resource as a string.
 
-  if `:resource` is a url, download the contents according to the following
-  rules:
-  - if it is of the form `http(s)://user:password@url`,
-  it uses basic auth;
-  - if it is of the form `http(s)://header=val@url`,
-  a header is set;
-  - if it is of the form `http(s)://<token>@url`,
-  a bearer token is used;
-  - if it is of the form `file://<location>`, it is loaded as a normal file;
-  - if it is of the form `-`, the nrdl is loaded from standard input;
-  - otherwise, the nrdl is loaded from the string or pathname as if it named
+  If @cl:param(resource) is a URL, download the contents according to the
+  following rules:
+  @begin(list)
+    @item(If it is of the form `http(s)://user:password@url`,
+        it performs basic HTTP authentication using the provided username and
+        password;)
+    @item(If it is of the form `http(s)://header=val@url`,
+        the provided header is set when downloading the contents;)
+    @item(If it is of the form `http(s)://<token>@url`,
+        bearer authorization is used with the provided token;)
+    @item(If it is of the form @c(file://<location>),
+        it is loaded as a normal file;)
+    @item(If it is of the form @c(-) the contents are loaded from standard
+        input;)
+  @end(list)
+
+  Otherwise, the contents are loaded from the resource as if it named
   a file.
   "
   (declare (type (or pathname string) resource))
@@ -312,7 +312,13 @@
   ((env-var :initarg :env-var
             :initform (error "Need to give argument `:env-var`.")
             :reader env-var))
-  (:documentation "An required environment variable is not present.")
+  (:documentation
+    "
+    Condition used by CLIFF to signal that a required environment variable
+    is not present.
+
+    Implmements @c(exit-status) and @c(exit-map-members).
+    ")
   (:report (lambda (condition stream)
              (format stream "Environment variable `~A` not specified.~&"
                      (env-var condition)))))
@@ -323,18 +329,6 @@
 (defmethod cliff/errors:exit-map-members ((this necessary-env-var-absent))
   `((:env-var . ,(env-var this))))
 
-(defun os-specific-home (#+windows
-    make-os-specific-path (concatenate
-                'string
-                (funcall
-                  getenv
-                  "USERPROFILE")
-                "\\")
-    #-windows (concatenate
-                'string
-                (funcall getenv "HOME")
-                "/"))
-  (getenv))
 
 #+(or)
 (os-specific-config-dir "halo" (lambda (x &optional y)
@@ -408,8 +402,13 @@
   find-file
   (from marker)
   "
-  Starting at the directory given,
-  find the marking file.
+  Starting at the directory @cl:param(from), look for the file
+  @cl:param(marker).
+
+  Continue looking for the file in successive parents of @cl:param(from)
+  until no more parents exist or the file is found.
+
+  Returns the pathname of the found file or nil if no file could be found.
   "
   (if (null marker)
     nil
@@ -431,17 +430,31 @@
 (defun
   generate-string
   (thing &optional &key (pretty 0))
+  "
+  Serialize @cl:param(thing) to NRDL.
+  "
   (with-output-to-string (strm)
     (nrdl:generate-to strm thing :pretty-indent pretty)))
 
 (defun parse-string (thing)
+  "
+  Parse the NRDL string @cl:param(thing).
+  "
   (with-input-from-string (strm thing)
     (nrdl:parse-from strm)))
 
 (defparameter
-  +find-tag+
+  *find-tag*
   (cl-ppcre:create-scanner
-    "^--([^-]+)-(.+)$"))
+    "^--([^-]+)-(.+)$")
+  "
+  @c(cl-ppcre) regex scanner containing two capture groups, the first of which
+  must capture the CLI verb (one of @c(enable), @c(disable), @c(reset),
+  @c(add), @c(set), @c(nrdl), or @c(file)), and the second of which is the name
+  of the variable. This is used ultimately by @c(execute-program) to recognize
+  command line options (as opposed to subcommands). Currently its value corresponds
+  to the regular expression @c(\"^--([^-]+)-(.+)$\").
+  ")
 
 (defparameter
   +multiple-arg-actions+
@@ -492,7 +505,6 @@
     `((:context . ,(context this))
       (:directive . ,(directive this))
       (:option . ,(option this))))
-
 
 (defun ingest-option
   (opts
@@ -593,7 +605,7 @@
                   kact)
                  (#'nrdl:string-symbol
                   kopt))
-                (+find-tag+
+                (*find-tag*
                   arg)
                 (cond
                   ((some (lambda (x) (eql kact x)) +single-arg-actions+)
@@ -904,7 +916,12 @@
                      :initform nil
                      :reader given-subcommand))
   (:documentation
-    "The subcommand given was invalid; no subcommand-functions were found for it.")
+    "
+    Condition used by CLIFF to signal there were no functions given to
+    CLIFF that correspond the subcommand given.
+
+    Implmements @c(exit-status) and @c(exit-map-members).
+   ")
   (:report (lambda (this strm)
              (format strm
                      "The subcommand `~{~A~^ ~}` has no actions defined for it."
@@ -1205,19 +1222,78 @@ This is nonsense.
       (map-sep "=")
       (enable-help t))
   "
+  @begin(section)
+  @title(Overview)
+
   Gathers options from the Option Tower out of configuration files, environment
-  variables, and the command line arguments into an options map. Calls a
+  variables, and the command line arguments into an options table. Calls a
   user-defined function based on what subcommands were specified; either the
   @cl:param(default-function) if no subcommands were given, or the function
-  corresponding to the subcommand as given in @cl:param(subcommand-functions).
+  corresponding to the subcommand as given in @cl:param(subcommand-functions)
+  will be called. Expects that function to return a results map, with at least
+  the @c(:status) key set to one of the values listed in the @c(*exit-codes*)
+  map.
 
-  First, the function examines the given @cl:param(environment-variables),
+  @end(section)
+
+  @begin(section)
+  @title(The Options Tower)
+
+  @begin(section)
+  @title(Configuration Files)
+
+  The function builds, in successive steps, the options table which will be
+  passed to the function in question.
+
+  It starts with the options hash table given by the @cl:param(defaults)
+  parameter.
+
+  The function next examines the given @cl:param(environment-variables),
   which should be given as an alist with keys as variable names and values as
-  their values. for the value of the HOME variable. No such variable present
-  results in an errorhk.
+  their values. If no list is given, the currently environment variables will
+  be queried from the OS.
 
+  Uses those environment variables to find an OS-specific system-wide
+  configuration file in one of the following locations:
 
+  @begin(list)
+    @item(@b(Windows): @c(%PROGRAMDATA%\<program-name>\config.nrdl), or
+        @c(C:\ProgramData\<program-name>\config.nrdl) if that environment
+        variable is not set.)
+    @item(@b(Mac): @c(/Library/Preferences/<program-name>/config.nrdl))
+    @item(@b(Linux/POSIX): @c(/etc/<program-name>/config.nrdl))
+  @end(list)
 
+  It reads this file and deserializes the options from it, merging them into
+  the options table, overriding any options when they exist both in the map and
+  the file.
+
+  Next, it looks for options in an OS-specific, user-specific
+  home-directory-based configuration file in one of the following locations:
+
+  @begin(list)
+    @item(@b(Windows): @c(%LOCALAPPDATA%\<program-name>\config.nrdl), or
+        @c(%USERPROFILE%\AppData\Local\<program-name>\config.nrdl) if that
+        environment variable is not set.)
+    @item(@b(Mac): @c($HOME/Library/Preferences/<program-name>/config.nrdl))
+    @item(@b(Linux/POSIX): @c($XDG_CONFIG_HOME/<program-name>/config.nrdl), or
+        @c($HOME/.config/<program-name>/config.nrdl) if XDG_CONFIG_HOME is not
+        set.)
+  @end(list)
+
+  When performing this search, @c(execute-program) may signal an error of type
+  @c(necessary-env-var-absent) if the HOME var is not set on non-Windows
+  environments and the USERPROFILE variable if on Windows.
+
+  If it finds a NRDL file in this location, it deserializes the contents and
+  merges them into the options table, overriding options when they exist both in
+  the map and the file.
+
+  Finally, it searches for a file called @c(.<program-name>.nrdl) in the
+  present working directory and, if it doesn't exist there, successively in all
+  of its parent directories. If if finds such a file, it deserializes the
+  contents and merges them into the options table, overriding options when they
+  exist both in the map and the file.
 
   A more comprehensive description of each parameter is as follows:
 
@@ -1230,6 +1306,63 @@ This is nonsense.
   @item(@cl;param(environment-variables): The en
   @end(list)
 
+  @end(section)
+
+  @begin(section)
+  @title(Environment Variables)
+
+  Next, it examines the @cl:param(environment-variables) for any options given
+  by environment variable. Again, @cl:param(environment-variables) should be
+  given as an alist with keys as variable names and values as their values. If
+  no list is given, the currently environment variables will be queried from
+  the OS.
+
+  For each environment variable, it examines its form.
+
+  If the variable matches the
+  @link[uri=\"http://edicl.github.io/cl-ppcre/\"](regular expression)
+  @c(^(<PROGRAM_NAME>)_(?P<opt>LIST|TABLE|ITEM|FLAG|NRDL)_(?P<arg>.*)$), then the
+  variable's value will be used to add to the resulting options hash table,
+  overriding any options which are already there.
+
+  If the @c(opt) part of the regex is @c(LIST), the value of the variable will be
+  split using @c(list-sep) and the resulting list of strings will be associated
+  with the keyword @c(arg) in the options.
+
+  If the @c(opt) is @c(TABLE), the value of the variable will be split using
+  @cl:param(list-sep), then each entry in that list will also be split using
+  @cl:param(map-sep). The resulting key/value pair list is turned into a
+  hash-table and this hash table is associated to the keyword @c(arg) in the
+  options.
+
+  If the @c(opt) is @c(ITEM), the value of the variable will be set to the keyword
+  @c(arg) in the options.
+
+  If the @c(opt) is @c(NRDL), the value of the variable will be parsed as a NRDL
+  string and its resultant value set as the value of the keyword @c(arg) in the
+  returned options hash table.
+
+  In addition, any environment variables whose names match any keys in the
+  @cl:param(environment-aliases) alist will be treated as if their names were
+  actually the value of that entry.
+
+  @end(section)
+
+  @begin(section)
+  @title(Command Line Arguments)
+    - Help function
+    - subcommands
+    - CLI aliases
+  @end(section)
+
+  @end(section)
+
+  @begin(section)
+  @title(Function Interaction)
+    - Setup
+    - Teardown
+    - Catching errors
+  @end(section)
   "
 
   (declare (type string program-name)
@@ -1362,6 +1495,12 @@ This is nonsense.
                 final-result)))))
 
 (defun ensure-option-exists (key options)
+  "
+  Check options hash table @cl:param(options) for the key @cl:param(key).
+
+  Signal a restartable condition if the option is missing. Employs the
+  @cl:spec(use-value) and @cl:spec(continue) restarts in that case.
+  "
   (restart-case
       (progn
         (let ((value (gethash key options)))

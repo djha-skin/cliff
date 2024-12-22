@@ -87,15 +87,21 @@ Configuration files are consulted first, then environment variables, then
 the command line, with later values overriding earlier ones.
 
 Configuration files can be in the following locations:
-  - A file named `.calc.nrdl` in the directory `<YOUR-CURRENT-PWD>`
-    (or any of its parents)
+  - A system-wide config file in an OS-specific location:
+      - On Windows: `%PROGRAMDATA%\calc\config.nrdl`
+        (by default `C:\ProgramData\      - On Mac:   `/Library/Preferences/~A/config.nrdl`~%\config.nrdl`)
+
+calc      - On Linux/POSIX: `/etc/calc/config.nrdl`
+        (by default ~/.config/calc/config.nrdl)` 
   - A home-directory config file in an OS-specific location:
-      - On Linux: `${XDG_CONFIG_HOME}/calc/config.nrdl`
-        (by default ~/.config/calc/config.nrdl)`
-      - On Mac:   `~/Library/Preferences/calc/config.nrdl`
       - On Windows: `%LOCALAPPDATA%\calc\config.nrdl`
         (by default `%USERPROFILE%\AppData\Local\calc\config.nrdl`)
 
+      - On Mac:   `~/Library/Preferences/calc/config.nrdl`
+      - On Linux/POSIX: `${XDG_CONFIG_HOME}/calc/config.nrdl`
+        (by default ~/.config/calc/config.nrdl)` 
+  - A file named `.calc.nrdl` in the directory `/home/skin/Code/djha-skin/calc/`
+    (or any of its parents)
 Options can be set via environment variable as follows:
   - `CALC_FLAG_<OPTION>=1` to enable a flag
   - `CALC_ITEM_<OPTION>=<VALUE>` to set a string value
@@ -127,6 +133,7 @@ Options can be changed or set on the command line in the following ways:
       - `file://location` for a local file
       - `-` for standard input
     Anything else is treated as a file name.
+
 
 The following options have been detected:
 {

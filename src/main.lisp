@@ -861,7 +861,7 @@
                  result))))
     (let* ((result (alexandria:copy-hash-table defaults))
            (system-config-path (os-specific-system-config-dir
-                                 program-name envvar))
+                                 program-name #'envvar))
            (system-config-path-file
              (merge-pathnames
                (make-pathname
@@ -870,7 +870,7 @@
                  :type
                  "nrdl")
                system-config-path))
-           (home-config-path (os-specific-config-dir program-name envvar))
+           (home-config-path (os-specific-config-dir program-name #'envvar))
            (home-config-path-file
              (merge-pathnames
                (make-pathname

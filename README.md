@@ -2,9 +2,10 @@
 
 # Command Line Interface Functional Framework
 
-Do you want to have your app look at config files, the environment, and command
-line to get your app's options, but don't want to have to actually _code_ any of
-that stuff? Feel bogged down by write the same old I/O code for every app?
+Do you want to have your Common Lisp app look at config files, the environment,
+and command line to get your app's options, but don't want to have to actually
+_code_ any of that stuff? Feel bogged down by writing the same old I/O code for
+every app?
 
 Then CLIFF is for you!
 

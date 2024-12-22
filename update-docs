@@ -1,0 +1,4 @@
+#!/bin/sh
+
+ros +Q -e '(asdf:load-system "codex") (codex:document "com.djhaskin.cliff")'
+rsync -avHAX docs/build/cliff-command-line-interface-functional-framework/html/ docs/

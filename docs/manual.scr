@@ -2,11 +2,12 @@
 
 @title(Overview)
 
-Do you want to have your app look at config files, the environment, and command
-line to get your app's options, but don't want to have to actually @i(code) any of
-that stuff? Feel bogged down by write the same old I/O code for every app?
+Do you want to have your Common Lisp app look at config files, the environment,
+and command line to get your app's options, but don't want to have to actually
+@i(code) any of that stuff? Feel bogged down by write the same old I/O code for
+every app?
 
-Then CLIFF is for you!
+Then @link[uri="https://github.com/djha-skin/cliff"](CLIFF) is for you!
 
 @end(section)
 
@@ -22,7 +23,9 @@ The code discussed in this tutorial can be found
 
 CLIFF is on @link[uri="https://github.com/ocicl/ocicl"](OCICL) and
 @link[uri="https://github.com/quicklisp/quicklisp-projects/issues/2458"](I'm
-trying to get it added on Quicklisp).
+trying to get it added on Quicklisp). Otherwise, just clone
+@link[uri="https://github.com/djha-skin/cliff"](the source code) out to your
+QuickLisp or ASDF local projects directory.
 
 @end(section)
 

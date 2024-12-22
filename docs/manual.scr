@@ -286,13 +286,12 @@ other programs.
 @end(section)
 
 @begin(section)
-@title(The Option Tower)
+@title(The Options Tower)
 
 CLIFF gathers options for the calling code tool (in this case @c(calc)) from
 configuration files, environment variables, and command-line flags. It merges
 what it finds from various sources into one single, nested hash table. The
-various sources comprise what we will call the Option Tower.
-
+various sources comprise what we will call the Options Tower.
 
 Let's add something from a configuration file now. CLIFF looks in the present
 working directory, as well as an OS-dependent, home-based location, which is

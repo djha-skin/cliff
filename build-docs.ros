@@ -1,0 +1,26 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -R +Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  ;;; https://github.com/ocicl/ocicl.git
+  #-ocicl
+  (when (probe-file #P"./ocicl/ocicl-runtime.lisp")
+    (load #P"./ocicl/ocicl-runtime.lisp"))
+  (asdf:initialize-source-registry
+  `(:source-registry
+     :ignore-inherited-configuration
+     (:directory ,(uiop:getcwd))))
+  (asdf:load-system "codex")
+  )
+
+(defpackage :ros.script.build-docs.3943893088
+  (:use :cl))
+(in-package :ros.script.build-docs.3943893088)
+
+(defun main (&rest argv)
+  (declare (ignorable argv))
+  (codex:document "com.djha-skin.cliff"))
+;;; vim: set ft=lisp lisp:

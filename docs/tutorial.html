@@ -50,11 +50,13 @@
       </header>
       <div class="content">
         <p>The code discussed in this tutorial can be found
-<a href="htps://github.com/djha-skin/calc">here</a>.</p><h1 id="install">Install</h1><p>CLIFF is on <a href="https://github.com/ocicl/ocicl">OCICL</a> and
+<a href="https://github.com/djha-skin/calc">here</a>.</p><h1 id="install">Install</h1><p>CLIFF is on <a href="https://github.com/ocicl/ocicl">OCICL</a> and
 <a href="https://github.com/quicklisp/quicklisp-projects/issues/2458">I'm
 trying to get it added on Quicklisp</a>. Otherwise, just clone
 <a href="https://github.com/djha-skin/cliff">the source code</a> out to your
-QuickLisp or ASDF local projects directory.</p><h1 id="up-and-running">Up and Running</h1><p>This is a CLI framework/library for the <i>impatient</i>, so
+QuickLisp or ASDF local projects directory. At the moment, you'll probably want
+to clone <a href="https://github.com/djha-skin/nrdl">NRDL</a> out to that
+directory as well, since it's a dependency of CLIFF.</p><h1 id="up-and-running">Up and Running</h1><p>This is a CLI framework/library for the <i>impatient</i>, so
 let's make a CLI tool in Common Lisp <i>really fast</i>.</p><p>We'll make a CLI math calculator.</p><pre><code class="lisp">;;; calculator.lisp -- A CLI calculator.
 ;;;;
 ;;;; SPDX-FileCopyrightText: 2024 Daniel Jay Haskin
@@ -160,9 +162,9 @@ No action exists for the command.
 }
 0
 </code></pre><p>CLIFF generated a generous help page for us. Since we didn't tell it to <i>do</i>
-anything, it figured it should print the help page.</p><p>First, let's compile our program into an executable image and run <code>main</code> as the
-entry point. There are lots of ways to do this. On SBCL, the typical tool of
-choice is
+anything, it figured it should print the help page.</p><p>First, let's compile our program into an executable image and run <code>main</code> as
+the entry point. There are lots of ways to do this. On SBCL, the typical tool
+of choice is
 <a href="https://www.sbcl.org/manual/#Function-sb_002dext-save_002dlisp_002dand_002ddie"><code>save-lisp-and-die</code></a>,
 like this:</p><pre><code class="lisp">(sb-ext:save-lisp-and-die
   &quot;calc&quot;

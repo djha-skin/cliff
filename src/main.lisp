@@ -1,4 +1,5 @@
 (or)
+
 (declaim (optimize (speed 0) (space 0) (debug 3)))
 
 (in-package #:cl-user)
@@ -7,11 +8,13 @@
   #:com.djhaskin.cliff (:use #:cl)
   (:documentation
     "
-    Package that has a function, `execute-program`, which does the following:
+    Package that has a function, @c(execute-program), which does the following:
 
-    - Registers subcommand-functions mapped to specific subcommands
-    - Reads configuration files in standard locations
-    - Reads environment variables
+    @begin(list)
+      @item(Registers subcommand-functions mapped to specific subcommands)
+      @item(Reads configuration files in standard locations)
+      @item(Reads environment variables)
+    @end(list)
 
     According to specific rules and from these rules constructs a hash table
     which is then passed to the subcommands.
@@ -54,9 +57,8 @@
     (eeq #'equal)
     (repeats 256))
   "
-  list consisting of calls to func using arg, then calling func using that
-  result, etc.
-  stops when subsequent calls return equal.
+  List consisting of calls to func using arg, then calling func using that
+  result, etc. Stops when subsequent calls return equal.
   "
   (declare (type integer repeats))
   (when
@@ -431,14 +433,14 @@
   generate-string
   (thing &optional &key (pretty 0))
   "
-  Serialize @cl:param(thing) to NRDL.
+  Serialize @cl:param(thing) to @link[uri=\"https://github.com/djha-skin/nrdl\"](NRDL).
   "
   (with-output-to-string (strm)
     (nrdl:generate-to strm thing :pretty-indent pretty)))
 
 (defun parse-string (thing)
   "
-  Parse the NRDL string @cl:param(thing).
+  Parse the @link[uri=\"https://github.com/djha-skin/nrdl\"](NRDL) string @cl:param(thing).
   "
   (with-input-from-string (strm thing)
     (nrdl:parse-from strm)))
@@ -992,6 +994,7 @@ This is nonsense.
       helps
       subcommand-functions
       cli-aliases
+      environment-aliases
       list-sep
       map-sep)
   (declare (type (or stream boolean) strm)
@@ -1105,8 +1108,20 @@ This is nonsense.
     "      - `-` for standard input~%"
     "    Anything else is treated as a file name.~%"
     "~%")
+  (when environment-aliases
+    (format
+      strm
+      "~@{~@?~}"
+      "The following environment variable aliases have been defined:~%"
+      "~%"
+      "~10@A ~49@A~%" "This" "Translates To")
 
-(when cli-aliases
+    (loop for ( this . that ) in environment-aliases
+          do
+          (format strm "~10@A ~49@A~%" this that)
+          finally
+          (format strm "~%")))
+  (when cli-aliases
     (format
       strm
       "~@{~@?~}"
@@ -1202,32 +1217,36 @@ This is nonsense.
     execute-program
     (program-name
       &key
-      environment-variables
-      subcommand-functions
-      subcommand-helps
-      (strm *standard-output*)
-      (err-strm *error-output*)
-      suppress-final-output
       (cli-arguments t)
-      cli-aliases
-      defaults
-      (setup #'identity)
-      (teardown #'identity)
-      default-function
-      default-func-help
-      root-path
-      reference-file
-      environment-aliases
+      (err-strm *error-output*)
       (list-sep ",")
       (map-sep "=")
-      (enable-help t))
+      (setup #'identity)
+      (strm *standard-output*)
+      (teardown #'identity)
+      cli-aliases
+      default-func-help
+      default-function
+      defaults
+      disable-help
+      environment-aliases
+      environment-variables
+      reference-file
+      root-path
+      subcommand-functions
+      subcommand-helps
+      suppress-final-output)
   "
   @begin(section)
   @title(Overview)
 
-  Gathers options from the Option Tower out of configuration files, environment
-  variables, and the command line arguments into an options table. Calls a
-  user-defined function based on what subcommands were specified; either the
+  The function @c(execute-program) aims to be a simple to use one stop shop for
+  all your command line needs.
+
+  The function gathers options from the Option Tower out of configuration
+  files, environment variables, and the command line arguments into an options
+  table. Then it calls the action function, which is a user-defined function
+  based on what subcommand was specified; either the
   @cl:param(default-function) if no subcommands were given, or the function
   corresponding to the subcommand as given in @cl:param(subcommand-functions)
   will be called. Expects that function to return a results map, with at least
@@ -1242,8 +1261,8 @@ This is nonsense.
   @begin(section)
   @title(Configuration Files)
 
-  The function builds, in successive steps, the options table which will be
-  passed to the function in question.
+  The function first builds, in successive steps, the options table which will
+  be passed to the function in question.
 
   It starts with the options hash table given by the @cl:param(defaults)
   parameter.
@@ -1285,26 +1304,25 @@ This is nonsense.
   @c(necessary-env-var-absent) if the HOME var is not set on non-Windows
   environments and the USERPROFILE variable if on Windows.
 
-  If it finds a NRDL file in this location, it deserializes the contents and
-  merges them into the options table, overriding options when they exist both in
-  the map and the file.
+  If it finds a @link[uri=\"https://github.com/djha-skin/nrdl\"](NRDL) file in
+  this location, it deserializes the contents and merges them into the options
+  table, overriding options when they exist both in the map and the file.
 
-  Finally, it searches for a file called @c(.<program-name>.nrdl) in the
-  present working directory and, if it doesn't exist there, successively in all
-  of its parent directories. If if finds such a file, it deserializes the
-  contents and merges them into the options table, overriding options when they
-  exist both in the map and the file.
+  Finally, it searches for the @cl:param(reference-file) in the
+  @cl:param(root-path). If it can't find the @cl:param(reference-file) in
+  @cl:param(root-path), it searches successively in all of
+  @cl:param(root-path)'s parent directories.
 
-  A more comprehensive description of each parameter is as follows:
+  If it finds such a file in one of these directories, it next looks for the
+  file @c(.<program-name>.nrdl) in that exact directory where
+  @cl:param(reference-file) was found. If that file exists, @c(execute-program)
+  deserializes the contents and merges them into the options table, overriding
+  options when they exist both in the table and the file.
 
-  @begin(list)
-  @item(@cl:param(program-name): The program name. This parameter is used in
-      the default help page (\"Welcome to X!\"), the environment variables
-      capture (seeking for @c(PROGRAM_NAME_XXX) environment variables), and the
-      configuration files capture (seeking for e.g.
-      @c(~/.config/program-name/config.nrdl) files).)
-  @item(@cl;param(environment-variables): The en
-  @end(list)
+  If @cl:param(reference-file) is not given, it is simply taken to be the
+  configuration file itself, namely @c(.<program-name>.nrdl). If
+  @cl:param(root-path) is not given, it is taken to be the present working
+  directory.
 
   @end(section)
 
@@ -1321,13 +1339,13 @@ This is nonsense.
 
   If the variable matches the
   @link[uri=\"http://edicl.github.io/cl-ppcre/\"](regular expression)
-  @c(^(<PROGRAM_NAME>)_(?P<opt>LIST|TABLE|ITEM|FLAG|NRDL)_(?P<arg>.*)$), then the
-  variable's value will be used to add to the resulting options hash table,
+  @c(^(<PROGRAM_NAME>)_(?P<opt>LIST|TABLE|ITEM|FLAG|NRDL)_(?P<arg>.*)$), then
+  the variable's value will be used to add to the resulting options hash table,
   overriding any options which are already there.
 
-  If the @c(opt) part of the regex is @c(LIST), the value of the variable will be
-  split using @c(list-sep) and the resulting list of strings will be associated
-  with the keyword @c(arg) in the options.
+  If the @c(opt) part of the regex is @c(LIST), the value of the variable will
+  be split using @c(list-sep) and the resulting list of strings will be
+  associated with the keyword @c(arg) in the options.
 
   If the @c(opt) is @c(TABLE), the value of the variable will be split using
   @cl:param(list-sep), then each entry in that list will also be split using
@@ -1335,8 +1353,8 @@ This is nonsense.
   hash-table and this hash table is associated to the keyword @c(arg) in the
   options.
 
-  If the @c(opt) is @c(ITEM), the value of the variable will be set to the keyword
-  @c(arg) in the options.
+  If the @c(opt) is @c(ITEM), the value of the variable will be set to the
+  keyword @c(arg) in the options.
 
   If the @c(opt) is @c(NRDL), the value of the variable will be parsed as a NRDL
   string and its resultant value set as the value of the keyword @c(arg) in the
@@ -1360,7 +1378,7 @@ This is nonsense.
   @begin(list)
 
     @item(If the argument's action is @c(enable) or @c(disable) the keyword
-      named) after the option key is associated with @c(t) or @c(nil) in the
+      named after the option key is associated with @c(t) or @c(nil) in the
       resulting hash table, respectively.)
 
     @item(If the argument's action is @c(set), the succeeding argument is taken
@@ -1386,10 +1404,10 @@ This is nonsense.
       overriding any previously set value within the option table.)
 
     @item(If the argument's action is @c(file), it will be assumed that the
-      succeeding argument names a resource consumable via @c(data-slurp). That
-      resource will be slurped in via that function, then deserialized from NRDL.
-      The resulting data will be taken as the value of the option key within the
-      option table, overriding any previously set value within that table.)
+    succeeding argument names a resource consumable via @c(data-slurp). That
+    resource will be slurped in via that function, then deserialized from NRDL.
+    The resulting data will be taken as the value of the option key within the
+    option table, overriding any previously set value within that table.)
 
     @item(If the argument's action is @c(raw), it will be assumed that the
       succeeding argument names a resource consumable via @c(data-slurp). That
@@ -1412,46 +1430,145 @@ This is nonsense.
   with one argument: the options table so far. This function is expected to
   add or remove elements from the options table and return it.
 
-  @end(section)
-
   Having done all this, @c(execute-program) considers the option table is
-  complete and prepares to feed it to the user-specified function.
+  complete and prepares to feed it to the action function.
+
+  @end(section)
 
   @end(section)
 
   @begin(section)
-  @title(Determining the User Specified Function)
+  @title(Determining the Action Function)
 
-  Any other arguments which CLIFF finds on the command line other than those
-  recognized either as @cl:param(cli-aliases) or as options of the form matched
-  by @c(*find-tag*) will be taken as subcommands.
+  Any other arguments which @c(execute-program) finds on the command line other
+  than those recognized either as @cl:param(cli-aliases) or as options of the
+  form matched by @c(*find-tag*) will be taken as subcommand terms.
 
-  CLIFF finds all subcommands and puts them in a list in the order in which
-  they were found. It attempts to find this list (using @cl:spec(equal)) in the
-  alist @cl:param(subcommand-functions). If such a list exists as a key in that
-  alist, the value corresponding to that key is taken to be a function of one
-  argument. This function expects a hash table, the options map previously
-  constructed.
+  @c(execute-program) then finds all such terms puts them in a list in the
+  order in which they were found. It attempts to find this list (using
+  @cl:spec(equal)) in the alist @cl:param(subcommand-functions). If such a list
+  exists as a key in that alist, the value corresponding to that key is taken
+  to be a function of one argument. This function expects a hash table, the
+  options map previously constructed.
 
-  If no subcommands were given, it calls @cl:param(default-function) instead.
+  If no subcommand was given, it calls @cl:param(default-function) instead.
 
   @end(section)
 
   @begin(section)
   @title(The Help Page)
 
+  By default, if @c(execute-program) sees the @c(help) subcommand on in the
+  command line arguments, it will print a help page to @cl:param(err-strm).
+  @cl:param(err-strm) may be given as @c(t), @c(nil), or otherwise must be a
+  stream, just as when calling @cl:spec(format). If left unspecified,
+  @cl:param(err-strm) defaults to standard error. This behavior may be
+  suppressed by setting the @cl:param(disable-help) option to @c(nil). If
+  disabled, Users may then define their own help pages by specifying functions
+  that print them using @cl:param(subcommand-functions).
 
+  This help page gives users the following information:
+
+  @begin(list)
+    @item(Details to users how they may specify options using the Options Tower
+          for the program)
+    @item(Lists all defined environment variable aliases)
+    @item(Lists all defined command line interface aliases)
+    @item(Prints out all options found within the Options Tower in NRDL format.)
+    @item(Prints out whether there is a default action (function) defined.)
+    @item(Prints out all available subcommands).
+  @end(list)
+
+  If there were any subcommand terms after that of the @c(help) term in the
+  command line arguments, they are put in a list and @c(execute-program)
+  attempts to find this list (again, using @cl:spec(equal)) as a key in the
+  alist @cl:param(subcommand-helps). It then prints this help string as part of
+  the documentation found in the help page. If it If there were no such terms
+  after the @c(help) term in the command line arguments, @c(execute-program)
+  prints the help string found in @cl:param(default-help), if any.
 
   @end(section)
 
   @begin(section)
-  @title(Termination)
-  - teardown
-  - results map
-  - output
+  @title(Execution)
+
+  If @c(execute-program) determines the user function to call and what options
+  to put in the option table, it calls that function. This function is either
+  that which prints the default help page as described above, it comes from
+  @cl:param(subcommand-functions) and was chosen based on present subcommand
+  terms on the command line, or comes from @cl:param(default-function) if no
+  subcommand was given on the command line. If no match was found in
+  @cl:param(subcommands-functions) matching the subcommands given on the
+  command line, an error is printed. This function is called the action
+  function.
+
+  It computes the result hash table by taking the return value value of the
+  action function passes it to the function specified in the
+  @cl:param(teardown) parameter, if it was given. If not, the result from the
+  action function is taken as the result hash table itself.
+
+  By default, it then prints this hash table out to @cl:param(strm) as a
+  prettified NRDL document. @cl:param(strm) may be given as @c(t), @c(nil), or
+  otherwise must be a stream, just as when calling @cl:spec(format). If left
+  unspecified, @cl:param(strm) defaults to standard output.
+
+  This return value is expected to be a hash table using @cl:spec(eql)
+  semantics. That table must contain at least one value under the @c(:status)
+  key. The value of this key is expected to be one of the keys found in the
+  @c(*exit-codes*) alist corresponding to what should be the exit status of the
+  whole program. If the function was successful, the value is expected
+  to be @c(:successful). This value will be used as the key to look up a
+  numeric exit code from @c(*exit-codes*). The numeric exit code found will be taken as
+  the desired exit code of the whole program, and will be the first value
+  returned by the function @c(execute-program). The second value will be the
+  result hash table itself.
+
   @end(section)
+
+  @begin(section)
   @title(Error Handling)
-  - catching errors
+
+  During the entirety of its run, @c(execute-program) handles any and all
+  @cl:spec(serious-condition)s. If one is signaled, it computes the exit status
+  of the condition using @c(exit-status) and creates a final result vector
+  containing the return value of that function under the @c(:status) key. It
+  then populates this table with a key called @c(error-message) and any
+  key/value pair found in the alist computed by calling @c(exit-map-members) on
+  the condition.
+
+  It prints this table out in indented NRDL format to @cl:param(err-strm) (or
+  standard error if that option is left unspecified) unless
+  @cl:param(suppress-output) is given as @c(t).
+
+  @c(execute-program) then returns two values: the numeric exit code
+  corresponding to the exit status computed as described above, and the newly
+  constructed result map containing the error information.
+
+  @end(section)
+  @begin(section)
+  @title(Discussion)
+
+  Command line tools necessarily need to do a lot of I/O. @c(execute-program)
+  attempts to encapsulate much of this I/O while providing
+  @link[uri=\"https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html\"](clean
+  architecture) by default. Ideally, @c(execute-program) should enable an
+  action function to be relatively pure, taking an options hash table and
+  returning a result hash table with no other I/O required. This is why
+  @c(execute-program) prints out the resulting hash table at the end. If a pure
+  action function is called, hooking it up to a subcommand or as the default
+  command action using @c(execute-program) should enable this function to
+  interact with the outside world by means of its result table.
+
+  It was also written with dependency injection, testing, and the REPL in mind.
+  Since @c(execute-program) doesn't actually exit the process at the end, only
+  returning values instead, @c(execute-program) may simply be called at the
+  REPL. Many arguments to the function only exist for dependency injection,
+  which enables both testing and REPL development. Generally, many arguments
+  won't be specified in a function call, such as the @cl:param(cli-arguments),
+  @cl:param(environment-variables), @cl:param(err-strm) and @cl:param(strm)
+  parameters (though of course they may be specified if e.g. the user needs to
+  redirect output to a file at need.)
+
   @end(section)
   "
 
@@ -1535,6 +1652,7 @@ This is nonsense.
                            (acons '() default-function subcommand-functions)
                            subcommand-functions)
                        cli-aliases
+                       environment-aliases
                        list-sep
                        map-sep)))
                  (effective-functions
@@ -1545,7 +1663,7 @@ This is nonsense.
                      subcommand-functions))
                  (setup-result (funcall setup opts-from-args))
                      (subcommand-function
-                       (or (and enable-help
+                       (or (and (not disable-help)
                                 (equal (first other-args) "help")
                                 help-function)
                            (cdr (assoc other-args effective-functions :test #'equal))

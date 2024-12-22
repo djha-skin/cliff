@@ -8,6 +8,11 @@ that stuff? Feel bogged down by write the same old I/O code for every app?
 
 Then CLIFF is for you!
 
+## Get it
+
+CLIFF is on [ocicl](https://github.com/ocicl/ocicl) and I'm trying to put it on
+QuickLisp.
+
 ## Documentation
 
 Documentation including installation, tutorials and reference can be found

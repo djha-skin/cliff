@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>
+  Tutorial &ndash; CLIFF: Command Line Interface Functional Framework
+</title>
+    <link rel="stylesheet" href="static/style.css"/>
+    
+  <link rel="stylesheet" href="static/highlight.css"/>
+  <script src="static/highlight.js"></script>
+  <script src="static/load-mathjax.js" async></script>
+  <style>
+   /* Highlight the current top-level TOC item, and hide the TOC of all other items */
+
+   .toc a[data-node="tutorial"] {
+       /*color: #AD3108;*/
+   }
+
+   .toc ol {
+       display: none;
+   }
+
+   .toc li a[data-node="tutorial"] {
+       font-weight: bold;
+   }
+
+   .toc li a[data-node="tutorial"] + ol {
+       display: block;
+   }
+
+   .toc li a[data-node="tutorial"] + ol li {
+       margin-left: 10px;
+   }
+  </style>
+
+  </head>
+  <body>
+    
+  <h1 class="doc-title">CLIFF: Command Line Interface Functional Framework</h1>
+  <article id="article" data-section="tutorial">
+    <aside>
+      <ol class="toc"><li><a href="overview.html" data-node="overview">Overview</a></li><li><a href="tutorial.html" data-node="tutorial">Tutorial</a><ol><li><a href="tutorial.html#install" data-node="install">Install</a></li><li><a href="tutorial.html#up-and-running" data-node="up-and-running">Up and Running</a></li><li><a href="tutorial.html#open-world-configuration" data-node="open-world-configuration">Open World Configuration</a></li><li><a href="tutorial.html#the-option-tower" data-node="the-option-tower">The Option Tower</a></li><li><a href="tutorial.html#add-a-default-function" data-node="add-a-default-function">Add a Default Function</a></li><li><a href="tutorial.html#string-conversion" data-node="string-conversion">String Conversion</a></li><li><a href="tutorial.html#provide-command-line-aliases" data-node="provide-command-line-aliases">Provide Command-Line Aliases</a></li><li><a href="tutorial.html#override-default-output" data-node="override-default-output">Override Default Output</a></li><li><a href="tutorial.html#add-subcommands" data-node="add-subcommands">Add Subcommands</a></li><li><a href="tutorial.html#add-more-help-documentation" data-node="add-more-help-documentation">Add More Help Documentation</a></li><li><a href="tutorial.html#wrap-up" data-node="wrap-up">Wrap-up</a></li></ol></li><li><a href="api-reference.html" data-node="api-reference">API Reference</a><ol><li><a href="com.djhaskin.cliff.html" data-node="com.djhaskin.cliff"><code>com.djhaskin.cliff</code></a><ol><li><a href="0-overview.html" data-node="0-overview">Overview</a></li><li><a href="the-options-tower.html" data-node="the-options-tower">The Options Tower</a><ol><li><a href="configuration-files.html" data-node="configuration-files">Configuration Files</a></li><li><a href="environment-variables.html" data-node="environment-variables">Environment Variables</a></li><li><a href="command-line-arguments.html" data-node="command-line-arguments">Command Line Arguments</a></li><li><a href="the-setup-function.html" data-node="the-setup-function">The Setup Function</a></li></ol></li><li><a href="determining-the-action-function.html" data-node="determining-the-action-function">Determining the Action Function</a></li><li><a href="the-help-page.html" data-node="the-help-page">The Help Page</a></li><li><a href="execution.html" data-node="execution">Execution</a></li><li><a href="error-handling.html" data-node="error-handling">Error Handling</a></li><li><a href="goals-and-discussion.html" data-node="goals-and-discussion">Goals and Discussion</a></li></ol></li><li><a href="com.djhaskin.cliff-errors.html" data-node="com.djhaskin.cliff-errors"><code>com.djhaskin.cliff/errors</code></a></li></ol></li></ol>
+    </aside>
+    <main class="codex-section">
+      <header>
+        <h2 class="section-title">Tutorial</h2>
+      </header>
+      <div class="content">
+        <p>The code discussed in this tutorial can be found
+<a href="htps://github.com/djha-skin/calc">here</a>.</p><h1 id="install">Install</h1><p>CLIFF is on <a href="https://github.com/ocicl/ocicl">OCICL</a> and
+<a href="https://github.com/quicklisp/quicklisp-projects/issues/2458">I'm
+trying to get it added on Quicklisp</a>.</p><h1 id="up-and-running">Up and Running</h1><p>This is a CLI framework/library for the <i>impatient</i>, so
+let's make a CLI tool in Common Lisp <i>really fast</i>.</p><p>We'll make a CLI math calculator.</p><pre><code class="lisp">;;; calculator.lisp -- A CLI calculator.
+;;;;
+;;;; SPDX-FileCopyrightText: 2024 Daniel Jay Haskin
+;;;; SPDX-License-Identifier: MIT
+;;;;
+
+(in-package #:cl-user)
+
+(defpackage
+  #:com.djhaskin.calc (:use #:cl)
+  (:documentation
+    &quot;
+    A CLI calculator.
+    &quot;)
+  (:import-from #:com.djhaskin.cliff)
+  (:local-nicknames
+    (#:cliff #:com.djhaskin.cliff))
+  (:export #:main))
+
+(in-package #:com.djhaskin.calc)
+
+
+(defun main ()
+  (cliff:execute-program
+    &quot;calc&quot;))
+</code></pre><p>We just made a CLI tool.</p><p>This is what happens when we run it:</p><pre><code class=NIL>* (main)
+Welcome to `calc`!
+
+This is a CLIFF-powered program.
+
+Configuration files and, optionally, environment variables can be set
+using NRDL, a JSON superset language. Output will be a NRDL document.
+More information about NRDL can be found here:
+
+https://github.com/djha-skin/nrdl
+
+Options can be given via:
+  - Configuration file, as in `{ &lt;option&gt; &lt;value&gt; }`
+  - Environment variable, as in `CALC_&lt;KIND&gt;_&lt;OPTION&gt;`
+  - Command line, as in `--&lt;action&gt;-&lt;option&gt;`
+
+Configuration files are consulted first, then environment variables, then
+the command line, with later values overriding earlier ones.
+
+Configuration files can be in the following locations:
+  - A file named `.calc.nrdl` in the directory `&lt;YOUR-CURRENT-PWD&gt;`
+    (or any of its parents)
+  - A home-directory config file in an OS-specific location:
+      - On Linux: `${XDG_CONFIG_HOME}/calc/config.nrdl`
+        (by default ~/.config/calc/config.nrdl)`
+      - On Mac:   `~/Library/Preferences/calc/config.nrdl`
+      - On Windows: `%LOCALAPPDATA%\calc\config.nrdl`
+        (by default `%USERPROFILE%\AppData\Local\calc\config.nrdl`)
+
+Options can be set via environment variable as follows:
+  - `CALC_FLAG_&lt;OPTION&gt;=1` to enable a flag
+  - `CALC_ITEM_&lt;OPTION&gt;=&lt;VALUE&gt;` to set a string value
+  - `CALC_LIST_&lt;OPTION&gt;=&lt;VAL1&gt;,&lt;VAL2&gt;,...` to set a list option
+  - `CALC_TABLE_&lt;OPTION&gt;=&lt;KEY1&gt;,&lt;VAL1&gt;=&lt;KEY2&gt;,&lt;VAL2&gt;=...` to set
+     a key/value table option
+  - `CALC_NRDL_&lt;OPTION&gt;=&lt;NRDL_STRING&gt;` to set a value using
+     a NRDL string
+  - `CALC_FILE_&lt;OPTION&gt;=&lt;FILE_PATH&gt;` to set a value using the contents
+     of a NRDL document from a file as if by the `--file-*` flag
+  - `CALC_RAW_&lt;OPTION&gt;=&lt;FILE_PATH&gt;` to set a value using the raw bytes
+    of a file as if by the `--raw-*` flag
+
+Options can be changed or set on the command line in the following ways:
+  - To enable a flag, use `--enable-&lt;option&gt;`.
+  - To disable a flag, use `--disable-&lt;option&gt;`.
+  - To reset any value, use `--reset-&lt;option&gt;`.
+  - To add to a list, use `--add-&lt;option&gt; &lt;value&gt;`.
+  - To set a string value, use `--set-&lt;option&gt; &lt;value&gt;`.
+  - To set using a NRDL string, use `--nrdl-&lt;option&gt; &lt;value&gt;`.
+  - To set using NRDL contents from a nrdl document from file,
+    use `--file-&lt;option&gt; &lt;url&gt;`.
+  - To set using the raw bytes of a file, use `--raw-&lt;option&gt; &lt;url&gt;`.
+
+  - For `--file-&lt;option&gt;` and `--raw-&lt;option&gt;`, URLs are also supported:
+      - `http(s)://user:password@url` for basic auth
+      - `http(s)://header=val@url` for a header
+      - `http(s)://token@url` for a bearer token
+      - `file://location` for a local file
+      - `-` for standard input
+    Anything else is treated as a file name.
+
+The following options have been detected:
+{
+}
+Documentation not found.
+
+No action exists for the command.
+
+{
+    status successful
+}
+0
+</code></pre><p>CLIFF generated a generous help page for us. Since we didn't tell it to <i>do</i>
+anything, it figured it should print the help page.</p><p>First, let's compile our program into an executable image and run <code>main</code> as the
+entry point. There are lots of ways to do this. On SBCL, the typical tool of
+choice is
+<a href="https://www.sbcl.org/manual/#Function-sb_002dext-save_002dlisp_002dand_002ddie"><code>save-lisp-and-die</code></a>,
+like this:</p><pre><code class="lisp">(sb-ext:save-lisp-and-die
+  &quot;calc&quot;
+  :toplevel #'main
+  :executable t
+  :compression t
+  :save-runtime-options t)
+</code></pre><p>Then from the command line:</p><pre><code class=NIL>$ calc
+</code></pre><p>We get the same output as before.</p><h1 id="open-world-configuration">Open World Configuration</h1><p>CLIFF is a different kind of CLI framework. It assumes what we'll call an &quot;open
+world&quot; configuration. It defines a correct format for options to appear
+in configuration files, the environment, and the command line, and gathers them
+as it sees them. This frees the developer from having to over-specify their
+command line options when just starting out. It also enables some interesting
+workflows where the developer can pass the options hash table down to lower
+libraries, which may or may not expect certain options set in the table.</p><p>Since we didn't tell it to do anything yet, it just prints the help page in
+addition to what it finds. This part of the output shows what options have been
+found:</p><pre><code class=NIL>The following options have been detected:
+{
+}
+</code></pre><p>Looks like it didn't find anything. Let's help it find some options.</p><p>Now let's add some options:</p><pre><code class=NIL>$ calc --enable-floating-point
+</code></pre><p>When we run this, CLIFF's help page prints this at the bottom:</p><pre><code class="nrdl">{
+    floating-point true
+}
+</code></pre><p>It's printing out that big nested hash table of options it finds, but in
+<a href="https://github.com/djha-skin/nrdl">NRDL</a>, a JSON superset data
+language designed to work well for configuration files and as well as command
+line output for programs written in lisp. It was specially built to power
+CLIFF.</p><p>The equivalent alist might be</p><pre><code class="lisp">'((:FLOATING-POINT . t))
+</code></pre><p>Cool. Let's try to add more options.</p><pre><code class="bash">export CALC_LIST_OPERANDS=1,2,3,4,5
+export CALC_TABLE_NAMES=plus=+,minus=-,times=*
+./calc
+</code></pre><p>The help page now shows this:</p><pre><code class="nrdl">{
+    floating-point true
+    names {
+        minus &quot;-&quot;
+        plus &quot;+&quot;
+        times &quot;*&quot;
+    }
+    operands [
+        &quot;1&quot;
+        &quot;2&quot;
+        &quot;3&quot;
+        &quot;4&quot;
+        &quot;5&quot;
+    ]
+}
+</code></pre><p>Notice that the <code>operands</code> are added as strings. This is true of most options
+added to the options hash table via command line arguments or environment
+variables. However, there is a workaround: using <code>--nrdl-*</code> on the CLI or the
+<code>CALC_NRDL_&lt;thing&gt;</code> environment variable.</p><p>To demonstrate this, we run our command with a <code>--nrdl-*</code> option as follows:</p><pre><code class="bash">export CALC_NRDL_OPERANDS=[1,2,3,4,5]
+./calc --nrdl-divisors '{&quot;one&quot;: 1, &quot;two&quot;: 2, &quot;three&quot;: 3}'
+</code></pre><p>Doing so yields this output at the end of the help page:</p><pre><code class="nrdl">{
+    divisors {
+        &quot;one&quot; 1
+        &quot;three&quot; 3
+        &quot;two&quot; 2
+    }
+}
+</code></pre><p>The user can specify <i>any</i> option in this way, <i>even if the program doesn't
+use it</i>. This way, the command can take some options verbatim and pass it on,
+print it out, return it, or change it in arbitrary ways. This open-world
+assumption of options allows the program to compose better with libraries and
+other programs.</p><h1 id="the-option-tower">The Option Tower</h1><p>CLIFF gathers options for the calling code tool (in this case <code>calc</code>) from
+configuration files, environment variables, and command-line flags. It merges
+what it finds from various sources into one single, nested hash table. The
+various sources comprise what we will call the Option Tower.</p><p>
+Let's add something from a configuration file now. CLIFF looks in the present
+working directory, as well as an OS-dependent, home-based location, which is
+printed out in the help page.</p><p>Let's make a file corresponding to the &quot;home directory&quot; option. Make a file
+called <code>~/.config/calc/config.nrdl</code>(on Linux) and put the following content in
+it (if you are on a different OS, consult the help page above):</p><pre><code class="nrdl">{
+    floating-point-size double
+    scale 11
+    name-of-calculation &quot;fizzle&quot;
+    calculations [
+       {
+          operands [
+            1
+            2
+            3
+            4
+            5
+          ]
+          operator +
+        }
+        {
+          operands [
+            10
+            20
+            30
+            40
+            50
+          ]
+          operator *
+        }
+      ]
+}
+</code></pre><p>Now we run <code>./calc</code> and it yields this output:</p><pre><code class="nrdl">{
+    calculations [
+        {
+            operands [
+                1
+                2
+                3
+                4
+                5
+            ]
+            operator +
+        }
+        {
+            operands [
+                10
+                20
+                30
+                40
+                50
+            ]
+            operator *
+        }
+    ]
+    floating-point-size double
+    name-of-calculation &quot;fizzle&quot;
+    scale 11
+}
+</code></pre><p>Now we add a file called <code>.calc.nrdl</code> in the current directory with this
+content:</p><pre><code class="nrdl">{
+  flaoting-point false
+  sumall true
+}
+</code></pre><p>Now when we run <code>./calc</code>, we see that it sees these options:</p><pre><code class="nrdl">{
+    calculations [
+        {
+            operands [
+                1
+                2
+                3
+                4
+                5
+            ]
+            operator +
+        }
+        {
+            operands [
+                10
+                20
+                30
+                40
+                50
+            ]
+            operator *
+        }
+    ]
+    floating-point false
+    floating-point-size double
+    name-of-calculation &quot;fizzle&quot;
+    names {
+        minus &quot;-&quot;
+        plus &quot;+&quot;
+        times &quot;*&quot;
+    }
+    operands [
+        &quot;1&quot;
+        &quot;2&quot;
+        &quot;3&quot;
+        &quot;4&quot;
+        &quot;5&quot;
+    ]
+    scale 11
+    sumall true
+}
+</code></pre><p>Note the <code>sumall</code> key we added in <code>.calc.nrdl</code> and the <code>floating-point</code>
+key. The <code>floating-point</code> key was true in the home config file, but was
+overridden in the current directory config file. Now, CLIFF looks both in the
+present working directory <i>and all its parents</i>, and uses the file it may or
+may not find as an override to the home directory config file, which serves as
+a base.</p><p>Let's say we want to override the <code>scale</code> key with environment variables. We
+set <code>CALC_NRDL_SCALE=10</code>(we use NRDL to ensure that, as a number, it is
+parsed).</p><p>Now we see that <code>scale</code> is 10 in the output.</p><p>To override environment variables, set command line flags.</p><p>To see this, we will call <code>calc</code> with an option override for
+<code>set-name-of-calculation</code>:</p><pre><code class=NIL>./calc --set-name-of-calculation dizzle
+</code></pre><p>We see that <code>name-of-calculation</code> is set to <code>&quot;dizzle&quot;</code> in the printed out help
+page.</p><p>Sweet. We have a bunch of options. Our app observes 12-factor goodness by
+default, checking for config files, environment variables, and even harvesting
+options for us from the command line, all without us having to write much.</p><p>
+</p><h1 id="add-a-default-function">Add a Default Function</h1><p>Now let's do something with this information. Right now the command just prints
+out a help page when the command line tool is called. Change the lisp file
+which calls <code>execute-program</code> and add a default function, like this:</p><p>
+</p><pre><code class="lisp">;;;; calculator.lisp -- A CLI calculator.
+;;;;
+;;;; SPDX-FileCopyrightText: 2024 Daniel Jay Haskin
+;;;; SPDX-License-Identifier: MIT
+;;;;
+;;;;
+
+(in-package #:cl-user)
+
+(defpackage
+  #:com.djhaskin.calc (:use #:cl)
+  (:documentation
+    &quot;
+    A CLI calculator.
+    &quot;)
+  (:import-from #:com.djhaskin.cliff)
+  (:local-nicknames
+    (#:nrdl #:com.djhaskin.nrdl)
+    (#:cliff #:com.djhaskin.cliff))
+  (:export #:main))
+
+(in-package #:com.djhaskin.calc)
+
+
+(defparameter operators
+    `((&quot;+&quot; . ,#'+)
+      (&quot;-&quot; . ,#'-)
+      (&quot;*&quot; . ,#'*)
+      (&quot;/&quot; . ,#'/)))
+
+(defun calc (options)
+  (let* ((result (make-hash-table :test #'equal))
+
+         (operands (cliff:ensure-option-exists :operands options))
+         (operator (cliff:ensure-option-exists :operator options))
+         (func (cdr (assoc operator operators :test #'equal))))
+    (setf (gethash :result result)(apply func operands))
+    (setf (gethash :status result) :successful)
+    result))
+
+
+(defun main ()
+  (sb-ext:exit
+    :code
+    (cliff:execute-program
+      &quot;calc&quot;
+      :default-function #'calc)))
+</code></pre><p>We have some changes here in <code>calculator.lisp</code> from our original listing.</p><p>First, we create a new function called <code>calc</code>. It takes one argument, <code>options</code>,
+which will be that hash table of options we have been discussing building.</p><p>It calls <code>cliff:ensure-option-exists</code> on specific options that it expects to be
+present in the hash table. This function ensures a particular key exists in the
+hash table, and if it doesn't, it signals an error.</p><p>We then set it as the <code>:default-function</code> when we call <code>cliff:execute-program</code>.</p><p>We also add <code>sb-ext:exit</code> and set <code>:code</code> as the return value of
+<code>cliff:execute-program</code> to ensure the exit code is propogated to the OS.</p><p>Now we compile and run our program:</p><pre><code class=NIL>$ ./calc
+{
+    error-message
+        |Abnormal exit error
+        |
+        ^
+    missing-option operands
+    status cl-usage-error
+}
+$ echo $?
+64
+</code></pre><p>We see that a <code>:cl-usage-error</code> error has been signaled and that the command
+returned a non-zero status code corresponding to the type of error signaled.
+The error is printed to standard output in the form of a NRDL document.</p><p>In fact, by default, everything CLIFF prints out will be in the form of a NRDL
+document, though as we'll see, this can be turned off. This default is to
+enable CLIFF to fulfill its mission: just plug a few functions into CLIFF, and
+it'll handle the rest. I/O is all taken care of by default, in a human-friendly
+machine readable format.</p><p>Let's call <code>./calc</code> again, with operands and an operator.</p><p>Because CLIFF doesn't care where it gets its options, we can mix and match where
+they come from. In our example, we'll say that we pretty much always want <code>calc</code>
+to use <code>+</code> as an operator, unless we want to override it. We'll put that in our
+configuration file, and specify the operands on the CLI.</p><p>We put this in our <code>.calc.nrdl</code> in the current directory:</p><pre><code class=NIL>{
+    operator &quot;+&quot;
+}
+</code></pre><p>And then we call <code>./calc</code>:</p><pre><code class=NIL>$ ./calc --nrdl-operands '[1,2,3,4]'
+{
+   result 10
+   status successful
+}
+</code></pre><h1 id="string-conversion">String Conversion</h1><p>Next, we observe that specifying operands might be more convenient if they were
+specified one at a time, like this:</p><pre><code class=NIL>./calc --add-operands 1 --add-operands 2 --add-operands 3 --add-operands 4
+</code></pre><p>If we run that though, we get an error:</p><pre><code class=NIL>$ ./calc --add-operands 1 --add-operands 2 --add-operands 3 --add-operands 4
+{
+    error-datum &quot;\&quot;4\&quot;&quot;
+    error-expected-type &quot;NUMBER&quot;
+    error-message
+        |The value
+        |  &quot;4&quot;
+        |is not of type
+        |  NUMBER
+        ^
+
+    status data-format-error
+}
+</code></pre><p>Calc doesn't know what &quot;type&quot; arguments are when they are specified on the
+command line, so it assumes they are a string. We can see this when we run</p><pre><code class=NIL>./calc help --add-operands 1 --add-operands 2
+</code></pre><p>The help page shows what <code>calc</code> actually sees:</p><pre><code class=NIL>The following options have been detected:
+{
+    operands [
+        &quot;2&quot;
+        &quot;1&quot;
+    ]
+    operator [
+        &quot;+&quot;
+    ]
+}
+</code></pre><p>It shows our default operator, but it also shows our operands as a list of
+strings.</p><p>If we expect that our operands will always be specified on the command line
+rather than the environment or via config file, we may wish to check for strings
+and convert them to non-strings if possible.</p><p>To allow for this, CLIFF provides <code>:setup</code> and <code>:teardown</code> optional arguments to
+<code>execute-program</code>. The <code>:setup</code> function takes an options map and return a modified
+version. This is the version which the main logic functions will see. The <code>:teardown</code>
+function takes the map that the main logic functions create, changes or creates
+a new version based on it, and returns that. This modified map will be what
+CLIFF sees when it starts to try to wrap up the program.</p><p>These functions provide a lot of power in terms of what we can do or how we can
+interact with CLIFF.</p><p>To accomplish the string to number transformation, we add a <code>:setup</code> lambda:</p><pre><code class="lisp">(defun main (argv)
+  (cliff:execute-program
+    &quot;calc&quot;
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator &quot;+&quot;))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))))
+</code></pre><p>Then we recompile and run again:</p><pre><code class=NIL>$ ./calc --add-operands 1 --add-operands 2
+{
+    result 3
+    status successful
+}
+</code></pre><p>The downside is that operands would need to be specified as strings if there
+ever were a need to put them in a configuration file, but if the target audience
+typically uses the command line to specify the arguments, then maybe this is a
+good trade-off.</p><h1 id="provide-command-line-aliases">Provide Command-Line Aliases</h1><p>It feels bad to make the user punch in <code>--add-operands</code> for every operand. We
+would like to enable a single letter for that option, so we will add a CLI alias
+for it using <code>execute-program</code>'s optional <code>:cli-aliases</code> option:</p><pre><code class="lisp">(defun main (argv)
+  (cliff:execute-program
+    &quot;calc&quot;
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator &quot;+&quot;))
+    :cli-aliases
+    '((&quot;-h&quot; . &quot;help&quot;)
+      (&quot;--help&quot; . &quot;help&quot;)
+      (&quot;-o&quot; . &quot;--add-operands&quot;))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))))
+</code></pre><p>Note, we also added <code>--help</code> and <code>-h</code> aliases.</p><p>CLI Aliases are simple substitutions. If CLIFF sees what is specified as a key
+in the alist on the command line, it will replace it with the value.</p><p>CLIFF provides a `help` subcommand, but not a `--help` or `-h` option. Providing
+these aliases will help the user if they don't know what to do.</p><p>We also added the `-o` alias to mean `--add-operands`.</p><p>Now we can recompile and run with the new, nice shorter arguments:</p><pre><code class=NIL>$ ./calc -o 1 -o 2 -o 3
+{
+    result 6
+    status successful
+}
+</code></pre><h1 id="override-default-output">Override Default Output</h1><p>The main mission of CLIFF is to enable users to write potentially pure
+functions, and hook them up to the command-line, configuration files, and the
+environment using <code>execute-program</code> so that the function can just do what
+functions do best: compute. In order to fulfill its mission, it provides
+default output, which is simply printing the result hash table returned by the
+command function in NRDL format.</p><p>However, if more control over output is desired, it
+is easy to take back control.</p><p>We first add <code>:suppress-final-output t</code> to the call to <code>execute-program</code>:</p><pre><code class="lisp">(defun main (argv)
+  (cliff:execute-program
+    &quot;calc&quot;
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator &quot;+&quot;))
+    :cli-aliases
+    '((&quot;-h&quot; . &quot;help&quot;)
+      (&quot;--help&quot; . &quot;help&quot;)
+      (&quot;-o&quot; . &quot;--add-operands&quot;))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))
+    :suppress-final-output t))
+</code></pre><p>We also add a <code>format</code> call to our <code>calc</code> function:</p><pre><code class="lisp">(defun calc (options)
+  (let* ((result (make-hash-table :test #'equal))
+         (operands (cliff:ensure-option-exists :operands options))
+         (operator (cliff:ensure-option-exists :operator options))
+         (func (cdr (assoc &quot;+&quot; operators :test #'equal)))
+         (out (apply func operands)))
+    (format t &quot;~A~%&quot; out)
+    (setf (gethash :result result) out)
+    (setf (gethash :status result) :successful)
+    result))
+</code></pre><p>Now our output is much simpler:</p><pre><code class=NIL>$ ./calc -o 1 -o 2 -o 3
+6
+</code></pre><p>Also, the CLI aliases we defined were added automatically to the help page:</p><pre><code class=NIL>$ ./calc help
+...
+The following command line aliases have been defined:
+
+      This                                     Translates To
+        -h                                              help
+    --help                                              help
+        -o                                    --add-operands
+...
+</code></pre><h1 id="add-subcommands">Add Subcommands</h1><p>As a means of demonstration, we will add different calculation operators
+(multiply, divide, add, subtract) as subcommands and get rid of the default
+action, ensuring the command run with no subcommands will print the help page.</p><p>All we need to do is provide an alist mapping different collections of
+subcommands with different functions, where the functions expect an option table
+and return a result table.</p><p>First, we'll add some additional operators:</p><pre><code class="lisp">(defparameter operators
+    `((&quot;+&quot; . ,#'+)
+      (&quot;-&quot; . ,#'-)
+      (&quot;*&quot; . ,#'*)
+      (&quot;/&quot; . ,#'/)
+      (&quot;&amp;&quot; . ,#'logand)
+      (&quot;%&quot; . ,(lambda (&amp;rest args)
+                (multiple-value-bind
+                    (quotient remainder)
+                    (apply #'truncate args)
+                  remainder)))))
+</code></pre><p>For demonstration purposes, we'll create some functions that just set the
+operator and then pass execution into our previously created <code>calc</code> function:</p><pre><code class="lisp">(defun programmer-and (options)
+  (setf (gethash :operator options) &quot;&amp;&quot;)
+  (calc options))
+
+(defun modulus (options)
+  (setf (gethash :operator options) &quot;%&quot;)
+  (calc options))
+</code></pre><p>
+Then we just add these new functions as subcommands:</p><pre><code class="lisp">(defun main (argv)
+  (cliff:execute-program
+    &quot;calc&quot;
+    :subcommand-functions
+    `(((&quot;programmer&quot; &quot;and&quot;) . ,#'programmer-and)
+      ((&quot;modulus&quot;) . ,#'modulus))
+    :default-function #'calc
+    :cli-arguments argv
+    :defaults '((:operator &quot;+&quot;))
+    :cli-aliases
+    '((&quot;-h&quot; . &quot;help&quot;)
+      (&quot;--help&quot; . &quot;help&quot;)
+      (&quot;-o&quot; . &quot;--add-operands&quot;))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))
+    :suppress-final-output t))
+</code></pre><p>Not the <code>:subcommand-functions</code> argument above. It maps collections of
+subcommands to the function that should be called when that subcommand is
+specified.</p><p>After compiling again, we can now do this:</p><pre><code class=NIL>$ ./calc programmer and -o 1 -o 3
+1
+$ ./calc modulus -o 3 -o 5
+2
+</code></pre><h1 id="add-more-help-documentation">Add More Help Documentation</h1><p>CLIFF is pretty good at adding general documentation around the option tower,
+but not really around each individual function.</p><p>Specifying the default function's help is pretty easy, just give a string
+argument to the <code>:default-func-help</code> option. Specifying help strings for the
+different subcommands are likewise easy; just give an alist that map subcommand
+strings to help strings in the <code>:subcommand-helps</code> option:</p><pre><code class="lisp">(defun main (argv)
+  (cliff:execute-program
+    &quot;calc&quot;
+    :subcommand-functions
+    `(((&quot;programmer&quot; &quot;and&quot;) . ,#'programmer-and)
+      ((&quot;modulus&quot;) . ,#'modulus))
+    :subcommand-helps
+    <code>(((&quot;programmer&quot; &quot;and&quot;) . &quot;Sets the operator to )&amp;`&quot;)
+      ((&quot;modulus&quot;) . &quot;Sets the operator to <code>%</code>&quot;)</code>
+    :default-function #'calc
+    :default-func-help
+    (format
+      nil
+      &quot;~@{~@?~}&quot;
+      &quot;Welcome to calc.~%&quot;
+      &quot;~%&quot;
+      &quot;This is a calculator CLI.~%&quot;
+      &quot;~%&quot;
+      &quot;The default action expects these options:~%&quot;
+      &quot;  operand           Specify operand~%&quot;
+      &quot;                    (may be specified multiple times)~%&quot;
+      &quot;  operator (string) Specify operator~%&quot;)
+    :cli-arguments argv
+    :defaults '((:operator &quot;+&quot;))
+    :cli-aliases
+    '((&quot;-h&quot; . &quot;help&quot;)
+      (&quot;--help&quot; . &quot;help&quot;)
+      (&quot;-o&quot; . &quot;--add-operands&quot;))
+    :setup (lambda (options)
+             (let ((operands (gethash :operands options)))
+               (setf (gethash :operands options)
+                     (map 'list #'parse-integer operands))
+               options))
+    :suppress-final-output t))
+</code></pre><p>Now running <code>./calc help</code> shows the default function help:</p><pre><code class=NIL>$ ./calc help
+...
+Documentation:
+
+Welcome to calc.
+
+This is a calculator CLI.
+
+The default action expects these options:
+  operand           Specify operand
+                    (may be specified multiple times)
+  operator (string) Specify operator
+</code></pre><p>Likewise, running <code>./calc help modulus</code> and <code>./calc help programmer and</code> return
+their respective helps at the bottom of the help page:</p><pre><code class=NIL>Documentation for subcommand `modulus`:
+
+Sets the operator to `%`
+</code></pre><pre><code class=NIL>Documentation for subcommand `programmer and`:
+
+Sets the operator to `&amp;`
+</code></pre><h1 id="wrap-up">Wrap-up</h1><p>We have created a fully-functional CLI tool. It is a 12 factor app that looks in
+config files, the environment, and the command line for its options and merges
+them together. We have easily been able to add commands, subcommands, and
+documentation for them. We have also shown how we can have simpler arguments on
+the command line.</p>
+      </div>
+    </main>
+  </article>
+  <footer>
+    <div class="info">
+      Created with <a href="https://github.com/CommonDoc/codex">Codex</a>.
+    </div>
+  </footer>
+  <script>
+   HighlightLisp.highlight_auto();
+  </script>
+
+  </body>
+</html>

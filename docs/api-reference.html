@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>
+  API Reference &ndash; CLIFF: Command Line Interface Functional Framework
+</title>
+    <link rel="stylesheet" href="static/style.css"/>
+    
+  <link rel="stylesheet" href="static/highlight.css"/>
+  <script src="static/highlight.js"></script>
+  <script src="static/load-mathjax.js" async></script>
+  <style>
+   /* Highlight the current top-level TOC item, and hide the TOC of all other items */
+
+   .toc a[data-node="api-reference"] {
+       /*color: #AD3108;*/
+   }
+
+   .toc ol {
+       display: none;
+   }
+
+   .toc li a[data-node="api-reference"] {
+       font-weight: bold;
+   }
+
+   .toc li a[data-node="api-reference"] + ol {
+       display: block;
+   }
+
+   .toc li a[data-node="api-reference"] + ol li {
+       margin-left: 10px;
+   }
+  </style>
+
+  </head>
+  <body>
+    
+  <h1 class="doc-title">CLIFF: Command Line Interface Functional Framework</h1>
+  <article id="article" data-section="api-reference">
+    <aside>
+      <ol class="toc"><li><a href="overview.html" data-node="overview">Overview</a></li><li><a href="tutorial.html" data-node="tutorial">Tutorial</a><ol><li><a href="tutorial.html#install" data-node="install">Install</a></li><li><a href="tutorial.html#up-and-running" data-node="up-and-running">Up and Running</a></li><li><a href="tutorial.html#open-world-configuration" data-node="open-world-configuration">Open World Configuration</a></li><li><a href="tutorial.html#the-option-tower" data-node="the-option-tower">The Option Tower</a></li><li><a href="tutorial.html#add-a-default-function" data-node="add-a-default-function">Add a Default Function</a></li><li><a href="tutorial.html#string-conversion" data-node="string-conversion">String Conversion</a></li><li><a href="tutorial.html#provide-command-line-aliases" data-node="provide-command-line-aliases">Provide Command-Line Aliases</a></li><li><a href="tutorial.html#override-default-output" data-node="override-default-output">Override Default Output</a></li><li><a href="tutorial.html#add-subcommands" data-node="add-subcommands">Add Subcommands</a></li><li><a href="tutorial.html#add-more-help-documentation" data-node="add-more-help-documentation">Add More Help Documentation</a></li><li><a href="tutorial.html#wrap-up" data-node="wrap-up">Wrap-up</a></li></ol></li><li><a href="api-reference.html" data-node="api-reference">API Reference</a><ol><li><a href="api-reference.html#com.djhaskin.cliff" data-node="com.djhaskin.cliff"><code>com.djhaskin.cliff</code></a><ol><li><a href="0-overview.html" data-node="0-overview">Overview</a></li><li><a href="the-options-tower.html" data-node="the-options-tower">The Options Tower</a><ol><li><a href="configuration-files.html" data-node="configuration-files">Configuration Files</a></li><li><a href="environment-variables.html" data-node="environment-variables">Environment Variables</a></li><li><a href="command-line-arguments.html" data-node="command-line-arguments">Command Line Arguments</a></li><li><a href="the-setup-function.html" data-node="the-setup-function">The Setup Function</a></li></ol></li><li><a href="determining-the-action-function.html" data-node="determining-the-action-function">Determining the Action Function</a></li><li><a href="the-help-page.html" data-node="the-help-page">The Help Page</a></li><li><a href="execution.html" data-node="execution">Execution</a></li><li><a href="error-handling.html" data-node="error-handling">Error Handling</a></li><li><a href="goals-and-discussion.html" data-node="goals-and-discussion">Goals and Discussion</a></li></ol></li><li><a href="api-reference.html#com.djhaskin.cliff-errors" data-node="com.djhaskin.cliff-errors"><code>com.djhaskin.cliff/errors</code></a></li></ol></li></ol>
+    </aside>
+    <main class="codex-section">
+      <header>
+        <h2 class="section-title">API Reference</h2>
+      </header>
+      <div class="content">
+        <p>This section details the use of the actual API presented by CLIFF.</p><h1 id="com.djhaskin.cliff"><code>com.djhaskin.cliff</code></h1><p>This package's main export is the function <code>execute-program</code>, but it also
+exports other convenience functions listed below, as well as re-exporting all
+the public symbols of the <code>com.djhaskin.cliff/errors</code> package.
+<div class="codex-doc-node codex-operator codex-function"><code class="codex-name">execute-program</code><code class="codex-lambda-list">(program-name &amp;key (cli-arguments t) (err-strm *error-output*) (list-sep ,) (map-sep =) (setup (function identity)) (strm *standard-output*) (teardown (function identity)) cli-aliases default-func-help default-function defaults disable-help environment-aliases environment-variables reference-file root-path subcommand-functions subcommand-helps suppress-final-output)</code><div class="codex-docstring"><p>
+  </p><h2 id="0-overview">Overview</h2><p>  The function <code>execute-program</code> aims to be a simple to use one stop shop for
+  all your command line needs.</p><p>  The function gathers options from the Option Tower out of configuration
+  files, environment variables, and the command line arguments into an options
+  table. Then it calls the action function, which is a user-defined function
+  based on what subcommand was specified; either the
+  <code class="codex-param">default-function</code> if no subcommands were given, or the function
+  corresponding to the subcommand as given in <code class="codex-param">subcommand-functions</code>
+  will be called. Expects that function to return a results map, with at least
+  the <code>:status</code> key set to one of the values listed in the <code>*exit-codes*</code>
+  map.</p><p>  </p><p>  </p><h2 id="the-options-tower">The Options Tower</h2><p>  </p><h3 id="configuration-files">Configuration Files</h3><p>  The function first builds, in successive steps, the options table which will
+  be passed to the function in question.</p><p>  It starts with the options hash table given by the <code class="codex-param">defaults</code>
+  parameter.</p><p>  The function next examines the given <code class="codex-param">environment-variables</code>,
+  which should be given as an alist with keys as variable names and values as
+  their values. If no list is given, the currently environment variables will
+  be queried from the OS.</p><p>  Uses those environment variables to find an OS-specific system-wide
+  configuration file in one of the following locations:</p><p>  </p><ul><li><b>Windows</b>: <code>%PROGRAMDATA%&lt;program-name&gt;config.nrdl</code>, or
+        <code>C:ProgramData&lt;program-name&gt;config.nrdl</code> if that environment
+        variable is not set.</li><li><b>Mac</b>: <code>/Library/Preferences/&lt;program-name&gt;/config.nrdl</code></li><li><b>Linux/POSIX</b>: <code>/etc/&lt;program-name&gt;/config.nrdl</code></li></ul><p>  It reads this file and deserializes the options from it, merging them into
+  the options table, overriding any options when they exist both in the map and
+  the file.</p><p>  Next, it looks for options in an OS-specific, user-specific
+  home-directory-based configuration file in one of the following locations:</p><p>  </p><ul><li><b>Windows</b>: <code>%LOCALAPPDATA%&lt;program-name&gt;config.nrdl</code>, or
+        <code>%USERPROFILE%AppDataLocal&lt;program-name&gt;config.nrdl</code> if that
+        environment variable is not set.</li><li><b>Mac</b>: <code>$HOME/Library/Preferences/&lt;program-name&gt;/config.nrdl</code></li><li><b>Linux/POSIX</b>: <code>$XDG_CONFIG_HOME/&lt;program-name&gt;/config.nrdl</code>, or
+        <code>$HOME/.config/&lt;program-name&gt;/config.nrdl</code> if XDG_CONFIG_HOME is not
+        set.</li></ul><p>  When performing this search, <code>execute-program</code> may signal an error of type
+  <code>necessary-env-var-absent</code> if the HOME var is not set on non-Windows
+  environments and the USERPROFILE variable if on Windows.</p><p>  If it finds a <a href="https://github.com/djha-skin/nrdl">NRDL</a> file in
+  this location, it deserializes the contents and merges them into the options
+  table, overriding options when they exist both in the map and the file.</p><p>  Finally, it searches for the <code class="codex-param">reference-file</code> in the
+  <code class="codex-param">root-path</code>. If it can't find the <code class="codex-param">reference-file</code> in
+  <code class="codex-param">root-path</code>, it searches successively in all of
+  <code class="codex-param">root-path</code>'s parent directories.</p><p>  If it finds such a file in one of these directories, it next looks for the
+  file <code>.&lt;program-name&gt;.nrdl</code> in that exact directory where
+  <code class="codex-param">reference-file</code> was found. If that file exists, <code>execute-program</code>
+  deserializes the contents and merges them into the options table, overriding
+  options when they exist both in the table and the file.</p><p>  If <code class="codex-param">reference-file</code> is not given, it is simply taken to be the
+  configuration file itself, namely <code>.&lt;program-name&gt;.nrdl</code>. If
+  <code class="codex-param">root-path</code> is not given, it is taken to be the present working
+  directory.</p><p>  </p><p>  </p><h3 id="environment-variables">Environment Variables</h3><p>  Next, it examines the <code class="codex-param">environment-variables</code> for any options given
+  by environment variable. Again, <code class="codex-param">environment-variables</code> should be
+  given as an alist with keys as variable names and values as their values. If
+  no list is given, the currently environment variables will be queried from
+  the OS.</p><p>  For each environment variable, it examines its form.</p><p>  If the variable matches the
+  <a href="http://edicl.github.io/cl-ppcre/">regular expression</a>
+  <code>^(&lt;PROGRAM_NAME&gt;)_(?P&lt;opt&gt;LIST|TABLE|ITEM|FLAG|NRDL)_(?P&lt;arg&gt;.*)$</code>, then
+  the variable's value will be used to add to the resulting options hash table,
+  overriding any options which are already there.</p><p>  If the <code>opt</code> part of the regex is <code>LIST</code>, the value of the variable will
+  be split using <code>list-sep</code> and the resulting list of strings will be
+  associated with the keyword <code>arg</code> in the options.</p><p>  If the <code>opt</code> is <code>TABLE</code>, the value of the variable will be split using
+  <code class="codex-param">list-sep</code>, then each entry in that list will also be split using
+  <code class="codex-param">map-sep</code>. The resulting key/value pair list is turned into a
+  hash-table and this hash table is associated to the keyword <code>arg</code> in the
+  options.</p><p>  If the <code>opt</code> is <code>ITEM</code>, the value of the variable will be set to the
+  keyword <code>arg</code> in the options.</p><p>  If the <code>opt</code> is <code>NRDL</code>, the value of the variable will be parsed as a NRDL
+  string and its resultant value set as the value of the keyword <code>arg</code> in the
+  returned options hash table.</p><p>  In addition, any environment variables whose names match any keys in the
+  <code class="codex-param">environment-aliases</code> alist will be treated as if their names were
+  actually the value of that key's entry.</p><p>  </p><p>  </p><h3 id="command-line-arguments">Command Line Arguments</h3><p>  Finally, <code>execute-program</code> turns its attention to the command line.</p><p>  It examines each argument in turn. It looks for options of the form
+  <code>--&lt;action&gt;-&lt;option-key&gt;</code>, though this is configurable via <code>*find-tag*</code>.
+  It deals with options of this form according to the following rules:</p><p>  </p><ul><li>If the argument's action is <code>enable</code> or <code>disable</code> the keyword
+      named after the option key is associated with <code>t</code> or <code>nil</code> in the
+      resulting hash table, respectively.</li><li>If the argument's action is <code>set</code>, the succeeding argument is taken
+      as the string value of the key corresponding to the option key given in
+      the argument, overriding any previously set value within the option
+      table.</li><li>If the argument's action is <code>add</code>, the succeeding argument is taken
+      as a string value which must be appended to the value of the option key
+      within the option table, assuming that the value of such is already a
+      list.</li><li>If the argument's action is <code>join</code>, the succeeding argument must be
+      of the form <code>&lt;key&gt;&lt;map-sep&gt;&lt;value&gt;</code>, where <code>map-sep</code> is the value of
+      the parameter <code class="codex-param">map-sep</code>. The key specified becomes a keyword,
+      and the value a string, set as a hash table entry of the hash table found
+      under the option key within the parent option table, assuming the value
+      of such is already a hash table.</li><li>If the argument's action is <code>nrdl</code>, the succeeding argument must be
+      a valid NRDL document, specified as a string. This argument's deserialized
+      value will be taken as the value of the option key within the option map,
+      overriding any previously set value within the option table.</li><li>If the argument's action is <code>file</code>, it will be assumed that the
+    succeeding argument names a resource consumable via <code>data-slurp</code>. That
+    resource will be slurped in via that function, then deserialized from NRDL.
+    The resulting data will be taken as the value of the option key within the
+    option table, overriding any previously set value within that table.</li><li>If the argument's action is <code>raw</code>, it will be assumed that the
+      succeeding argument names a resource consumable via <code>data-slurp</code>. That
+      resource will be slurped in via that function, as a raw string. That
+      string will be taken as the value of the option key within the option
+      table, overriding any previously set value within that table.</li></ul><p>  In addition, any argument of any form whose string value <a href="http://l1sp.org/cl/equal"><code>equal</code></a>'s
+  any keys in the <code class="codex-param">cli-aliases</code> alist will be treated as if their
+  string value were actually the value of that key's entry.</p><p>  </p><p>  </p><h3 id="the-setup-function">The Setup Function</h3><p>  Finally, if a setup function is specified via <code class="codex-param">setup</code>, it is called
+  with one argument: the options table so far. This function is expected to
+  add or remove elements from the options table and return it.</p><p>  Having done all this, <code>execute-program</code> considers the option table is
+  complete and prepares to feed it to the action function.</p><p>  </p><p>  </p><p>  </p><h2 id="determining-the-action-function">Determining the Action Function</h2><p>  Any other arguments which <code>execute-program</code> finds on the command line other
+  than those recognized either as <code class="codex-param">cli-aliases</code> or as options of the
+  form matched by <code>*find-tag*</code> will be taken as subcommand terms.</p><p>  <code>execute-program</code> then finds all such terms puts them in a list in the
+  order in which they were found. It attempts to find this list (using
+  <a href="http://l1sp.org/cl/equal"><code>equal</code></a>) in the alist <code class="codex-param">subcommand-functions</code>. If such a list
+  exists as a key in that alist, the value corresponding to that key is taken
+  to be a function of one argument. This function expects a hash table, the
+  options map previously constructed.</p><p>  If no subcommand was given, it calls <code class="codex-param">default-function</code> instead.</p><p>  </p><p>  </p><h2 id="the-help-page">The Help Page</h2><p>  By default, if <code>execute-program</code> sees the <code>help</code> subcommand on in the
+  command line arguments, it will print a help page to <code class="codex-param">err-strm</code>.
+  <code class="codex-param">err-strm</code> may be given as <code>t</code>, <code>nil</code>, or otherwise must be a
+  stream, just as when calling <a href="http://l1sp.org/cl/format"><code>format</code></a>. If left unspecified,
+  <code class="codex-param">err-strm</code> defaults to standard error. This behavior may be
+  suppressed by setting the <code class="codex-param">disable-help</code> option to <code>nil</code>. If
+  disabled, Users may then define their own help pages by specifying functions
+  that print them using <code class="codex-param">subcommand-functions</code>.</p><p>  This help page gives users the following information:</p><p>  </p><ul><li>Details to users how they may specify options using the Options Tower
+          for the program</li><li>Lists all defined environment variable aliases</li><li>Lists all defined command line interface aliases</li><li>Prints out all options found within the Options Tower in NRDL format.</li><li>Prints out whether there is a default action (function) defined.</li><li>Prints out all available subcommands</li></ul><p>  If there were any subcommand terms after that of the <code>help</code> term in the
+  command line arguments, they are put in a list and <code>execute-program</code>
+  attempts to find this list (again, using <a href="http://l1sp.org/cl/equal"><code>equal</code></a>) as a key in the
+  alist <code class="codex-param">subcommand-helps</code>. It then prints this help string as part of
+  the documentation found in the help page. If it If there were no such terms
+  after the <code>help</code> term in the command line arguments, <code>execute-program</code>
+  prints the help string found in <code class="codex-param">default-help</code>, if any.</p><p>  </p><p>  </p><h2 id="execution">Execution</h2><p>  If <code>execute-program</code> determines the user function to call and what options
+  to put in the option table, it calls that function. This function is either
+  that which prints the default help page as described above, it comes from
+  <code class="codex-param">subcommand-functions</code> and was chosen based on present subcommand
+  terms on the command line, or comes from <code class="codex-param">default-function</code> if no
+  subcommand was given on the command line. If no match was found in
+  <code class="codex-param">subcommands-functions</code> matching the subcommands given on the
+  command line, an error is printed. This function is called the action
+  function.</p><p>  It computes the result hash table by taking the return value value of the
+  action function passes it to the function specified in the
+  <code class="codex-param">teardown</code> parameter, if it was given. If not, the result from the
+  action function is taken as the result hash table itself.</p><p>  By default, it then prints this hash table out to <code class="codex-param">strm</code> as a
+  prettified NRDL document. <code class="codex-param">strm</code> may be given as <code>t</code>, <code>nil</code>, or
+  otherwise must be a stream, just as when calling <a href="http://l1sp.org/cl/format"><code>format</code></a>. If left
+  unspecified, <code class="codex-param">strm</code> defaults to standard output.</p><p>  This return value is expected to be a hash table using <a href="http://l1sp.org/cl/eql"><code>eql</code></a>
+  semantics. That table must contain at least one value under the <code>:status</code>
+  key. The value of this key is expected to be one of the keys found in the
+  <code>*exit-codes*</code> alist corresponding to what should be the exit status of the
+  whole program. If the function was successful, the value is expected
+  to be <code>:successful</code>. This value will be used as the key to look up a
+  numeric exit code from <code>*exit-codes*</code>. The numeric exit code found will be taken as
+  the desired exit code of the whole program, and will be the first value
+  returned by the function <code>execute-program</code>. The second value will be the
+  result hash table itself.</p><p>  </p><p>  </p><h2 id="error-handling">Error Handling</h2><p>  During the entirety of its run, <code>execute-program</code> handles any and all
+  <a href="http://l1sp.org/cl/serious-condition"><code>serious-condition</code></a>s. If one is signaled, it computes the exit status
+  of the condition using <code>exit-status</code> and creates a final result vector
+  containing the return value of that function under the <code>:status</code> key. It
+  then populates this table with a key called <code>error-message</code> and any
+  key/value pair found in the alist computed by calling <code>exit-map-members</code> on
+  the condition.</p><p>  It prints this table out in indented NRDL format to <code class="codex-param">err-strm</code>(or
+  standard error if that option is left unspecified) unless
+  <code class="codex-param">suppress-output</code> is given as <code>t</code>.</p><p>  <code>execute-program</code> then returns two values: the numeric exit code
+  corresponding to the exit status computed as described above, and the newly
+  constructed result map containing the error information.</p><p>  </p><p>
+  </p><h2 id="goals-and-discussion">Goals and Discussion</h2><p>  Command line tools necessarily need to do a lot of I/O. <code>execute-program</code>
+  attempts to encapsulate much of this I/O while providing
+  <a href="https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html">clean
+  architecture</a> by default. Ideally, <code>execute-program</code> should enable an
+  action function to be relatively pure, taking an options hash table and
+  returning a result hash table with no other I/O required. This is why
+  <code>execute-program</code> prints out the resulting hash table at the end. If a pure
+  action function is called, hooking it up to a subcommand or as the default
+  command action using <code>execute-program</code> should enable this function to
+  interact with the outside world by means of its result table.</p><p>  It was also written with dependency injection, testing, and the REPL in mind.
+  Since <code>execute-program</code> doesn't actually exit the process at the end, only
+  returning values instead, <code>execute-program</code> may simply be called at the
+  REPL. Many arguments to the function only exist for dependency injection,
+  which enables both testing and REPL development. Generally, many arguments
+  won't be specified in a function call, such as the <code class="codex-param">cli-arguments</code>,
+  <code class="codex-param">environment-variables</code>, <code class="codex-param">err-strm</code> and <code class="codex-param">strm</code>
+  parameters (though of course they may be specified if e.g. the user needs to
+  redirect output to a file at need.)</p><p>  </p><p>
+  </p></div></div>
+</p><h1 id="com.djhaskin.cliff-errors"><code>com.djhaskin.cliff/errors</code></h1><p>
+<div class="codex-doc-node codex-variable"><code class="codex-name">*exit-codes*</code><div class="codex-docstring"><p>
+  This parameter points to a hash table mapping keywords used by CLIFF
+  to numeric error codes. These error codes and their names are taken from
+  Linux's <code>/usr/include/sysexit.h</code> in an attempt to be somewhat compliant to
+  that OS's standard.</p><p>  Here are its contents:</p><p>  </p><table><tr><td><b>Exit Code Name</b></td>
+      <td><b>Exit Code</b></td>
+    </tr>
+    <tr><td>:unknown-error</td>
+      <td>128</td>
+    </tr>
+    <tr><td>:general-error</td>
+      <td>1</td>
+    </tr>
+    <tr><td>:successful</td>
+      <td>0</td>
+    </tr>
+    <tr><td>:cl-usage-error</td>
+      <td>64</td>
+    </tr>
+    <tr><td>:data-format-error</td>
+      <td>65</td>
+    </tr>
+    <tr><td>:no-input-error</td>
+      <td>66</td>
+    </tr>
+    <tr><td>:no-user-error</td>
+      <td>67</td>
+    </tr>
+    <tr><td>:no-host-error</td>
+      <td>68</td>
+    </tr>
+    <tr><td>:service-unavailable</td>
+      <td>69</td>
+    </tr>
+    <tr><td>:internal-software-error</td>
+      <td>70</td>
+    </tr>
+    <tr><td>:system-error</td>
+      <td>71</td>
+    </tr>
+    <tr><td>:os-file-error</td>
+      <td>72</td>
+    </tr>
+    <tr><td>:cant-create-file</td>
+      <td>73</td>
+    </tr>
+    <tr><td>:input-output-error</td>
+      <td>74</td>
+    </tr>
+    <tr><td>:temporary-failure</td>
+      <td>75</td>
+    </tr>
+    <tr><td>:protocol-error</td>
+      <td>76</td>
+    </tr>
+    <tr><td>:permission-denied</td>
+      <td>77</td>
+    </tr>
+    <tr><td>:configuration-error</td>
+      <td>78</td>
+    </tr>
+  </table><p>
+  </p></div></div>
+<div class="codex-doc-node codex-operator codex-generic-function"><code class="codex-name">exit-status</code><code class="codex-lambda-list">(condition)</code><div class="codex-docstring"><p>
+    Return a keyword describing the program exit status implied by a given
+    condition. This keyword must be in <code>*exit-codes*</code>.</p><p>    Users may define their own methods to this function.
+    </p></div></div>
+<div class="codex-doc-node codex-operator codex-generic-function"><code class="codex-name">exit-map-members</code><code class="codex-lambda-list">(condition)</code><div class="codex-docstring"><p>
+   Return an alist of items to be added to the exit map of CLIFF in the event
+   of the condition in question being caught by <code>execute-program</code>.</p><p>   This generic function has been implemented for all standard Common Lisp
+   <a href="http://l1sp.org/cl/condition"><code>condition</code></a> types.</p><p>   Users may define their own methods to this function. Arbitrary mappings
+   between keywords and
+   <a href="https://github.com/djha-skin/nrdl">NRDL</a>-serializable objects
+   are allowed in the resulting alist.
+   </p></div></div>
+</p>
+      </div>
+    </main>
+  </article>
+  <footer>
+    <div class="info">
+      Created with <a href="https://github.com/CommonDoc/codex">Codex</a>.
+    </div>
+  </footer>
+  <script>
+   HighlightLisp.highlight_auto();
+  </script>
+
+  </body>
+</html>

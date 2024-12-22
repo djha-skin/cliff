@@ -12,7 +12,8 @@ Then CLIFF is for you!
 ## Get it
 
 CLIFF is on [ocicl](https://github.com/ocicl/ocicl) and I'm trying to put it on
-QuickLisp.
+QuickLisp. Otherwise, just clone it to your local QuickLisp/ASDF projects
+directory :)
 
 ## Documentation
 

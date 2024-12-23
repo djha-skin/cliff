@@ -7,7 +7,7 @@ exec ros -R +Q -- $0 "$@"
   (ros:ensure-asdf)
   ;;; https://github.com/ocicl/ocicl.git
   #-ocicl
-  (when (probe-file #P"./ocicl/ocicl-runtime.lisp")
+  (when (probe-file #P"~/.local/share/ocicl/ocicl-runtime.lisp")
     (load #P"./ocicl/ocicl-runtime.lisp"))
   (asdf:initialize-source-registry
   `(:source-registry

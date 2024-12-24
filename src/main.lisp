@@ -33,7 +33,6 @@
     (:export
       generate-string
       parse-string
-      slurp-stream
       data-slurp
       *find-tag*
       invalid-subcommand
@@ -313,13 +312,18 @@
 
   ((env-var :initarg :env-var
             :initform (error "Need to give argument `:env-var`.")
-            :reader env-var))
+            :reader env-var
+            :documentation
+            "
+            Environment variable that should exist (but doesn't).
+            "))
   (:documentation
     "
     Condition used by CLIFF to signal that a required environment variable
     is not present.
 
-    Implmements @c(exit-status) and @c(exit-map-members).
+    Implmements @c(exit-status) and
+    @c(exit-map-members).
     ")
   (:report (lambda (condition stream)
              (format stream "Environment variable `~A` not specified.~&"
@@ -450,12 +454,13 @@
   (cl-ppcre:create-scanner
     "^--([^-]+)-(.+)$")
   "
-  @c(cl-ppcre) regex scanner containing two capture groups, the first of which
-  must capture the CLI verb (one of @c(enable), @c(disable), @c(reset),
-  @c(add), @c(set), @c(nrdl), or @c(file)), and the second of which is the name
-  of the variable. This is used ultimately by @c(execute-program) to recognize
-  command line options (as opposed to subcommands). Currently its value corresponds
-  to the regular expression @c(\"^--([^-]+)-(.+)$\").
+  @link[uri=\"http://edicl.github.io/cl-ppcre/\"](@c(cl-ppcre)) regex scanner
+  containing two capture groups, the first of which must capture the CLI verb
+  (one of @c(enable), @c(disable), @c(reset), @c(add), @c(set), @c(nrdl), or
+  @c(file)), and the second of which is the name of the variable. This is used
+  ultimately by @c(execute-program) to recognize command line options (as
+  opposed to subcommands). Currently its value corresponds to the regular
+  expression @c(\"^--([^-]+)-(.+)$\").
   ")
 
 (defparameter
@@ -916,13 +921,19 @@
 (define-condition invalid-subcommand (error)
   ((given-subcommand :initarg :given-subcommand
                      :initform nil
-                     :reader given-subcommand))
+                     :reader given-subcommand
+                     :documentation
+                     "
+                     Subcommand terms found on the command line.
+                     "
+                     ))
   (:documentation
     "
     Condition used by CLIFF to signal there were no functions given to
     CLIFF that correspond the subcommand given.
 
-    Implmements @c(exit-status) and @c(exit-map-members).
+    Implmements @c(exit-status) and
+    @c(exit-map-members).
    ")
   (:report (lambda (this strm)
              (format strm
@@ -1250,8 +1261,8 @@ This is nonsense.
   @cl:param(default-function) if no subcommands were given, or the function
   corresponding to the subcommand as given in @cl:param(subcommand-functions)
   will be called. Expects that function to return a results map, with at least
-  the @c(:status) key set to one of the values listed in the @c(*exit-codes*)
-  map.
+  the @c(:status) key set to one of the values listed in the
+  @c(*exit-codes*) hash table.
 
   @end(section)
 
@@ -1276,8 +1287,8 @@ This is nonsense.
   configuration file in one of the following locations:
 
   @begin(list)
-    @item(@b(Windows): @c(%PROGRAMDATA%\<program-name>\config.nrdl), or
-        @c(C:\ProgramData\<program-name>\config.nrdl) if that environment
+    @item(@b(Windows): @c(%PROGRAMDATA%\\<program-name>\\config.nrdl), or
+        @c(C:\\ProgramData\\<program-name>\\config.nrdl) if that environment
         variable is not set.)
     @item(@b(Mac): @c(/Library/Preferences/<program-name>/config.nrdl))
     @item(@b(Linux/POSIX): @c(/etc/<program-name>/config.nrdl))
@@ -1291,8 +1302,8 @@ This is nonsense.
   home-directory-based configuration file in one of the following locations:
 
   @begin(list)
-    @item(@b(Windows): @c(%LOCALAPPDATA%\<program-name>\config.nrdl), or
-        @c(%USERPROFILE%\AppData\Local\<program-name>\config.nrdl) if that
+    @item(@b(Windows): @c(%LOCALAPPDATA%\\<program-name>\\config.nrdl), or
+        @c(%USERPROFILE%\\AppData\\Local\\<program-name>\\config.nrdl) if that
         environment variable is not set.)
     @item(@b(Mac): @c($HOME/Library/Preferences/<program-name>/config.nrdl))
     @item(@b(Linux/POSIX): @c($XDG_CONFIG_HOME/<program-name>/config.nrdl), or
@@ -1301,8 +1312,9 @@ This is nonsense.
   @end(list)
 
   When performing this search, @c(execute-program) may signal an error of type
-  @c(necessary-env-var-absent) if the HOME var is not set on non-Windows
-  environments and the USERPROFILE variable if on Windows.
+  @c(necessary-env-var-absent) if the HOME var is
+  not set on non-Windows environments and the @c(USERPROFILE) variable if on
+  Windows.
 
   If it finds a @link[uri=\"https://github.com/djha-skin/nrdl\"](NRDL) file in
   this location, it deserializes the contents and merges them into the options
@@ -1344,7 +1356,7 @@ This is nonsense.
   overriding any options which are already there.
 
   If the @c(opt) part of the regex is @c(LIST), the value of the variable will
-  be split using @c(list-sep) and the resulting list of strings will be
+  be split using @cl:param(list-sep) and the resulting list of strings will be
   associated with the keyword @c(arg) in the options.
 
   If the @c(opt) is @c(TABLE), the value of the variable will be split using
@@ -1392,11 +1404,11 @@ This is nonsense.
       list.)
 
     @item(If the argument's action is @c(join), the succeeding argument must be
-      of the form @c(<key><map-sep><value>), where @c(map-sep) is the value of
-      the parameter @cl:param(map-sep). The key specified becomes a keyword,
-      and the value a string, set as a hash table entry of the hash table found
-      under the option key within the parent option table, assuming the value
-      of such is already a hash table.)
+      of the form @c(<key><map-sep><value>), where @cl:param(map-sep) is the
+      value of the parameter @cl:param(map-sep). The key specified becomes a
+      keyword, and the value a string, set as a hash table entry of the hash
+      table found under the option key within the parent option table, assuming
+      the value of such is already a hash table.)
 
     @item(If the argument's action is @c(nrdl), the succeeding argument must be
       a valid NRDL document, specified as a string. This argument's deserialized
@@ -1410,10 +1422,10 @@ This is nonsense.
     option table, overriding any previously set value within that table.)
 
     @item(If the argument's action is @c(raw), it will be assumed that the
-      succeeding argument names a resource consumable via @c(data-slurp). That
-      resource will be slurped in via that function, as a raw string. That
-      string will be taken as the value of the option key within the option
-      table, overriding any previously set value within that table.)
+    succeeding argument names a resource consumable via @c(data-slurp). That
+    resource will be slurped in via that function, as a raw string. That string
+    will be taken as the value of the option key within the option table,
+    overriding any previously set value within that table.)
 
   @end(list)
 
@@ -1442,7 +1454,8 @@ This is nonsense.
 
   Any other arguments which @c(execute-program) finds on the command line other
   than those recognized either as @cl:param(cli-aliases) or as options of the
-  form matched by @c(*find-tag*) will be taken as subcommand terms.
+  form matched by @c(*find-tag*) will be
+  taken as subcommand terms.
 
   @c(execute-program) then finds all such terms puts them in a list in the
   order in which they were found. It attempts to find this list (using
@@ -1516,12 +1529,12 @@ This is nonsense.
   semantics. That table must contain at least one value under the @c(:status)
   key. The value of this key is expected to be one of the keys found in the
   @c(*exit-codes*) alist corresponding to what should be the exit status of the
-  whole program. If the function was successful, the value is expected
-  to be @c(:successful). This value will be used as the key to look up a
-  numeric exit code from @c(*exit-codes*). The numeric exit code found will be taken as
-  the desired exit code of the whole program, and will be the first value
-  returned by the function @c(execute-program). The second value will be the
-  result hash table itself.
+  whole program. If the function was successful, the value is expected to be
+  @c(:successful). This value will be used as the key to look up a numeric exit
+  code from c(*exit-codes*). The numeric exit code found will be taken as the
+  desired exit code of the whole program, and will be the first value returned
+  by the function @c(execute-program). The second value will be the result hash
+  table itself.
 
   @end(section)
 
@@ -1533,8 +1546,8 @@ This is nonsense.
   of the condition using @c(exit-status) and creates a final result vector
   containing the return value of that function under the @c(:status) key. It
   then populates this table with a key called @c(error-message) and any
-  key/value pair found in the alist computed by calling @c(exit-map-members) on
-  the condition.
+  key/value pair found in the alist computed by calling @c(exit-map-members)
+  on the condition.
 
   It prints this table out in indented NRDL format to @cl:param(err-strm) (or
   standard error if that option is left unspecified) unless

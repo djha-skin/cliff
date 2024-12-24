@@ -989,20 +989,25 @@ exports other convenience functions listed below, as well as re-exporting all
 the public symbols of the @c(com.djhaskin.cliff/errors) package.
 
 @cl:with-package[name="com.djhaskin.cliff"](
-@cl:doc[ref=anchor-execute-program](function execute-program)
+@cl:doc(function execute-program)
+@cl:doc(function ensure-option-exists)
+@cl:doc(function data-slurp)
+@cl:doc(function parse-string)
+@cl:doc(function generate-string)
+@cl:doc(function find-file)
+@cl:doc(condition necessary-env-var-absent)
+@cl:doc(condition invalid-subcommand)
+@cl:doc(variable *find-tag*)
 )
-
 @end(section)
 
 @begin(section)
 @title(@c(com.djhaskin.cliff/errors))
-
 @cl:with-package[name="com.djhaskin.cliff/errors"](
 @cl:doc(variable *exit-codes*)
 @cl:doc(generic exit-status)
 @cl:doc(generic exit-map-members)
 )
-
 @end(section)
 
 @end(section)

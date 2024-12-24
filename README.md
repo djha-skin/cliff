@@ -1,4 +1,4 @@
-![CLIFF logo](cliff.png)
+![CLIFF logo](docs/assets/logo.png)
 
 # Command Line Interface Functional Framework
 

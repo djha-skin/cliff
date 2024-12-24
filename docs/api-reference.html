@@ -61,25 +61,26 @@ the public symbols of the <code>com.djhaskin.cliff/errors</code> package.
   <code class="codex-param">default-function</code> if no subcommands were given, or the function
   corresponding to the subcommand as given in <code class="codex-param">subcommand-functions</code>
   will be called. Expects that function to return a results map, with at least
-  the <code>:status</code> key set to one of the values listed in the <code>*exit-codes*</code>
-  map.</p><p>  </p><p>  </p><h2 id="1-the-options-tower">The Options Tower</h2><p>  </p><h3 id="configuration-files">Configuration Files</h3><p>  The function first builds, in successive steps, the options table which will
+  the <code>:status</code> key set to one of the values listed in the
+  <code>*exit-codes*</code> hash table.</p><p>  </p><p>  </p><h2 id="1-the-options-tower">The Options Tower</h2><p>  </p><h3 id="configuration-files">Configuration Files</h3><p>  The function first builds, in successive steps, the options table which will
   be passed to the function in question.</p><p>  It starts with the options hash table given by the <code class="codex-param">defaults</code>
   parameter.</p><p>  The function next examines the given <code class="codex-param">environment-variables</code>,
   which should be given as an alist with keys as variable names and values as
   their values. If no list is given, the currently environment variables will
   be queried from the OS.</p><p>  Uses those environment variables to find an OS-specific system-wide
-  configuration file in one of the following locations:</p><p>  </p><ul><li><b>Windows</b>: <code>%PROGRAMDATA%&lt;program-name&gt;config.nrdl</code>, or
-        <code>C:ProgramData&lt;program-name&gt;config.nrdl</code> if that environment
+  configuration file in one of the following locations:</p><p>  </p><ul><li><b>Windows</b>: <code>%PROGRAMDATA%\&lt;program-name&gt;\config.nrdl</code>, or
+        <code>C:\ProgramData\&lt;program-name&gt;\config.nrdl</code> if that environment
         variable is not set.</li><li><b>Mac</b>: <code>/Library/Preferences/&lt;program-name&gt;/config.nrdl</code></li><li><b>Linux/POSIX</b>: <code>/etc/&lt;program-name&gt;/config.nrdl</code></li></ul><p>  It reads this file and deserializes the options from it, merging them into
   the options table, overriding any options when they exist both in the map and
   the file.</p><p>  Next, it looks for options in an OS-specific, user-specific
-  home-directory-based configuration file in one of the following locations:</p><p>  </p><ul><li><b>Windows</b>: <code>%LOCALAPPDATA%&lt;program-name&gt;config.nrdl</code>, or
-        <code>%USERPROFILE%AppDataLocal&lt;program-name&gt;config.nrdl</code> if that
+  home-directory-based configuration file in one of the following locations:</p><p>  </p><ul><li><b>Windows</b>: <code>%LOCALAPPDATA%\&lt;program-name&gt;\config.nrdl</code>, or
+        <code>%USERPROFILE%\AppData\Local\&lt;program-name&gt;\config.nrdl</code> if that
         environment variable is not set.</li><li><b>Mac</b>: <code>$HOME/Library/Preferences/&lt;program-name&gt;/config.nrdl</code></li><li><b>Linux/POSIX</b>: <code>$XDG_CONFIG_HOME/&lt;program-name&gt;/config.nrdl</code>, or
         <code>$HOME/.config/&lt;program-name&gt;/config.nrdl</code> if XDG_CONFIG_HOME is not
         set.</li></ul><p>  When performing this search, <code>execute-program</code> may signal an error of type
-  <code>necessary-env-var-absent</code> if the HOME var is not set on non-Windows
-  environments and the USERPROFILE variable if on Windows.</p><p>  If it finds a <a href="https://github.com/djha-skin/nrdl">NRDL</a> file in
+  <code>necessary-env-var-absent</code> if the HOME var is
+  not set on non-Windows environments and the <code>USERPROFILE</code> variable if on
+  Windows.</p><p>  If it finds a <a href="https://github.com/djha-skin/nrdl">NRDL</a> file in
   this location, it deserializes the contents and merges them into the options
   table, overriding options when they exist both in the map and the file.</p><p>  Finally, it searches for the <code class="codex-param">reference-file</code> in the
   <code class="codex-param">root-path</code>. If it can't find the <code class="codex-param">reference-file</code> in
@@ -100,7 +101,7 @@ the public symbols of the <code>com.djhaskin.cliff/errors</code> package.
   <code>^(&lt;PROGRAM_NAME&gt;)_(?P&lt;opt&gt;LIST|TABLE|ITEM|FLAG|NRDL)_(?P&lt;arg&gt;.*)$</code>, then
   the variable's value will be used to add to the resulting options hash table,
   overriding any options which are already there.</p><p>  If the <code>opt</code> part of the regex is <code>LIST</code>, the value of the variable will
-  be split using <code>list-sep</code> and the resulting list of strings will be
+  be split using <code class="codex-param">list-sep</code> and the resulting list of strings will be
   associated with the keyword <code>arg</code> in the options.</p><p>  If the <code>opt</code> is <code>TABLE</code>, the value of the variable will be split using
   <code class="codex-param">list-sep</code>, then each entry in that list will also be split using
   <code class="codex-param">map-sep</code>. The resulting key/value pair list is turned into a
@@ -121,11 +122,11 @@ the public symbols of the <code>com.djhaskin.cliff/errors</code> package.
       as a string value which must be appended to the value of the option key
       within the option table, assuming that the value of such is already a
       list.</li><li>If the argument's action is <code>join</code>, the succeeding argument must be
-      of the form <code>&lt;key&gt;&lt;map-sep&gt;&lt;value&gt;</code>, where <code>map-sep</code> is the value of
-      the parameter <code class="codex-param">map-sep</code>. The key specified becomes a keyword,
-      and the value a string, set as a hash table entry of the hash table found
-      under the option key within the parent option table, assuming the value
-      of such is already a hash table.</li><li>If the argument's action is <code>nrdl</code>, the succeeding argument must be
+      of the form <code>&lt;key&gt;&lt;map-sep&gt;&lt;value&gt;</code>, where <code class="codex-param">map-sep</code> is the
+      value of the parameter <code class="codex-param">map-sep</code>. The key specified becomes a
+      keyword, and the value a string, set as a hash table entry of the hash
+      table found under the option key within the parent option table, assuming
+      the value of such is already a hash table.</li><li>If the argument's action is <code>nrdl</code>, the succeeding argument must be
       a valid NRDL document, specified as a string. This argument's deserialized
       value will be taken as the value of the option key within the option map,
       overriding any previously set value within the option table.</li><li>If the argument's action is <code>file</code>, it will be assumed that the
@@ -133,17 +134,18 @@ the public symbols of the <code>com.djhaskin.cliff/errors</code> package.
     resource will be slurped in via that function, then deserialized from NRDL.
     The resulting data will be taken as the value of the option key within the
     option table, overriding any previously set value within that table.</li><li>If the argument's action is <code>raw</code>, it will be assumed that the
-      succeeding argument names a resource consumable via <code>data-slurp</code>. That
-      resource will be slurped in via that function, as a raw string. That
-      string will be taken as the value of the option key within the option
-      table, overriding any previously set value within that table.</li></ul><p>  In addition, any argument of any form whose string value <a href="http://l1sp.org/cl/equal"><code>equal</code></a>'s
+    succeeding argument names a resource consumable via <code>data-slurp</code>. That
+    resource will be slurped in via that function, as a raw string. That string
+    will be taken as the value of the option key within the option table,
+    overriding any previously set value within that table.</li></ul><p>  In addition, any argument of any form whose string value <a href="http://l1sp.org/cl/equal"><code>equal</code></a>'s
   any keys in the <code class="codex-param">cli-aliases</code> alist will be treated as if their
   string value were actually the value of that key's entry.</p><p>  </p><p>  </p><h3 id="the-setup-function">The Setup Function</h3><p>  Finally, if a setup function is specified via <code class="codex-param">setup</code>, it is called
   with one argument: the options table so far. This function is expected to
   add or remove elements from the options table and return it.</p><p>  Having done all this, <code>execute-program</code> considers the option table is
   complete and prepares to feed it to the action function.</p><p>  </p><p>  </p><p>  </p><h2 id="determining-the-action-function">Determining the Action Function</h2><p>  Any other arguments which <code>execute-program</code> finds on the command line other
   than those recognized either as <code class="codex-param">cli-aliases</code> or as options of the
-  form matched by <code>*find-tag*</code> will be taken as subcommand terms.</p><p>  <code>execute-program</code> then finds all such terms puts them in a list in the
+  form matched by <code>*find-tag*</code> will be
+  taken as subcommand terms.</p><p>  <code>execute-program</code> then finds all such terms puts them in a list in the
   order in which they were found. It attempts to find this list (using
   <a href="http://l1sp.org/cl/equal"><code>equal</code></a>) in the alist <code class="codex-param">subcommand-functions</code>. If such a list
   exists as a key in that alist, the value corresponding to that key is taken
@@ -180,18 +182,18 @@ the public symbols of the <code>com.djhaskin.cliff/errors</code> package.
   semantics. That table must contain at least one value under the <code>:status</code>
   key. The value of this key is expected to be one of the keys found in the
   <code>*exit-codes*</code> alist corresponding to what should be the exit status of the
-  whole program. If the function was successful, the value is expected
-  to be <code>:successful</code>. This value will be used as the key to look up a
-  numeric exit code from <code>*exit-codes*</code>. The numeric exit code found will be taken as
-  the desired exit code of the whole program, and will be the first value
-  returned by the function <code>execute-program</code>. The second value will be the
-  result hash table itself.</p><p>  </p><p>  </p><h2 id="error-handling">Error Handling</h2><p>  During the entirety of its run, <code>execute-program</code> handles any and all
+  whole program. If the function was successful, the value is expected to be
+  <code>:successful</code>. This value will be used as the key to look up a numeric exit
+  code from c(*exit-codes*). The numeric exit code found will be taken as the
+  desired exit code of the whole program, and will be the first value returned
+  by the function <code>execute-program</code>. The second value will be the result hash
+  table itself.</p><p>  </p><p>  </p><h2 id="error-handling">Error Handling</h2><p>  During the entirety of its run, <code>execute-program</code> handles any and all
   <a href="http://l1sp.org/cl/serious-condition"><code>serious-condition</code></a>s. If one is signaled, it computes the exit status
   of the condition using <code>exit-status</code> and creates a final result vector
   containing the return value of that function under the <code>:status</code> key. It
   then populates this table with a key called <code>error-message</code> and any
-  key/value pair found in the alist computed by calling <code>exit-map-members</code> on
-  the condition.</p><p>  It prints this table out in indented NRDL format to <code class="codex-param">err-strm</code>(or
+  key/value pair found in the alist computed by calling <code>exit-map-members</code>
+  on the condition.</p><p>  It prints this table out in indented NRDL format to <code class="codex-param">err-strm</code>(or
   standard error if that option is left unspecified) unless
   <code class="codex-param">suppress-output</code> is given as <code>t</code>.</p><p>  <code>execute-program</code> then returns two values: the numeric exit code
   corresponding to the exit status computed as described above, and the newly
@@ -215,7 +217,60 @@ the public symbols of the <code>com.djhaskin.cliff/errors</code> package.
   parameters (though of course they may be specified if e.g. the user needs to
   redirect output to a file at need.)</p><p>  </p><p>
   </p></div></div>
-</p><h1 id="com.djhaskin.cliff-errors"><code>com.djhaskin.cliff/errors</code></h1><p>
+<div class="codex-doc-node codex-operator codex-function"><code class="codex-name">ensure-option-exists</code><code class="codex-lambda-list">(key options)</code><div class="codex-docstring"><p>
+  Check options hash table <code class="codex-param">options</code> for the key <code class="codex-param">key</code>.</p><p>  Signal a restartable condition if the option is missing. Employs the
+  <a href="http://l1sp.org/cl/use-value"><code>use-value</code></a> and <a href="http://l1sp.org/cl/continue"><code>continue</code></a> restarts in that case.
+  </p></div></div>
+<div class="codex-doc-node codex-operator codex-function"><code class="codex-name">data-slurp</code><code class="codex-lambda-list">(resource &amp;rest more-args)</code><div class="codex-docstring"><p>
+  Slurp a resource, using specified options. Return the contents of the
+  resource as a string.</p><p>  If <code class="codex-param">resource</code> is a URL, download the contents according to the
+  following rules:
+  </p><ul><li>If it is of the form `http(s)://user:password@url`,
+        it performs basic HTTP authentication using the provided username and
+        password;</li><li>If it is of the form `http(s)://header=val@url`,
+        the provided header is set when downloading the contents;</li><li>If it is of the form `http(s)://&lt;token&gt;@url`,
+        bearer authorization is used with the provided token;</li><li>If it is of the form <code>file://&lt;location&gt;</code>,
+        it is loaded as a normal file;</li><li>If it is of the form <code>-</code> the contents are loaded from standard
+        input;</li></ul><p>  Otherwise, the contents are loaded from the resource as if it named
+  a file.
+  </p></div></div>
+<div class="codex-doc-node codex-operator codex-function"><code class="codex-name">parse-string</code><code class="codex-lambda-list">(thing)</code><div class="codex-docstring">
+  Parse the <a href="https://github.com/djha-skin/nrdl">NRDL</a> string <code class="codex-param">thing</code>.
+  </div></div>
+<div class="codex-doc-node codex-operator codex-function"><code class="codex-name">generate-string</code><code class="codex-lambda-list">(thing &amp;optional &amp;key (pretty 0))</code><div class="codex-docstring">
+  Serialize <code class="codex-param">thing</code> to <a href="https://github.com/djha-skin/nrdl">NRDL</a>.
+  </div></div>
+<div class="codex-doc-node codex-operator codex-function"><code class="codex-name">find-file</code><code class="codex-lambda-list">(from marker)</code><div class="codex-docstring"><p>
+  Starting at the directory <code class="codex-param">from</code>, look for the file
+  <code class="codex-param">marker</code>.</p><p>  Continue looking for the file in successive parents of <code class="codex-param">from</code>
+  until no more parents exist or the file is found.</p><p>  Returns the pathname of the found file or nil if no file could be found.
+  </p></div></div>
+<div class="codex-doc-node codex-record codex-condition"><code class="codex-name">necessary-env-var-absent</code><div class="codex-class-struct-slot-option-node"><table class="codex-class-struct-slot-option-table"><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-header-cell">Option</td><td class="codex-class-struct-slot-option-header-cell">Value</td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Superclasses:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">(error t)</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Metaclass:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">sb-pcl::condition-class</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Default Initargs:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">nil</code></td></tr></table></div><div class="codex-docstring"><p>
+    Condition used by CLIFF to signal that a required environment variable
+    is not present.</p><p>    Implmements <code>exit-status</code> and
+    <code>exit-map-members</code>.
+    </p></div><ul class="codex-slot-list"><li class="codex-slot codex-class-slot"><code class="codex-name">env-var</code><div class="codex-docstring">
+            Environment variable that should exist (but doesn't).
+            </div><div class="codex-class-struct-slot-option-node"><table class="codex-class-struct-slot-option-table"><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-header-cell">Option</td><td class="codex-class-struct-slot-option-header-cell">Value</td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Allocation:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell">instance</td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Type:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">nil</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Initarg:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">:env-var</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Initform:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">(error &quot;Need to give argument `:env-var`.&quot;)</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Readers:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">(env-var)</code></td></tr></table></div></li></ul></div>
+<div class="codex-doc-node codex-record codex-condition"><code class="codex-name">invalid-subcommand</code><div class="codex-class-struct-slot-option-node"><table class="codex-class-struct-slot-option-table"><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-header-cell">Option</td><td class="codex-class-struct-slot-option-header-cell">Value</td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Superclasses:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">(error t)</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Metaclass:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">sb-pcl::condition-class</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Default Initargs:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">nil</code></td></tr></table></div><div class="codex-docstring"><p>
+    Condition used by CLIFF to signal there were no functions given to
+    CLIFF that correspond the subcommand given.</p><p>    Implmements <code>exit-status</code> and
+    <code>exit-map-members</code>.
+   </p></div><ul class="codex-slot-list"><li class="codex-slot codex-class-slot"><code class="codex-name">given-subcommand</code><div class="codex-docstring">
+                     Subcommand terms found on the command line.
+                     </div><div class="codex-class-struct-slot-option-node"><table class="codex-class-struct-slot-option-table"><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-header-cell">Option</td><td class="codex-class-struct-slot-option-header-cell">Value</td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Allocation:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell">instance</td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Type:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">nil</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Initarg:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">:given-subcommand</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Initform:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">nil</code></td></tr><tr class="codex-class-struct-slot-option-row"><td class="codex-class-struct-slot-option-label-cell">Readers:</td><td class="codex-class-struct-slot-option-value-cell codex-class-struct-slot-option-symbol-list-cell"><code class="codex-class-struct-slot-symbol-list">(given-subcommand)</code></td></tr></table></div></li></ul></div>
+<div class="codex-doc-node codex-variable"><code class="codex-name">*find-tag*</code><div class="codex-docstring">
+  <a href="http://edicl.github.io/cl-ppcre/"><code>cl-ppcre</code></a> regex scanner
+  containing two capture groups, the first of which must capture the CLI verb
+  (one of <code>enable</code>, <code>disable</code>, <code>reset</code>, <code>add</code>, <code>set</code>, <code>nrdl</code>, or
+  <code>file</code>), and the second of which is the name of the variable. This is used
+  ultimately by <code>execute-program</code> to recognize command line options (as
+  opposed to subcommands). Currently its value corresponds to the regular
+  expression <code>&quot;^--([^-]+)-(.+)$&quot;</code>.
+  </div></div>
+
+</p><h1 id="com.djhaskin.cliff-errors"><code>com.djhaskin.cliff/errors</code></h1>
+
 <div class="codex-doc-node codex-variable"><code class="codex-name">*exit-codes*</code><div class="codex-docstring"><p>
   This parameter points to a hash table mapping keywords used by CLIFF
   to numeric error codes. These error codes and their names are taken from
@@ -291,7 +346,8 @@ the public symbols of the <code>com.djhaskin.cliff/errors</code> package.
    <a href="https://github.com/djha-skin/nrdl">NRDL</a>-serializable objects
    are allowed in the resulting alist.
    </p></div></div>
-</p>
+
+
       </div>
     </main>
   </article>

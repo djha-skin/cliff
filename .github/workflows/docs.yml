@@ -49,7 +49,7 @@ jobs:
                    select(.name|test("\\.deb$")) |
                    .browser_download_url')
           curl -L "${download_url}" --output roswell.deb
-          apt-get install -y ./roswell.deb make
+          sudo apt-get install -y ./roswell.deb make
           ros install sbcl-bin
           ros use sbcl-bin
           sbcl_vers=$(ls -1A ~/.roswell/impls/x86-64/linux/sbcl-bin)

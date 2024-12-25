@@ -30,6 +30,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+
       - name: Check out repo
         uses: actions/checkout@v4
 
@@ -39,7 +40,7 @@ jobs:
           repository: ocicl/ocicl
           path: ocicl
 
-      - name: Install roswell + OCICL
+      - name: Install build dependencies
         run: |
           set -ex
           sudo apt-get install -y jq
@@ -66,26 +67,6 @@ jobs:
           (asdf:initialize-source-registry
             (list :source-registry (list :directory (uiop:getcwd)) :inherit-configuration))
           ROSWELL
-
-      - name: cache .roswell
-        id: cache-dot-roswell
-        uses: actions/cache@v3
-        with:
-          path: ~/.roswell
-          key: ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-${{ hashFiles('**/*.asd') }}
-          restore-keys: |
-            ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-
-            ${{ runner.os }}-dot-roswell-
-
-      - name: cache .local
-        id: cache-dot-local
-        uses: actions/cache@v3
-        with:
-          path: ~/.local
-          key: ${{ runner.os }}-dot-local-${{ matrix.lisp }}-${{ hashFiles('**/ocicl') }}
-          restore-keys: |
-            ${{ runner.os }}-dot-local-${{ matrix.lisp }}-
-            ${{ runner.os }}-dot-local-
 
       - name: Make the docs
         run: |

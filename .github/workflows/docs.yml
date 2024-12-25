@@ -72,6 +72,7 @@ jobs:
         run: |
           sbcl_vers=$(ls -1A ~/.roswell/impls/x86-64/linux/sbcl-bin)
           export PATH=~/.roswell/impls/x86-64/linux/sbcl-bin/${sbcl_vers}/bin:~/.local/bin:${PATH}
+          ocicl install
           make docs
 
       - name: Setup Pages

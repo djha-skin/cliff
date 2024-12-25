@@ -82,7 +82,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.local
-          key: ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-${{ hashFiles('**/*.asd') }}
+          key: ${{ runner.os }}-dot-local-${{ matrix.lisp }}-${{ hashFiles('**/ocicl') }}
           restore-keys: |
             ${{ runner.os }}-dot-local-${{ matrix.lisp }}-
             ${{ runner.os }}-dot-local-

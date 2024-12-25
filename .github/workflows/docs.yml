@@ -64,18 +64,19 @@ jobs:
             (list :source-registry (list :directory (uiop:getcwd)) :inherit-configuration))
           ROSWELL
 
-    - name: Make the docs
-      run: |
-        sbcl_vers=$(ls -1A ~/.roswell/impls/x86-64/linux/sbcl-bin)
-        export PATH=~/.roswell/impls/x86-64/linux/sbcl-bin/${sbcl_vers}/bin:${PATH}
-        ros +Q -- build-docs.ros
-    - name: Setup Pages
-      uses: actions/configure-pages@v5
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        # Upload docs
-        path: 'docs/build/cliff-command-line-interface-functional-framework/html/'
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+      - name: Make the docs
+        run: |
+          sbcl_vers=$(ls -1A ~/.roswell/impls/x86-64/linux/sbcl-bin)
+          export PATH=~/.roswell/impls/x86-64/linux/sbcl-bin/${sbcl_vers}/bin:${PATH}
+          ros +Q -- build-docs.ros
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload docs
+          path: 'docs/build/cliff-command-line-interface-functional-framework/html/'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

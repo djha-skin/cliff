@@ -1,0 +1,56 @@
+name: Deploy Docker
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      roswell_version:
+        type: string
+        default: master
+      sbcl_version:
+        type: string
+        default: 2.4.11
+      ocicl_version:
+        type: string
+        default: main
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: docker
+  cancel-in-progress: false
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          context: docker
+          build-args:
+            - ROSWELL_VERSION=${{ inputs.roswell_version }}
+            - SBCL_VERSION=${{ inputs.sbcl_version }}
+            - OCICL_VERSION=${{ inputs.ocicl_version }}
+          tags: djhaskin987/roswell-ocicl:${{ inputs.roswell_version }}-${{ inputs.sbcl_version }}-${{ ocicl_version }}

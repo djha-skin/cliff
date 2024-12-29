@@ -32,6 +32,23 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
+      - name: Restore cache
+        id: cache-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.roswell
+            ~/.cache/common-lisp
+          key: ${{ runner.os }}
+
+      - name: Restore systems
+        id: cache-systems
+        uses: actions/cache@v3
+        with:
+          path: |
+            systems/
+          key: ${{ hashFiles('systems.csv') }}
+
       - name: Make the docs
         run: |
           chown -R builder: .

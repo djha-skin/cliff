@@ -3,5 +3,5 @@
  :documents ((:title "CLIFF: Command Line Interface Functional Framework"
               :authors ("Daniel Jay Haskin")
               :output-format (:type :multi-html
-                              :template :gamma)
+                              :template :minima)
               :sources ("manual.scr"))))

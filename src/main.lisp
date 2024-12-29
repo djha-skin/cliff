@@ -1254,37 +1254,37 @@ This is nonsense.
   The function @c(execute-program) aims to be a simple to use one stop shop for
   all your command line needs.
 
-  The function gathers options from the Option Tower out of configuration
-  files, environment variables, and the command line arguments into an options
-  table. Then it calls the action function, which is a user-defined function
-  based on what subcommand was specified; either the
+  The function gathers options from the \"Option Tower\", or out of
+  configuration files, environment variables, and the command line arguments
+  into an options table. Then it calls the @i(action function), which is a
+  user-defined function based on what subcommand was specified; either the
   @cl:param(default-function) if no subcommands were given, or the function
   corresponding to the subcommand as given in @cl:param(subcommand-functions)
   will be called. Expects that function to return a results map, with at least
-  the @c(:status) key set to one of the values listed in the
-  @c(*exit-codes*) hash table.
+  the @c(:status) key set to one of the values listed in the @c(*exit-codes*)
+  hash table.
 
   @end(section)
 
   @begin(section)
   @title(The Options Tower)
 
-  @begin(section)
-  @title(Configuration Files)
-
   The function first builds, in successive steps, the options table which will
   be passed to the function in question.
+
+  @begin(section)
+  @title(Configuration Files)
 
   It starts with the options hash table given by the @cl:param(defaults)
   parameter.
 
   The function next examines the given @cl:param(environment-variables),
   which should be given as an alist with keys as variable names and values as
-  their values. If no list is given, the currently environment variables will
+  their values. If no list is given, the current environment variables will
   be queried from the OS.
 
-  Uses those environment variables to find an OS-specific system-wide
-  configuration file in one of the following locations:
+  Then @c(execute-program) uses those environment variables to find an
+  OS-specific system-wide configuration file in one of the following locations:
 
   @begin(list)
     @item(@b(Windows): @c(%PROGRAMDATA%\\<program-name>\\config.nrdl), or
@@ -1341,11 +1341,11 @@ This is nonsense.
   @begin(section)
   @title(Environment Variables)
 
-  Next, it examines the @cl:param(environment-variables) for any options given
-  by environment variable. Again, @cl:param(environment-variables) should be
-  given as an alist with keys as variable names and values as their values. If
-  no list is given, the currently environment variables will be queried from
-  the OS.
+  Next, this function examines the @cl:param(environment-variables) for any
+  options given by environment variable. Again,
+  @cl:param(environment-variables) should be given as an alist with keys as
+  variable names and values as their values. If no list is given, the current
+  environment variables will be queried from the OS.
 
   For each environment variable, it examines its form.
 
@@ -1427,6 +1427,9 @@ This is nonsense.
     will be taken as the value of the option key within the option table,
     overriding any previously set value within that table.)
 
+    @item(If the argument's action is @c(reset), the option key in question
+    is removed from the option table.)
+
   @end(list)
 
   In addition, any argument of any form whose string value @cl:spec(equal)'s
@@ -1454,17 +1457,17 @@ This is nonsense.
 
   Any other arguments which @c(execute-program) finds on the command line other
   than those recognized either as @cl:param(cli-aliases) or as options of the
-  form matched by @c(*find-tag*) will be
-  taken as subcommand terms.
+  form matched by @c(*find-tag*) will be taken as subcommand terms.
 
   @c(execute-program) then finds all such terms puts them in a list in the
   order in which they were found. It attempts to find this list (using
   @cl:spec(equal)) in the alist @cl:param(subcommand-functions). If such a list
   exists as a key in that alist, the value corresponding to that key is taken
-  to be a function of one argument. This function expects a hash table, the
-  options map previously constructed.
+  to be the action function. All action functions must be a function of one
+  hash table as an argument. This will be the options map previously constructed.
 
-  If no subcommand was given, it calls @cl:param(default-function) instead.
+  If no subcommand was given, the @cl:param(default-function) is taken as the
+  action function instead.
 
   @end(section)
 
@@ -1505,18 +1508,18 @@ This is nonsense.
   @begin(section)
   @title(Execution)
 
-  If @c(execute-program) determines the user function to call and what options
-  to put in the option table, it calls that function. This function is either
-  that which prints the default help page as described above, it comes from
-  @cl:param(subcommand-functions) and was chosen based on present subcommand
-  terms on the command line, or comes from @cl:param(default-function) if no
-  subcommand was given on the command line. If no match was found in
-  @cl:param(subcommands-functions) matching the subcommands given on the
-  command line, an error is printed. This function is called the action
-  function.
+  If @c(execute-program) is able to determine an action function and
+  what options to put in the option table, it calls that function with the
+  found options. This function is either that which prints the default help
+  page as described above, it comes from @cl:param(subcommand-functions) and
+  was chosen based on present subcommand terms on the command line, or comes
+  from @cl:param(default-function) if no subcommand was given on the command
+  line. If no match was found in @cl:param(subcommands-functions) matching the
+  subcommands given on the command line, an error is printed. This function is
+  called the action function.
 
   It computes the result hash table by taking the return value value of the
-  action function passes it to the function specified in the
+  action function and passing it to the function specified in the
   @cl:param(teardown) parameter, if it was given. If not, the result from the
   action function is taken as the result hash table itself.
 
@@ -1546,7 +1549,7 @@ This is nonsense.
   of the condition using @c(exit-status) and creates a final result vector
   containing the return value of that function under the @c(:status) key. It
   then populates this table with a key called @c(error-message) and any
-  key/value pair found in the alist computed by calling @c(exit-map-members)
+  key/value pairs found in the alist computed by calling @c(exit-map-members)
   on the condition.
 
   It prints this table out in indented NRDL format to @cl:param(err-strm) (or
@@ -1721,6 +1724,8 @@ This is nonsense.
 
   Signal a restartable condition if the option is missing. Employs the
   @cl:spec(use-value) and @cl:spec(continue) restarts in that case.
+
+  This function is meant to be used by the user to ensure an option exists.
   "
   (restart-case
       (progn

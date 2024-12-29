@@ -4,10 +4,14 @@
 
 Do you want to have your Common Lisp app look at configuration files, the
 environment, and command line to get your app's options, but don't want to have
-to actually @i(code) any of that stuff? Feel bogged down by writing the same old
-I/O code for every app?
+to actually @i(code) any of that stuff? Feel bogged down by writing the same
+old I/O code for every app?
 
 Then @link[uri="https://github.com/djha-skin/cliff"](CLIFF) is for you!
+
+This document is available as a
+@link[uri="https://djha-skin.github.io/cliff/docs/build/cliff-command-line-interface-functional-framework/html/manual.pdf"](PDF
+document).
 
 @end(section)
 
@@ -94,17 +98,18 @@ the command line, with later values overriding earlier ones.
 Configuration files can be in the following locations:
   - A system-wide config file in an OS-specific location:
       - On Windows: `%PROGRAMDATA%\calc\config.nrdl`
-        (by default `C:\ProgramData\      - On Mac:   `/Library/Preferences/~A/config.nrdl`~%\config.nrdl`)
+        (by default `C:\ProgramData\
+      - On Mac:   `/Library/Preferences/~A/config.nrdl`~%\config.nrdl`)
 
 calc      - On Linux/POSIX: `/etc/calc/config.nrdl`
-        (by default ~/.config/calc/config.nrdl)` 
+        (by default ~/.config/calc/config.nrdl)`
   - A home-directory config file in an OS-specific location:
       - On Windows: `%LOCALAPPDATA%\calc\config.nrdl`
         (by default `%USERPROFILE%\AppData\Local\calc\config.nrdl`)
 
       - On Mac:   `~/Library/Preferences/calc/config.nrdl`
       - On Linux/POSIX: `${XDG_CONFIG_HOME}/calc/config.nrdl`
-        (by default ~/.config/calc/config.nrdl)` 
+        (by default ~/.config/calc/config.nrdl)`
   - A file named `.calc.nrdl` in the directory `/home/skin/Code/djha-skin/calc/`
     (or any of its parents)
 Options can be set via environment variable as follows:
@@ -989,24 +994,60 @@ exports other convenience functions listed below, as well as re-exporting all
 the public symbols of the @c(com.djhaskin.cliff/errors) package.
 
 @cl:with-package[name="com.djhaskin.cliff"](
+@begin(section)
+@title(@c(execute-program))
 @cl:doc(function execute-program)
+@end(section)
+@begin(section)
+@title(@c(ensure-option-exists))
 @cl:doc(function ensure-option-exists)
+@end(section)
+@begin(section)
+@title(@c(data-slurp))
 @cl:doc(function data-slurp)
+@end(section)
+@begin(section)
+@title(@c(parse-string))
 @cl:doc(function parse-string)
+@end(section)
+@begin(section)
+@title(@c(generate-string))
 @cl:doc(function generate-string)
+@end(section)
+@begin(section)
+@title(@c(find-file))
 @cl:doc(function find-file)
+@end(section)
+@begin(section)
+@title(@c(necessary-env-var-absent))
 @cl:doc(condition necessary-env-var-absent)
+@end(section)
+@begin(section)
+@title(@c(invalid-subcommand))
 @cl:doc(condition invalid-subcommand)
+@end(section)
+@begin(section)
+@title(@c(*find-tag*))
 @cl:doc(variable *find-tag*)
+@end(section)
 )
 @end(section)
 
 @begin(section)
 @title(@c(com.djhaskin.cliff/errors))
 @cl:with-package[name="com.djhaskin.cliff/errors"](
+@begin(section)
+@title(@c(*exit-codes*))
 @cl:doc(variable *exit-codes*)
+@end(section)
+@begin(section)
+@title(@c(exit-status))
 @cl:doc(generic exit-status)
+@end(section)
+@begin(section)
+@title(@c(exit-map-members))
 @cl:doc(generic exit-map-members)
+@end(section)
 )
 @end(section)
 

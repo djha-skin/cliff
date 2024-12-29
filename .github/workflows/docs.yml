@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: djhaskin987/roswell-sbcl-ocicl:latest
-      options: --cpus 1
+      options: --cpus 1 --user root
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -34,8 +34,12 @@ jobs:
 
       - name: Make the docs
         run: |
+          chown -R builder: .
+          chmod ugo+rwX -R .
+          su builder << BUILDER
           ocicl install
           make docs
+          BUILDER
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

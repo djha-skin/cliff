@@ -20,58 +20,20 @@ concurrency:
 
 jobs:
   docs:
-    name: ${{ matrix.lisp }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        lisp: [sbcl-bin]
-        os: [ubuntu-latest]
+    name: Make the docs
+    runs-on: ubuntu-latest
+    container:
+      image: djhaskin987/roswell-sbcl-ocicl:latest
+      options: --cpus 1
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Check out OCICL
-        uses: actions/checkout@v4
-        with:
-          repository: ocicl/ocicl
-          path: ocicl
-
-      - name: Install build dependencies
-        run: |
-          set -ex
-          sudo apt-get install -y jq
-          download_url=$(curl -s https://api.github.com/repos/roswell/roswell/releases/latest | \
-            jq -r '.assets |
-                   .[] |
-                   select(.name|test("\\.deb$")) |
-                   .browser_download_url')
-          curl -L "${download_url}" --output roswell.deb
-          sudo apt-get install -y ./roswell.deb make
-          ros install sbcl-bin
-          ros use sbcl-bin
-          sbcl_vers=$(ls -1A ~/.roswell/impls/x86-64/linux/sbcl-bin)
-          export PATH=~/.roswell/impls/x86-64/linux/sbcl-bin/${sbcl_vers}/bin:${PATH}
-          cd ocicl
-          mkdir -p ~/.local/bin/
-          sbcl --load setup.lisp
-          chmod a+x ocicl
-          mv ocicl ~/.local/bin
-          cat >> ~/.roswell/init.lisp << ROSWELL
-          #-ocicl
-          (when (probe-file #P"~/.local/share/ocicl/ocicl-runtime.lisp")
-            (load #P"~/.local/share/ocicl/ocicl-runtime.lisp"))
-          (asdf:initialize-source-registry
-            (list :source-registry (list :directory (uiop:getcwd)) :inherit-configuration))
-          ROSWELL
-
       - name: Make the docs
         run: |
-          sbcl_vers=$(ls -1A ~/.roswell/impls/x86-64/linux/sbcl-bin)
-          export PATH=~/.roswell/impls/x86-64/linux/sbcl-bin/${sbcl_vers}/bin:~/.local/bin:${PATH}
           ocicl install
           make docs
 

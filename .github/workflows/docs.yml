@@ -37,8 +37,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            ~/.roswell
-            ~/.cache/common-lisp
+            /home/builder/.roswell
+            /home/builder/.cache/common-lisp
           key: ${{ runner.os }}
 
       - name: Restore systems

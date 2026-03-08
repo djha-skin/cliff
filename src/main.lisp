@@ -1554,7 +1554,8 @@ This is nonsense.
 
   It prints this table out in indented NRDL format to @cl:param(err-strm) (or
   standard error if that option is left unspecified) unless
-  @cl:param(suppress-output) is given as @c(t).
+  @cl:param(suppress-final-output) is given as @c(t) OR there is a
+  @c(cliff-suppress-output) key in the returned map whose value is not @c(nil).
 
   @c(execute-program) then returns two values: the numeric exit code
   corresponding to the exit status computed as described above, and the newly
@@ -1690,8 +1691,12 @@ This is nonsense.
                      (final-result
                        (funcall
                          teardown intermediate-result))
-                     (status (gethash :status final-result :successful)))
-                        (unless suppress-final-output
+                     (status (gethash :status final-result :successful))
+                     (suppress-output (or
+                                        suppress-final-output
+                                        (gethash :cliff-suppress-output
+                                                 final-result))))
+                        (unless suppress-output
                           (nrdl:generate-to strm final-result :pretty-indent 4)
                           (terpri strm))
                          (values

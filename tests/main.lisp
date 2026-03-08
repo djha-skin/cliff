@@ -98,7 +98,7 @@
                      *tests-dir*)
                    :direction :input
                    :external-format :utf-8)
-                 (cliff:slurp-stream f))
+                 (cliff::slurp-stream f))
                "{ \"hoo\" \"haa\" }"))))
 
 
@@ -169,7 +169,7 @@
   (testing
     "other-args"
     (multiple-value-bind (opts other-args)
-        (cliff:consume-arguments
+        (cliff::consume-arguments
           '("--enable-dark-mode"
             "--reset-dark-mode"
             "--add-dark-mode"
@@ -202,7 +202,7 @@
     "empty"
     (ok
       (equal (cliff:generate-string
-               (cliff:consume-arguments
+               (cliff::consume-arguments
                  '()))
              (format nil "{~%}"))
       "Empty argument parsing"))
@@ -210,7 +210,7 @@
     "basic"
     (ok
       (equal (nrdl:nested-to-alist
-               (cliff:consume-arguments
+               (cliff::consume-arguments
                  '("--enable-foo" "--disable-bar" "baz" "--nrdl-force" "15" "--set-quux" "farquad")))
              '((:BAR) (:FOO . T) (:FORCE . 15) (:QUUX . "farquad")))
       "Basic argument parsing")))
@@ -226,7 +226,7 @@
           (:FORKS . "whenceandwhither")
           (:MAPLE "1" "2" "3" "4" "5"))
         (nrdl:nested-to-alist
-          (cliff:consume-environment
+          (cliff::consume-environment
             "hello"
             (alexandria:alist-hash-table
               '(("HELLO_LIST_MAPLE" . "1,2,3,4,5")
@@ -259,7 +259,7 @@
            (ok
              (equal
                (nrdl:nested-to-alist
-                 (cliff:config-file-options
+                 (cliff::config-file-options
                    "hi"
                    (alexandria:alist-hash-table
                      #+windows
@@ -346,6 +346,51 @@
         "Typical invocation hash table check")
     (ok (equal code 74)
         "Typical invocation exit code check"))))
+
+(deftest
+  execute-program-cliff-suppress-output
+  (testing
+    "per-run suppress output from returned hash table"
+    (let* ((suppressing-command
+             (lambda (options)
+               (declare (ignore options))
+               (alexandria:alist-hash-table
+                 '((:status . :successful)
+                   (:cliff-suppress-output . t)
+                   (:message . "hidden")))))
+           (normal-command
+             (lambda (options)
+               (declare (ignore options))
+               (alexandria:alist-hash-table
+                 '((:status . :successful)
+                   (:message . "visible")))))
+           (suppressed-out (make-string-output-stream))
+           (normal-out (make-string-output-stream)))
+      (multiple-value-bind (suppressed-code suppressed-result)
+          (cliff:execute-program
+            "hi"
+            :default-function suppressing-command
+            :cli-arguments '()
+            :strm suppressed-out)
+        (ok (equal suppressed-code 0)
+            "suppressed command still reports success exit code")
+        (ok (equal (gethash :status suppressed-result) :successful)
+            "suppressed command status remains successful")
+        (ok (equal (get-output-stream-string suppressed-out) "")
+            "no final output emitted when :cliff-suppress-output is true"))
+
+      (multiple-value-bind (normal-code normal-result)
+          (cliff:execute-program
+            "hi"
+            :default-function normal-command
+            :cli-arguments '()
+            :strm normal-out)
+        (ok (equal normal-code 0)
+            "normal command reports success exit code")
+        (ok (equal (gethash :status normal-result) :successful)
+            "normal command status remains successful")
+        (ok (not (equal (get-output-stream-string normal-out) ""))
+            "suppression is not sticky across invocations")))))
 
 ;;#(defmacro write-or-check-nrdl (thing strm file expected actual)
 ;;#

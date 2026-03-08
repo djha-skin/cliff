@@ -12,6 +12,7 @@
 /.vagrant/
 /scratch.lisp
 /*.log
+/ocicl/
 TODO
 
 

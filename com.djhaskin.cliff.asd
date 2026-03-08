@@ -1,5 +1,5 @@
 (defsystem "com.djhaskin.cliff"
-  :version "0.10.0"
+  :version "0.11.0"
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (

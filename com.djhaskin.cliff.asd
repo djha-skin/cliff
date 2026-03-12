@@ -21,7 +21,7 @@
   :in-order-to ((test-op (test-op "com.djhaskin.cliff/tests"))))
 
 (defsystem "com.djhaskin.cliff/tests"
-  :version "0.10.0"
+  :version "0.11.0"
   :author "Daniel Jay Haskin"
   :license "MIT"
   :depends-on (
